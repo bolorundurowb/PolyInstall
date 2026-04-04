@@ -1,0 +1,54 @@
+# Build, test, and upload coverage to Codecov.
+# Requires repository secret CODECOV_TOKEN (optional for many public repos; see https://docs.codecov.com/docs/github-2).
+
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore PolyInstall.slnx
+
+      - name: Build
+        run: dotnet build PolyInstall.slnx --configuration Release --no-restore
+
+      - name: Test with coverage
+        run: >
+          dotnet test PolyInstall.slnx
+          --configuration Release
+          --no-build
+          --verbosity normal
+          --collect:"XPlat Code Coverage"
+          --results-directory "${{ github.workspace }}/TestResults"
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+          files: ./TestResults/**/coverage.cobertura.xml
+          flags: unittests
+          name: polyinstall-coverage
