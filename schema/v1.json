@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "InstallManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "metadata": {
+      "$ref": "#/definitions/ManifestMetadata"
+    },
+    "build": {
+      "$ref": "#/definitions/BuildConfiguration"
+    },
+    "ui": {
+      "$ref": "#/definitions/UiConfiguration"
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/FilesEntry"
+      }
+    },
+    "tasks": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/definitions/TasksConfiguration"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "ManifestMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "id": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "publisher": {
+          "type": [
+            "null",
+            "string"
+          ]
+        }
+      }
+    },
+    "BuildConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "output_dir": {
+          "type": "string"
+        },
+        "compression": {
+          "type": "string"
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "stub_path": {
+          "type": [
+            "null",
+            "string"
+          ]
+        }
+      }
+    },
+    "UiConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "theme": {
+          "type": "string"
+        },
+        "assets": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/UiAssetEntry"
+          }
+        },
+        "wizard_steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/WizardStep"
+          }
+        }
+      }
+    },
+    "UiAssetEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "WizardStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "title": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "source": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "default_path": {
+          "type": [
+            "null",
+            "string"
+          ]
+        }
+      }
+    },
+    "FilesEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source_dir": {
+          "type": "string"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exclude": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "TasksConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pre_install": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/InstallTask"
+          }
+        },
+        "post_install": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/InstallTask"
+          }
+        }
+      }
+    },
+    "InstallTask": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "require": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "action": {
+          "type": "string"
+        },
+        "parameters": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "additionalProperties": {}
+        }
+      }
+    }
+  }
+}

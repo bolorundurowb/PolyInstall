@@ -1,0 +1,7 @@
+PolyInstall bundles or depends on the following third-party components (see individual licenses in NuGet packages):
+
+- YamlDotNet (YAML parsing in the CLI)
+- Avalonia, Avalonia.Themes.Fluent, Avalonia.Desktop (installer UI)
+- Microsoft.Extensions.FileSystemGlobbing (manifest glob resolution)
+- Json.Schema (JsonSchema.Net) and associated packages (CLI manifest validation)
+- NJsonSchema (schema generation tool in PolyInstall.SchemaGen)

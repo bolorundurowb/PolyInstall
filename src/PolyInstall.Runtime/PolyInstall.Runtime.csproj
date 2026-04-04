@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>PolyInstall.Runtime</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Description>PolyInstall installer stub host.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PolyInstall.Core\PolyInstall.Core.csproj" />
+    <ProjectReference Include="..\PolyInstall.UI\PolyInstall.UI.csproj" />
+  </ItemGroup>
+</Project>

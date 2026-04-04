@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PolyInstall.Cli/PolyInstall.Cli.csproj" />
+    <Project Path="src/PolyInstall.Core/PolyInstall.Core.csproj" />
+    <Project Path="src/PolyInstall.Runtime/PolyInstall.Runtime.csproj" />
+    <Project Path="src/PolyInstall.SchemaGen/PolyInstall.SchemaGen.csproj" />
+    <Project Path="src/PolyInstall.UI/PolyInstall.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PolyInstall.Core.Tests/PolyInstall.Core.Tests.csproj" />
+  </Folder>
+</Solution>

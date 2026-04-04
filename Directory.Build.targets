@@ -1,0 +1,11 @@
+<Project>
+  <!-- Opt-in: msbuild /p:GeneratePolyInstallSchema=true to refresh schema/v1.json from POCOs -->
+  <Target Name="GeneratePolyInstallSchema"
+          BeforeTargets="BeforeBuild"
+          Condition="'$(GeneratePolyInstallSchema)' == 'true'">
+    <PropertyGroup>
+      <_SchemaGenProj>$(MSBuildThisFileDirectory)src\PolyInstall.SchemaGen\PolyInstall.SchemaGen.csproj</_SchemaGenProj>
+    </PropertyGroup>
+    <Exec Command="dotnet run --no-build -c $(Configuration) --project &quot;$(_SchemaGenProj)&quot;" />
+  </Target>
+</Project>

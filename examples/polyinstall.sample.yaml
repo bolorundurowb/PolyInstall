@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://polyinstall.dev/schema/v1.json
+metadata:
+  name: SampleApp
+  version: 0.1.0
+  publisher: Example
+build:
+  output_dir: dist
+  compression: brotli
+  targets:
+    - windows-x64
+ui:
+  theme: system
+  wizard_steps:
+    - type: welcome
+      title: Welcome
+    - type: destination
+      title: Install location
+      default_path: "{UserHome}/SampleApp"
+    - type: progress
+      title: Installing
+    - type: finish
+      title: Complete
+files:
+  - source_dir: sample-payload
+    include:
+      - "**/*"
