@@ -311,7 +311,7 @@ Strings such as `default_path` can include:
 | `{UserHome}` | Current user’s profile/home. |
 | `{Desktop}` | Desktop folder. |
 
----
+
 
 ## Conditions
 
@@ -337,7 +337,7 @@ Unknown expressions throw at runtime — there is **no** general-purpose express
 
 If an action is not supported on the current OS, the runtime throws a clear **platform not supported** error for that task.
 
----
+
 
 ## Output file naming
 
@@ -350,7 +350,7 @@ Under `output_dir`, the CLI writes:
 
 Invalid file-name characters in `metadata.name` are replaced with underscores.
 
----
+
 
 ## Troubleshooting
 
@@ -362,14 +362,14 @@ Invalid file-name characters in `metadata.name` are replaced with underscores.
 | **Wrong OS** | The stub RID must match the machine (e.g. do not run a `win-x64` build on Linux). |
 | **Shortcut / registry tasks fail on Windows** | PowerShell execution policy, permissions, and paths in `parameters`. |
 
----
+
 
 ## Examples
 
 - **`examples/polyinstall.sample.yaml`** — Minimal end-to-end manifest.  
 - **`examples/sample-payload/`** — Tiny payload tree for testing globs.
 
----
+
 
 ## Continuous integration and releases
 
@@ -391,13 +391,13 @@ git push origin v1.0.0
 
 Pre-release tags that include a hyphen in the version segment (e.g. `v1.0.0-beta.1`) are marked as **pre-release** on GitHub.
 
----
+
 
 ## Third-party notices
 
 See **`THIRD_PARTY_NOTICES.txt`** in the repository for NuGet components used by the CLI, UI, and libraries.
 
----
+
 
 ## Relationship to this repository
 
