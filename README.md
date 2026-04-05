@@ -1,10 +1,19 @@
 # PolyInstall
 
+**PolyInstall** is a powerful, manifest-driven installer generator for .NET developers. It allows you to package your applications into cross-platform, self-extracting binaries using a single YAML configuration file. With a modern, customizable installation UI built on **Avalonia**, PolyInstall simplifies the deployment process for Windows, Linux, and macOS.
+
+## Key Features
+- YAML-Based Manifests: Define your installer metadata, files, and build configurations in a single, simple YAML file.
+- Cross-Platform Support: Generate self-extracting installers for Windows (.exe), Linux (AppImage), and macOS (DMG).
+- Modern Avalonia UI: A clean, responsive installation interface that works
+
+---
+
 PolyInstall is a **.NET-centric toolchain** for building **self-contained installer executables** from a **YAML manifest**. At build time, the CLI packs your application files, compresses them, and appends them (with an embedded JSON manifest) to a **pre-published stub** — a small Avalonia-based host that extracts the payload and walks the end user through an installer wizard.
 
 This document is written for **consumers**: teams who want to ship installers without adopting a separate installer product, and who are comfortable with YAML, the .NET CLI, and publishing self-contained or framework-dependent apps per runtime identifier (RID).
 
----
+
 
 ## What you get
 
@@ -16,7 +25,7 @@ This document is written for **consumers**: teams who want to ship installers wi
 
 **Platform outputs:** On **Windows**, the stub can register **Add/Remove Programs** and ship an **`Uninstall.exe`** copy that supports `--uninstall`. On **Linux**, the CLI can optionally emit an **AppImage** (requires `mksquashfs` on a Linux host). On **macOS**, the CLI can optionally emit a **DMG** via `hdiutil` (requires building on macOS). See [Windows uninstall and ARP](#windows-uninstall-and-arp), [Linux AppImage](#linux-appimage), and [macOS DMG](#macos-dmg).
 
----
+
 
 ## Requirements
 
@@ -24,7 +33,7 @@ This document is written for **consumers**: teams who want to ship installers wi
 - A **64-bit** target OS matching the stubs you publish (Windows, Linux, or macOS RIDs supported in the manifest; see [Build targets](#build-targets)).
 - **Windows** stubs: PowerShell available for shortcut creation when using `create_shortcut` tasks (COM via `WScript.Shell`).
 
----
+
 
 ## Quick start
 
@@ -50,9 +59,9 @@ This document is written for **consumers**: teams who want to ship installers wi
 
 5. **Run the produced `.exe`** (or non-Windows binary) on a matching OS. It will extract to a temp folder and launch the wizard.
 
----
 
-## Manifest and schema
+
+## Manifest and Schema
 
 - **Authoring format:** YAML with **snake_case** keys (see examples).
 - **Runtime format:** The stub reads an **embedded JSON** manifest (snake_case property names) produced by the CLI.
@@ -72,7 +81,7 @@ This document is written for **consumers**: teams who want to ship installers wi
 
 If you work offline, use a **relative** or `file:` URL to `schema/v1.json` in your clone.
 
----
+
 
 ## Manifest structure (five domains)
 
@@ -168,7 +177,7 @@ During **`build`** and **`validate`**, all **string values** in the manifest (af
 
 This is intended for **CI and local paths**, not for security-sensitive runtime secrets in the shipped JSON (the embedded manifest is visible inside the binary).
 
----
+
 
 ## CLI reference
 
@@ -191,7 +200,7 @@ polyinstall validate <manifest.yaml> [--base <dir>]
 
 The CLI loads `schema/v1.json` from next to the built CLI assembly, or walks upward from the current base path to find `schema/v1.json`.
 
----
+
 
 ## Build targets
 
@@ -214,7 +223,7 @@ dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r 
 
 Use the same folder layout the CLI expects (`stubs/<rid>/PolyInstall.Runtime...`), or set `build.stub_path`.
 
----
+
 
 ## Compression
 
@@ -227,7 +236,7 @@ The payload is **zip** bytes, then **compressed** as configured:
 
 The stub reads `build.compression` from the embedded JSON and decompresses accordingly.
 
----
+
 
 ## Windows uninstall and ARP
 
@@ -241,7 +250,7 @@ When `build.windows.register_arp` is true (default), a successful install:
 
 **Single EXE from download:** You can also run the original downloaded installer with `--uninstall --install-location "C:\Path\To\Install"` if it is not named `Uninstall.exe`.
 
----
+
 
 ## Linux AppImage
 
@@ -253,7 +262,7 @@ Set `build.linux.package: appimage` for `linux-*` targets. After the usual ELF b
 
 **Host requirement:** AppImage creation must run on **Linux** with `mksquashfs` on `PATH`. Windows and macOS hosts cannot produce AppImages with this pipeline.
 
----
+
 
 ## macOS DMG
 
@@ -261,7 +270,7 @@ Set `build.macos.package: dmg` for `osx-*` targets. After the Mach-O bundle is b
 
 **Host requirement:** DMG creation must run on **macOS** (`hdiutil` is not available on Linux/Windows CI for this purpose).
 
----
+
 
 ## Bundle layout (append model)
 
@@ -273,7 +282,7 @@ The CLI **does not** rebuild the stub per package. It copies the stub bytes, the
 
 The stub opens its own executable path, seeks to the end, validates the magic, and reads manifest + payload. You can re-sign the final binary with your own pipeline if you add signing **after** this append step (signing details are outside this README).
 
----
+
 
 ## Wizard steps
 
@@ -289,7 +298,7 @@ The stub opens its own executable path, seeks to the end, validates the magic, a
 
 If `wizard_steps` is empty, the UI falls back to a minimal welcome + finish flow.
 
----
+
 
 ## Path placeholders
 
@@ -315,7 +324,7 @@ Strings such as `default_path` can include:
 
 Unknown expressions throw at runtime — there is **no** general-purpose expression language by design.
 
----
+
 
 ## Task actions
 
