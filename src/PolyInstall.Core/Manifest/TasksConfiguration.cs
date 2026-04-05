@@ -4,6 +4,8 @@ public sealed class TasksConfiguration
 {
     public List<InstallTask>? PreInstall { get; set; }
     public List<InstallTask>? PostInstall { get; set; }
+    public List<InstallTask>? PreUninstall { get; set; }
+    public List<InstallTask>? PostUninstall { get; set; }
 }
 
 public sealed class InstallTask

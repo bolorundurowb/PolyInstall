@@ -14,7 +14,7 @@ This document is written for **consumers**: teams who want to ship installers wi
 | **Stub (`PolyInstall.Runtime`)** | The actual “installer.exe” you ship. It reads the bundle appended to itself, shows a wizard (`PolyInstall.UI`), copies files, and can run **tasks** (shortcuts, registry, `.desktop` files, permissions). |
 | **`schema/v1.json`** | JSON Schema generated from the same C# models as the runtime. Use it in your editor for completion and diagnostics (see [Manifest and schema](#manifest-and-schema)). |
 
-**Not included (yet):** platform-specific packaging such as MSI, DMG, signed macOS bundles, `.deb`, or AppImage. The current model is **portable per-RID executables** with an appended payload (Phase A–style delivery).
+**Platform outputs:** On **Windows**, the stub can register **Add/Remove Programs** and ship an **`Uninstall.exe`** copy that supports `--uninstall`. On **Linux**, the CLI can optionally emit an **AppImage** (requires `mksquashfs` on a Linux host). On **macOS**, the CLI can optionally emit a **DMG** via `hdiutil` (requires building on macOS). See [Windows uninstall and ARP](#windows-uninstall-and-arp), [Linux AppImage](#linux-appimage), and [macOS DMG](#macos-dmg).
 
 ---
 
@@ -95,6 +95,30 @@ The manifest is grouped into five sections. All are represented in JSON Schema; 
 | `compression` | `brotli` or `gzip` (see [Compression](#compression)). |
 | `targets` | List of **manifest tokens** (not raw .NET RIDs); see [Build targets](#build-targets). |
 | `stub_path` | Optional path to the stub for a target; use `{rid}` for the **.NET RID** (e.g. `C:\stubs\{rid}\PolyInstall.Runtime.exe`). If omitted, the CLI uses `--stubs/<rid>/PolyInstall.Runtime[.exe]`. |
+| `windows` | Optional [Windows build options](#windows-build-options). |
+| `linux` | Optional [Linux build options](#linux-build-options). |
+| `macos` | Optional [macOS build options](#macos-build-options). |
+
+#### Windows build options
+
+| Field | Meaning |
+|--------|---------|
+| `install_scope` | `user` (default) or `machine`. Controls whether Add/Remove Programs entries go under **HKCU** or **HKLM**. |
+| `register_arp` | When `true` (default), after a successful install the stub writes `.polyinstall/install-state.json`, copies itself to `Uninstall.exe`, and registers the product in Add/Remove Programs. |
+
+**Elevation:** `install_scope: machine` writes to **HKLM** and requires an **elevated** (Administrator) install. If the installer is not elevated, registration fails with a clear error; use `user` scope for per-user installs under HKCU.
+
+#### Linux build options
+
+| Field | Meaning |
+|--------|---------|
+| `package` | `none` (default) or `appimage`. When `appimage`, the CLI builds an AppImage next to the raw ELF on **Linux** hosts (requires `mksquashfs` from **squashfs-tools**). |
+
+#### macOS build options
+
+| Field | Meaning |
+|--------|---------|
+| `package` | `none` (default) or `dmg`. When `dmg`, the CLI runs **`hdiutil`** to produce a compressed DMG beside the Mach-O binary. This step runs **only on macOS**. |
 
 ### `ui`
 
@@ -122,6 +146,8 @@ Optional:
 
 - `pre_install` — runs after the user confirms the destination but **before** files are copied (when using the default flow with a `progress` step).
 - `post_install` — runs after files are copied.
+- `pre_uninstall` — runs at the start of uninstall (Windows), before registry removal and file deletion.
+- `post_uninstall` — runs after `pre_uninstall`, before Add/Remove Programs removal and tree deletion.
 
 Each task supports:
 
@@ -155,7 +181,7 @@ polyinstall validate <manifest.yaml> [--base <dir>]
 
 | Command | Purpose |
 |---------|---------|
-| **`build`** | Full pipeline: read YAML → substitute env vars → validate JSON Schema → glob → zip → compress → append to each stub for each `build.targets` entry → write outputs. |
+| **`build`** | Full pipeline: read YAML → substitute env vars → validate JSON Schema → glob → zip → compress → append to each stub for each `build.targets` entry → write outputs → optional AppImage (Linux) or DMG (macOS) per manifest. |
 | **`validate`** | Same parse, substitution, and schema validation as `build`, without producing binaries. |
 
 | Option | Purpose |
@@ -200,6 +226,40 @@ The payload is **zip** bytes, then **compressed** as configured:
 | **`gzip`** | GZip compression. |
 
 The stub reads `build.compression` from the embedded JSON and decompresses accordingly.
+
+---
+
+## Windows uninstall and ARP
+
+When `build.windows.register_arp` is true (default), a successful install:
+
+1. Writes **`.polyinstall/embedded-manifest.json`** (full manifest JSON) and **`.polyinstall/install-state.json`** (product id, paths, registry key path).
+2. Copies the running installer binary to **`Uninstall.exe`** in the install directory.
+3. Registers **Add/Remove Programs** under `HKCU` or `HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\{GUID}` depending on `install_scope`.
+
+**Uninstall:** Run `Uninstall.exe --uninstall` (or add `--quiet` for no prompt). The stub **does not** read the embedded payload in this mode; it loads state from disk, runs `pre_uninstall` / `post_uninstall` tasks, removes the ARP key, deletes installed files, and schedules removal of the install folder (the copy of `Uninstall.exe` is removed after the process exits).
+
+**Single EXE from download:** You can also run the original downloaded installer with `--uninstall --install-location "C:\Path\To\Install"` if it is not named `Uninstall.exe`.
+
+---
+
+## Linux AppImage
+
+Set `build.linux.package: appimage` for `linux-*` targets. After the usual ELF bundle is produced, the CLI:
+
+1. Assembles an **AppDir** (`AppRun`, `.desktop`, `usr/bin/<installer>`).
+2. Invokes **`mksquashfs`** (from **squashfs-tools**) to build a squashfs image.
+3. Prepends the **AppImage type-2 runtime** ELF (downloaded once from AppImageKit and cached under your temp directory) and marks the result executable.
+
+**Host requirement:** AppImage creation must run on **Linux** with `mksquashfs` on `PATH`. Windows and macOS hosts cannot produce AppImages with this pipeline.
+
+---
+
+## macOS DMG
+
+Set `build.macos.package: dmg` for `osx-*` targets. After the Mach-O bundle is built, the CLI stages it in a temp folder (optional **Applications** symlink for drag-to-Applications UX) and runs **`hdiutil create`** to emit a **UDZO** DMG next to the binary.
+
+**Host requirement:** DMG creation must run on **macOS** (`hdiutil` is not available on Linux/Windows CI for this purpose).
 
 ---
 

@@ -5,3 +5,4 @@ PolyInstall bundles or depends on the following third-party components (see indi
 - Microsoft.Extensions.FileSystemGlobbing (manifest glob resolution)
 - Json.Schema (JsonSchema.Net) and associated packages (CLI manifest validation)
 - NJsonSchema (schema generation tool in PolyInstall.SchemaGen)
+- AppImage type-2 runtime ELF from AppImageKit (downloaded at build time when producing AppImages; see https://github.com/AppImage/AppImageKit )

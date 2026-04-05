@@ -8,6 +8,13 @@ build:
   compression: brotli
   targets:
     - windows-x64
+  windows:
+    install_scope: user
+    register_arp: true
+  # linux:
+  #   package: appimage   # requires Linux host + mksquashfs (squashfs-tools)
+  # macos:
+  #   package: dmg        # requires macOS host + hdiutil
 ui:
   theme: system
   wizard_steps:

@@ -76,6 +76,66 @@
             "null",
             "string"
           ]
+        },
+        "windows": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/WindowsBuildOptions"
+            }
+          ]
+        },
+        "linux": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/LinuxBuildOptions"
+            }
+          ]
+        },
+        "macos": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/MacOsBuildOptions"
+            }
+          ]
+        }
+      }
+    },
+    "WindowsBuildOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "install_scope": {
+          "type": "string"
+        },
+        "register_arp": {
+          "type": "boolean"
+        }
+      }
+    },
+    "LinuxBuildOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "package": {
+          "type": "string"
+        }
+      }
+    },
+    "MacOsBuildOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "package": {
+          "type": "string"
         }
       }
     },
@@ -180,6 +240,24 @@
           }
         },
         "post_install": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/InstallTask"
+          }
+        },
+        "pre_uninstall": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/InstallTask"
+          }
+        },
+        "post_uninstall": {
           "type": [
             "array",
             "null"

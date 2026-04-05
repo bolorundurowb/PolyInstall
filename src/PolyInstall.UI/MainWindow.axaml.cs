@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Security.Principal;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -142,6 +143,13 @@ public partial class MainWindow : Window
             TaskEngine.RunPhase(manifest.Tasks?.PreInstall, pal);
             await Task.Run(() => DirectoryCopy.CopyRecursive(InstallBootstrap.ExtractRoot, dest));
             TaskEngine.RunPhase(manifest.Tasks?.PostInstall, pal);
+            if (OperatingSystem.IsWindows())
+            {
+                var win = manifest.Build.Windows ?? new WindowsBuildOptions();
+                if (win.RegisterArp)
+                    FinalizeWindowsInstall(manifest, dest);
+            }
+
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 if (_progressText is not null)
@@ -165,4 +173,51 @@ public partial class MainWindow : Window
     }
 
     private void OnCancel(object? sender, RoutedEventArgs e) => Close();
+
+    private static void FinalizeWindowsInstall(InstallManifest manifest, string dest)
+    {
+        var win = manifest.Build.Windows ?? new WindowsBuildOptions();
+        var scope = string.IsNullOrWhiteSpace(win.InstallScope) ? "user" : win.InstallScope.Trim();
+        if (scope.Equals("machine", StringComparison.OrdinalIgnoreCase) && !IsWindowsAdministrator())
+        {
+            throw new InvalidOperationException(
+                "Per-machine installs require Administrator rights for Add/Remove Programs registration. Use install_scope: user or run the installer elevated.");
+        }
+
+        var hostExe = Environment.ProcessPath ?? throw new InvalidOperationException("Cannot resolve host executable path.");
+        InstallStateIo.WriteEmbeddedManifest(dest, manifest);
+
+        var guidStr = ProductIdHelper.StableProductGuidString(manifest.Metadata);
+        var relativeKey = $@"Software\Microsoft\Windows\CurrentVersion\Uninstall\{guidStr}";
+
+        var state = new InstallStateDocument
+        {
+            ProductId = guidStr,
+            DisplayName = manifest.Metadata.Name,
+            DisplayVersion = manifest.Metadata.Version,
+            Publisher = manifest.Metadata.Publisher,
+            InstallLocation = dest,
+            InstallScope = scope,
+            RegistryUninstallKeyRelative = relativeKey,
+        };
+
+        InstallStateIo.WriteState(dest, state);
+
+        var uninstallPath = InstallStatePaths.UninstallExePath(dest);
+        File.Copy(hostExe, uninstallPath, overwrite: true);
+
+        var estimatedKb = InstallDirectoryEstimator.EstimateKibRecursive(dest);
+#pragma warning disable CA1416 // Guarded by OperatingSystem.IsWindows() at call site
+        WindowsArpRegistration.Register(state, uninstallPath, estimatedKb);
+#pragma warning restore CA1416
+    }
+
+    private static bool IsWindowsAdministrator()
+    {
+        if (!OperatingSystem.IsWindows())
+            return false;
+        using var wi = WindowsIdentity.GetCurrent();
+        var wp = new WindowsPrincipal(wi);
+        return wp.IsInRole(WindowsBuiltInRole.Administrator);
+    }
 }

@@ -13,13 +13,19 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |
             10.0.x
+      - name: Install Linux packaging tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y squashfs-tools
       - run: dotnet restore PolyInstall.slnx
       - run: dotnet build PolyInstall.slnx -c Release --no-restore
       - run: dotnet test PolyInstall.slnx -c Release --no-build --verbosity normal
@@ -43,6 +49,9 @@ jobs:
         with:
           dotnet-version: |
             10.0.x
+
+      - name: Install squashfs-tools (AppImage / CLI packaging)
+        run: sudo apt-get update && sudo apt-get install -y squashfs-tools
 
       - name: Publish CLI (${{ matrix.rid }})
         run: >

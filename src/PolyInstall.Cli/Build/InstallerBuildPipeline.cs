@@ -72,6 +72,19 @@ public sealed class InstallerBuildPipeline
             }
 
             Console.WriteLine($"Built {outPath}");
+
+            if (target.StartsWith("linux-", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(manifest.Build.Linux?.Package, "appimage", StringComparison.OrdinalIgnoreCase))
+            {
+                await AppImagePackager.CreateAsync(outPath, manifest, target, safeName, outDir, baseDirectory, ct);
+            }
+
+            if (target.StartsWith("osx-", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(manifest.Build.Macos?.Package, "dmg", StringComparison.OrdinalIgnoreCase))
+            {
+                var dmgOut = Path.Combine(outDir, $"{safeName}-{target}.dmg");
+                DmgPackager.Create(outPath, dmgOut, manifest.Metadata.Name);
+            }
         }
     }
 
