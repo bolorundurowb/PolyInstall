@@ -54,7 +54,8 @@ public sealed class InstallerBuildPipeline
             if (!File.Exists(stubPath))
                 throw new FileNotFoundException($"Stub binary not found for target '{target}' (RID {rid}): {stubPath}. Publish PolyInstall.Runtime for this RID into stubs/{rid}/.");
 
-            var ext = OperatingSystem.IsWindows() ? ".exe" : "";
+            var isWinTarget = rid.StartsWith("win-", StringComparison.OrdinalIgnoreCase);
+            var ext = isWinTarget ? ".exe" : "";
             var safeName = string.Join("_", manifest.Metadata.Name.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries)).Trim();
             if (string.IsNullOrEmpty(safeName))
                 safeName = "setup";
@@ -96,7 +97,8 @@ public sealed class InstallerBuildPipeline
             return Path.GetFullPath(p);
         }
 
-        var ext = OperatingSystem.IsWindows() ? ".exe" : "";
+        var isWinTarget = dotnetRid.StartsWith("win-", StringComparison.OrdinalIgnoreCase);
+        var ext = isWinTarget ? ".exe" : "";
         return Path.GetFullPath(Path.Combine(stubRoot, dotnetRid, $"PolyInstall.Runtime{ext}"));
     }
 

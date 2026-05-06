@@ -1,6 +1,6 @@
 # PolyInstall
 
-**PolyInstall** is a powerful, manifest-driven installer generator for .NET developers. It allows you to package your applications into cross-platform, self-extracting binaries using a single YAML configuration file. With a modern, customizable installation UI built on **Avalonia**, PolyInstall simplifies the deployment process for Windows, Linux, and macOS.
+**PolyInstall** is a powerful, manifest-driven installer generator. It allows you to package your applications into cross-platform, self-extracting binaries using a single YAML configuration file. With a modern, customizable installation UI built on **Avalonia**, PolyInstall simplifies the deployment process for Windows, Linux, and macOS.
 
 ## Key Features
 - YAML-Based Manifests: Define your installer metadata, files, and build configurations in a single, simple YAML file.
@@ -9,7 +9,7 @@
 
 ---
 
-PolyInstall is a **.NET-centric toolchain** for building **self-contained installer executables** from a **YAML manifest**. At build time, the CLI packs your application files, compresses them, and appends them (with an embedded JSON manifest) to a **pre-published stub** — a small Avalonia-based host that extracts the payload and walks the end user through an installer wizard.
+PolyInstall is a **modern toolchain** for building **self-contained installer executables** from a **YAML manifest**. At build time, the CLI packs your application files, compresses them, and appends them (with an embedded JSON manifest) to a **pre-published stub** — a small Avalonia-based host that extracts the payload and walks the end user through an installer wizard.
 
 This document is written for **consumers**: teams who want to ship installers without adopting a separate installer product, and who are comfortable with YAML, the .NET CLI, and publishing self-contained or framework-dependent apps per runtime identifier (RID).
 
