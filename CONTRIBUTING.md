@@ -17,20 +17,20 @@ This guide is for engineers working on the source repository (features, bug fixe
 ```bash
 git clone <your-fork-or-repo-url>
 cd PolyInstall
-dotnet restore PolyInstall.slnx
-dotnet build PolyInstall.slnx -c Release --no-restore
+dotnet restore src/PolyInstall.slnx
+dotnet build src/PolyInstall.slnx -c Release --no-restore
 ```
 
 ## Run tests
 
 ```bash
-dotnet test PolyInstall.slnx -c Release --no-build --verbosity normal
+dotnet test src/PolyInstall.slnx -c Release --no-build --verbosity normal
 ```
 
 To run with coverage (same shape as CI):
 
 ```bash
-dotnet test PolyInstall.slnx -c Release --no-build --collect:"XPlat Code Coverage" --results-directory "./TestResults"
+dotnet test src/PolyInstall.slnx -c Release --no-build --collect:"XPlat Code Coverage" --results-directory "./TestResults"
 ```
 
 ## Local development workflow
@@ -78,5 +78,5 @@ Use concise, intention-revealing commit messages that explain the reason for the
 
 ## Release notes
 
-Releases are automated from tags matching `v*` via `.github/workflows/release.yml`. Normal contributions should not edit release assets manually; instead, merge to `master` and cut a version tag when ready.
+Releases are created by `.github/workflows/generate-release.yml` on every push to `master` when the `<Version>` in `src/Directory.Build.props` does not yet have a matching git tag `v<Version>` on the remote. The workflow runs tests, publishes self-contained CLI zips (Windows, Linux, macOS), creates that tag on the pushed commit, and opens a GitHub Release with those assets. Bump `<Version>` in `src/Directory.Build.props` when you want a new release; if the tag already exists, the workflow skips. Pre-releases are marked when the version string contains `-alpha` or `-beta` (case-insensitive). Do not edit release assets manually.
 

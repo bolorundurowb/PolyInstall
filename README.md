@@ -1,5 +1,7 @@
 # PolyInstall
 
+This repository was developed with the help of **generative AI** tools (for example, assisted coding and drafting). Treat the code, manifests, and documentation accordingly: verify behavior, review changes before you rely on them in production, and apply your own judgment and testing.
+
 **PolyInstall** is a powerful, manifest-driven installer generator. It allows you to package your applications into cross-platform, self-extracting binaries using a single YAML configuration file. With a modern, customizable installation UI built on **Avalonia**, PolyInstall simplifies the deployment process for Windows, Linux, and macOS.
 
 ## Key Features
@@ -29,7 +31,7 @@ This document is written for **consumers**: teams who want to ship installers wi
 
 ## Requirements
 
-- **.NET SDK 10** (or the version aligned with `Directory.Build.props` / `TargetFramework` in this repo).
+- **.NET SDK 10** (or the version aligned with `src/Directory.Build.props` / `TargetFramework` in this repo).
 - A **64-bit** target OS matching the stubs you publish (Windows, Linux, or macOS RIDs supported in the manifest; see [Build targets](#build-targets)).
 - **Windows** stubs: PowerShell available for shortcut creation when using `create_shortcut` tasks (COM via `WScript.Shell`).
 
@@ -71,7 +73,7 @@ This document is written for **consumers**: teams who want to ship installers wi
   dotnet run --project src/PolyInstall.SchemaGen/PolyInstall.SchemaGen.csproj
   ```
 
-  Optional MSBuild integration: pass **`/p:GeneratePolyInstallSchema=true`** so `Directory.Build.targets` runs the generator before compile (opt-in).
+  Optional MSBuild integration: pass **`/p:GeneratePolyInstallSchema=true`** so `src/Directory.Build.targets` runs the generator before compile (opt-in).
 
 **IDE integration:** Point your YAML at the schema for validation and IntelliSense, for example:
 

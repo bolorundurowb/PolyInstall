@@ -30,14 +30,14 @@ jobs:
             10.0.x
 
       - name: Restore
-        run: dotnet restore PolyInstall.slnx
+        run: dotnet restore src/PolyInstall.slnx
 
       - name: Build
-        run: dotnet build PolyInstall.slnx --configuration Release --no-restore
+        run: dotnet build src/PolyInstall.slnx --configuration Release --no-restore
 
       - name: Test with coverage
         run: >
-          dotnet test PolyInstall.slnx
+          dotnet test src/PolyInstall.slnx
           --configuration Release
           --no-build
           --verbosity normal

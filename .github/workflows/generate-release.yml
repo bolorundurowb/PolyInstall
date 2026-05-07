@@ -1,0 +1,184 @@
+# On push to master: if no git tag v<Version> exists yet (Version from src/Directory.Build.props),
+# run tests, publish self-contained CLI zips for Windows/Linux/macOS, create tag v<Version>, and
+# open a GitHub Release with those assets. Pre-releases when Version contains -alpha or -beta.
+
+name: Release
+
+on:
+  push:
+    branches: [master]
+
+concurrency:
+  group: release-master
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  version-check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.parse.outputs.version }}
+      tag: ${{ steps.parse.outputs.tag }}
+      should_release: ${{ steps.parse.outputs.should_release }}
+      prerelease: ${{ steps.parse.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: parse
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=$(sed -n 's/^[[:space:]]*<Version>\([^<]*\)<\/Version>.*/\1/p' src/Directory.Build.props | head -1)
+          if [[ -z "${VERSION}" ]]; then
+            echo "::error::Could not parse <Version> from src/Directory.Build.props"
+            exit 1
+          fi
+          TAG="v${VERSION}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+
+          if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q .; then
+            echo "Remote tag ${TAG} already exists — skipping release."
+            echo "should_release=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "No remote tag ${TAG} — will create release."
+            echo "should_release=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+          LOWER="${VERSION,,}"
+          if [[ "${LOWER}" == *"-alpha"* || "${LOWER}" == *"-beta"* ]]; then
+            echo "prerelease=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "prerelease=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+  test:
+    needs: version-check
+    if: needs.version-check.outputs.should_release == 'true'
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+      - name: Install Linux packaging tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y squashfs-tools
+      - run: dotnet restore src/PolyInstall.slnx
+      - run: dotnet build src/PolyInstall.slnx -c Release --no-restore
+      - run: dotnet test src/PolyInstall.slnx -c Release --no-build --verbosity normal
+
+  publish:
+    needs: [version-check, test]
+    if: needs.version-check.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            artifact: polyinstall-win-x64
+          - rid: linux-x64
+            artifact: polyinstall-linux-x64
+          - rid: osx-arm64
+            artifact: polyinstall-osx-arm64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+
+      - name: Install squashfs-tools (AppImage / CLI packaging)
+        run: sudo apt-get update && sudo apt-get install -y squashfs-tools
+
+      - name: Publish CLI (${{ matrix.rid }})
+        run: >
+          dotnet publish src/PolyInstall.Cli/PolyInstall.Cli.csproj
+          -c Release
+          -r ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=embedded
+          -o "./publish/${{ matrix.artifact }}"
+
+      - name: Zip artifact
+        env:
+          TAG: ${{ needs.version-check.outputs.tag }}
+        run: |
+          cd publish
+          zip -r "../${{ matrix.artifact }}-${TAG}.zip" "${{ matrix.artifact }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}-${{ needs.version-check.outputs.tag }}.zip
+
+  release:
+    needs: [version-check, publish]
+    if: needs.version-check.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-zips
+          merge-multiple: true
+
+      - name: Compose release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ needs.version-check.outputs.tag }}"
+          REPO="${{ github.repository }}"
+          TARGET="${{ github.sha }}"
+
+          set +e
+          gh release generate-notes --repo "${REPO}" --tag "${TAG}" --target "${TARGET}" > notes.md 2>/dev/null
+          GH_RC=$?
+          set -e
+
+          if [[ ${GH_RC} -eq 0 ]] && [[ -s notes.md ]]; then
+            echo "Using GitHub-generated release notes."
+          else
+            echo "Using commit-message fallback for release notes."
+            git fetch --tags --force origin
+            {
+              echo "## Changes"
+              echo ""
+              PREV=$(git tag -l 'v*' --sort=-version:refname | head -1 || true)
+              if [[ -n "${PREV}" ]]; then
+                git log "${PREV}".."${TARGET}" --pretty=format:'- %s (%h)' || true
+              else
+                git log -50 --pretty=format:'- %s (%h)' "${TARGET}" || true
+              fi
+            } > notes.md
+          fi
+
+      - name: Create tag and GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version-check.outputs.tag }}
+          name: ${{ needs.version-check.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ needs.version-check.outputs.prerelease == 'true' }}
+          body_path: notes.md
+          draft: false
+          fail_on_unmatched_files: true
+          files: release-zips/**/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
