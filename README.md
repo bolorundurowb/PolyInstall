@@ -371,33 +371,9 @@ Invalid file-name characters in `metadata.name` are replaced with underscores.
 
 
 
-## Continuous integration and releases
-
-GitHub Actions workflows live under **`.github/workflows/`**:
-
-| Workflow | When | What |
-|----------|------|------|
-| **`ci.yml`** | Push to `master`, or pull requests targeting `master` | Restores, builds, runs tests with **XPlat Code Coverage**, uploads Cobertura to [**Codecov**](https://codecov.io). |
-| **`release.yml`** | Push of a tag matching **`v*`** (e.g. `v1.2.0`) | Runs tests, publishes a **self-contained single-file** `polyinstall` CLI for `win-x64`, `linux-x64`, and `osx-arm64`, and creates a **GitHub Release** with those zip assets and auto-generated release notes. |
-
-**Codecov:** Add a repository secret **`CODECOV_TOKEN`** from your Codecov project settings (recommended). Many **public** repositories can upload without a token; see [Codecov’s GitHub docs](https://docs.codecov.com/docs/github-2). Coverage behavior is configured in **`codecov.yml`**.
-
-**Releases:** Create a tag locally and push it, for example:
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-Pre-release tags that include a hyphen in the version segment (e.g. `v1.0.0-beta.1`) are marked as **pre-release** on GitHub.
-
-
-
 ## Third-party notices
 
 See **`THIRD_PARTY_NOTICES.txt`** in the repository for NuGet components used by the CLI, UI, and libraries.
-
-
 
 ## Relationship to this repository
 
@@ -408,4 +384,4 @@ Consumers typically:
 
 If you embed PolyInstall into your own product, keep the **schema version** (`schema/v1.json`) and **stub version** in sync — mismatches between CLI bundle format and an older stub will fail at the magic/footer check or during decompression.
 
-For **contributors** and architecture notes, see `.cursor/plans/` and the source under `src/PolyInstall.*`.
+For development and pull request guidance, see [CONTRIBUTING.md](CONTRIBUTING.md).
