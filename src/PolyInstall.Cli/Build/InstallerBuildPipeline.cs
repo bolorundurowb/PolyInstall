@@ -40,7 +40,6 @@ public sealed class InstallerBuildPipeline
 
         var compression = PayloadArchive.ParseCompression(manifest.Build.Compression);
         var compressed = await Task.Run(() => PayloadArchive.PackAndCompress(allFiles, compression, ct), ct);
-        var manifestJson = JsonSerializer.Serialize(manifest, InstallManifest.JsonOptions);
 
         var outDir = Path.GetFullPath(Path.Combine(baseDirectory, manifest.Build.OutputDir));
         Directory.CreateDirectory(outDir);
@@ -49,6 +48,7 @@ public sealed class InstallerBuildPipeline
         foreach (var target in manifest.Build.Targets)
         {
             ct.ThrowIfCancellationRequested();
+            manifest.Build.InstallerTarget = target;
             var rid = RidMapping.ToDotNetRid(target);
             var stubPath = ResolveStubPath(manifest, stubRoot, rid);
             if (!File.Exists(stubPath))
@@ -61,6 +61,7 @@ public sealed class InstallerBuildPipeline
                 safeName = "setup";
             var outName = $"{safeName}-{target}{ext}";
             var outPath = Path.Combine(outDir, outName);
+            var manifestJson = JsonSerializer.Serialize(manifest, InstallManifest.JsonOptions);
 
             await using (var stubFs = File.OpenRead(stubPath))
             await using (var outFs = File.Create(outPath))

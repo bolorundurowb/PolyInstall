@@ -4,7 +4,7 @@
           BeforeTargets="BeforeBuild"
           Condition="'$(GeneratePolyInstallSchema)' == 'true'">
     <PropertyGroup>
-      <_SchemaGenProj>$(MSBuildThisFileDirectory)src\PolyInstall.SchemaGen\PolyInstall.SchemaGen.csproj</_SchemaGenProj>
+      <_SchemaGenProj>$(MSBuildThisFileDirectory)PolyInstall.SchemaGen\PolyInstall.SchemaGen.csproj</_SchemaGenProj>
     </PropertyGroup>
     <Exec Command="dotnet run --no-build -c $(Configuration) --project &quot;$(_SchemaGenProj)&quot;" />
   </Target>

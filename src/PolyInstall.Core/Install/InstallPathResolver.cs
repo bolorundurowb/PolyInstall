@@ -8,14 +8,84 @@ namespace PolyInstall.Core.Install;
 public static class InstallPathResolver
 {
     public static string Expand(string path, IInstallPathPal pal)
+        => Expand(path, pal, GetTargetOsFromInstallerOrHost());
+
+    public static string Expand(string path, IInstallPathPal pal, TargetOperatingSystem targetOs)
     {
         var appDir = InstallBootstrap.InstallDirectory ?? InstallBootstrap.ExtractRoot;
-        return path
+        var expanded = path
             .Replace("{AppDir}", appDir, StringComparison.OrdinalIgnoreCase)
             .Replace("{ProgramFiles}", pal.ProgramFiles, StringComparison.OrdinalIgnoreCase)
             .Replace("{UserHome}", pal.UserHome, StringComparison.OrdinalIgnoreCase)
             .Replace("{Desktop}", pal.Desktop, StringComparison.OrdinalIgnoreCase);
+
+        return NormalizeDirectorySeparators(expanded, GetDirectorySeparator(targetOs));
     }
+
+    private static TargetOperatingSystem GetTargetOsFromInstallerOrHost()
+    {
+        var installerTarget = InstallBootstrap.Manifest?.Build?.InstallerTarget;
+        if (TryParseTargetOs(installerTarget, out var targetOs))
+            return targetOs;
+
+        return GetCurrentHostOs();
+    }
+
+    private static bool TryParseTargetOs(string? targetToken, out TargetOperatingSystem targetOs)
+    {
+        targetOs = default;
+        if (string.IsNullOrWhiteSpace(targetToken))
+            return false;
+
+        var token = targetToken.Trim().ToLowerInvariant();
+        if (token.StartsWith("windows-", StringComparison.Ordinal) || token.StartsWith("win-", StringComparison.Ordinal))
+        {
+            targetOs = TargetOperatingSystem.Windows;
+            return true;
+        }
+
+        if (token.StartsWith("linux-", StringComparison.Ordinal))
+        {
+            targetOs = TargetOperatingSystem.Linux;
+            return true;
+        }
+
+        if (token.StartsWith("osx-", StringComparison.Ordinal) || token.StartsWith("macos-", StringComparison.Ordinal))
+        {
+            targetOs = TargetOperatingSystem.MacOs;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static TargetOperatingSystem GetCurrentHostOs()
+    {
+        if (OperatingSystem.IsWindows())
+            return TargetOperatingSystem.Windows;
+        if (OperatingSystem.IsMacOS())
+            return TargetOperatingSystem.MacOs;
+        return TargetOperatingSystem.Linux;
+    }
+
+    private static char GetDirectorySeparator(TargetOperatingSystem targetOs)
+    {
+        return targetOs == TargetOperatingSystem.Windows ? '\\' : '/';
+    }
+
+    private static string NormalizeDirectorySeparators(string path, char directorySeparator)
+    {
+        return directorySeparator == '\\'
+            ? path.Replace('/', '\\')
+            : path.Replace('\\', '/');
+    }
+}
+
+public enum TargetOperatingSystem
+{
+    Windows,
+    Linux,
+    MacOs,
 }
 
 public interface IInstallPathPal

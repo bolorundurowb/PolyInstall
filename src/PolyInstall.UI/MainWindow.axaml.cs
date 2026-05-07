@@ -16,6 +16,7 @@ public partial class MainWindow : Window
     private int _stepIndex;
     private TextBox? _destinationBox;
     private TextBlock? _progressText;
+    private ProgressBar? _progressBar;
     private readonly List<WizardStep> _steps;
 
     public MainWindow()
@@ -99,13 +100,14 @@ public partial class MainWindow : Window
     private Control BuildProgress()
     {
         _progressText = new TextBlock { Text = "Preparing…" };
+        _progressBar = new ProgressBar { IsIndeterminate = true, Height = 8, HorizontalAlignment = HorizontalAlignment.Stretch };
         return new StackPanel
         {
             Spacing = 12,
             Children =
             {
                 _progressText,
-                new ProgressBar { IsIndeterminate = true, Height = 8, HorizontalAlignment = HorizontalAlignment.Stretch },
+                _progressBar,
             },
         };
     }
@@ -153,6 +155,11 @@ public partial class MainWindow : Window
             {
                 if (_progressText is not null)
                     _progressText.Text = "Installation complete.";
+                if (_progressBar is not null)
+                {
+                    _progressBar.IsIndeterminate = false;
+                    _progressBar.Value = 100;
+                }
             });
         }
         catch (Exception ex)
@@ -161,6 +168,8 @@ public partial class MainWindow : Window
             {
                 if (_progressText is not null)
                     _progressText.Text = "Error: " + ex.Message;
+                if (_progressBar is not null)
+                    _progressBar.IsIndeterminate = false;
             });
         }
     }

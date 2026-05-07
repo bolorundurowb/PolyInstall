@@ -96,14 +96,15 @@ public static class UninstallCoordinator
     private static void ScheduleWindowsDeleteInstallRoot(string installRoot)
     {
         installRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(installRoot));
-        var args = $"/c timeout /t 2 /nobreak >nul & rmdir /s /q \"{installRoot}\"";
-        using var p = Process.Start(new ProcessStartInfo
+
+        // Run detached and retry because Uninstall.exe is still running while this method executes.
+        var args = $"/c for /l %i in (1,1,15) do @rmdir /s /q \"{installRoot}\" && exit /b 0 || timeout /t 1 /nobreak >nul";
+        Process.Start(new ProcessStartInfo
         {
             FileName = "cmd.exe",
             Arguments = args,
             UseShellExecute = false,
             CreateNoWindow = true,
         });
-        p?.WaitForExit(5000);
     }
 }
