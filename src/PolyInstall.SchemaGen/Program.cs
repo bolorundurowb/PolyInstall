@@ -1,6 +1,5 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Nodes;
-using NJsonSchema;
 using NJsonSchema.Generation;
 using PolyInstall.Core.Manifest;
 

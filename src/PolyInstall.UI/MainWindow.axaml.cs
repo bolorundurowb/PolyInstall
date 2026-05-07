@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Security.Principal;
 using Avalonia.Controls;
 using Avalonia.Interactivity;

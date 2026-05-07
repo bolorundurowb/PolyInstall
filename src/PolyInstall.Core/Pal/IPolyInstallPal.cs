@@ -1,6 +1,8 @@
+using PolyInstall.Core.Install;
+
 namespace PolyInstall.Core.Pal;
 
-public interface IPolyInstallPal : Install.IInstallPathPal
+public interface IPolyInstallPal : IInstallPathPal
 {
     IShortcutPal Shortcuts { get; }
     IRegistryPal? Registry { get; }

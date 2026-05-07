@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Text;
+using Microsoft.Win32;
 using PolyInstall.Core.Hosting;
 using PolyInstall.Core.Pal;
 
@@ -116,18 +117,18 @@ internal sealed class WindowsRegistryPal : IRegistryPal
             throw new ArgumentException("Expected key path like HKCU\\Software\\...", nameof(keyPath));
         var root = parts[0].ToUpperInvariant() switch
         {
-            "HKCU" or "HKEY_CURRENT_USER" => Microsoft.Win32.Registry.CurrentUser,
-            "HKLM" or "HKEY_LOCAL_MACHINE" => Microsoft.Win32.Registry.LocalMachine,
+            "HKCU" or "HKEY_CURRENT_USER" => Registry.CurrentUser,
+            "HKLM" or "HKEY_LOCAL_MACHINE" => Registry.LocalMachine,
             _ => throw new NotSupportedException($"Registry root not supported: {parts[0]}"),
         };
         using var key = root.CreateSubKey(parts[1], true)
                         ?? throw new InvalidOperationException($"Could not open or create {keyPath}.");
         var kind = valueKind.ToLowerInvariant() switch
         {
-            "string" or "reg_sz" => Microsoft.Win32.RegistryValueKind.String,
-            "expand_string" or "reg_expand_sz" => Microsoft.Win32.RegistryValueKind.ExpandString,
-            "dword" or "reg_dword" => Microsoft.Win32.RegistryValueKind.DWord,
-            _ => Microsoft.Win32.RegistryValueKind.String,
+            "string" or "reg_sz" => RegistryValueKind.String,
+            "expand_string" or "reg_expand_sz" => RegistryValueKind.ExpandString,
+            "dword" or "reg_dword" => RegistryValueKind.DWord,
+            _ => RegistryValueKind.String,
         };
         key.SetValue(valueName ?? "", value, kind);
     }

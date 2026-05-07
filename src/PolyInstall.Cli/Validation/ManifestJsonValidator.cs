@@ -16,7 +16,7 @@ public static class ManifestJsonValidator
 
         var errors = result.Details
             .Where(d => d.HasErrors)
-            .SelectMany(d => d.Errors ?? (IReadOnlyDictionary<string, string>)new Dictionary<string, string>())
+            .SelectMany(d => d.Errors ?? new Dictionary<string, string>())
             .Select(kv => $"{kv.Key}: {kv.Value}")
             .ToList();
         var msg = errors.Count > 0 ? string.Join(Environment.NewLine, errors) : "Schema validation failed.";

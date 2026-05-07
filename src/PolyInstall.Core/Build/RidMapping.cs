@@ -1,5 +1,3 @@
-using System.Linq;
-
 namespace PolyInstall.Core.Build;
 
 public static class RidMapping

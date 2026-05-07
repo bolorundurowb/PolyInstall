@@ -1,6 +1,4 @@
 using System.Diagnostics;
-using System.Linq;
-using System.Net.Http;
 using PolyInstall.Core.Build;
 using PolyInstall.Core.Manifest;
 

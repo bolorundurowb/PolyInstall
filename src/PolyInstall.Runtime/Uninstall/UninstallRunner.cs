@@ -1,6 +1,5 @@
 using PolyInstall.Core.Install;
 using PolyInstall.Core.Manifest;
-using PolyInstall.Core.Pal;
 using PolyInstall.Runtime.Pal;
 
 namespace PolyInstall.Runtime.Uninstall;

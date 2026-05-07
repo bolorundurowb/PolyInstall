@@ -31,7 +31,6 @@ internal sealed class UninstallCommandLine
             if (a.Equals("--install-location", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
             {
                 installLocation = args[++i];
-                continue;
             }
         }
 

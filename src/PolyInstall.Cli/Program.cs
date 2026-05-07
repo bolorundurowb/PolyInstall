@@ -77,7 +77,7 @@ try
                 }
             }
             if (!File.Exists(schemaPath))
-                throw new FileNotFoundException($"Could not find schema/v1.json (looked next to CLI and parent directories).");
+                throw new FileNotFoundException("Could not find schema/v1.json (looked next to CLI and parent directories).");
             var json = JsonSerializer.Serialize(m, InstallManifest.JsonOptions);
             ManifestJsonValidator.Validate(json, schemaPath);
             Console.WriteLine("Manifest is valid.");

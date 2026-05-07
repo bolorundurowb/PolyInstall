@@ -1,6 +1,5 @@
 using System.Text.Json;
 using PolyInstall.Core.Manifest;
-using PolyInstall.Core.Payload;
 
 namespace PolyInstall.Core.Payload;
 
