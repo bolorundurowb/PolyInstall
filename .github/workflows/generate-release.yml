@@ -1,15 +1,12 @@
-# On push to master: if no git tag v<Version> exists yet (Version from src/Directory.Build.props),
-# run tests, publish self-contained CLI zips for Windows/Linux/macOS, create tag v<Version>, and
-# open a GitHub Release with those assets. Pre-releases when Version contains -alpha or -beta.
-
-name: Release
+name: Generate Release
 
 on:
   push:
     branches: [master]
+  workflow_dispatch:
 
 concurrency:
-  group: release-master
+  group: generate-release-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -72,7 +69,19 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y squashfs-tools
       - run: dotnet restore src/PolyInstall.slnx
       - run: dotnet build src/PolyInstall.slnx -c Release --no-restore
-      - run: dotnet test src/PolyInstall.slnx -c Release --no-build --verbosity normal
+      - name: Test with coverage
+        run: >
+          dotnet test src/PolyInstall.slnx
+          -c Release --no-build --verbosity normal
+          /p:CollectCoverage=true
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+          files: ./src/coverage/**/coverage.cobertura.xml
+          flags: unittests-${{ matrix.os }}
+          name: polyinstall-coverage-${{ matrix.os }}
 
   publish:
     needs: [version-check, test]

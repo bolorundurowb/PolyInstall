@@ -1,7 +1,4 @@
-# Build, test, and upload coverage to Codecov.
-# Requires repository secret CODECOV_TOKEN (optional for many public repos; see https://docs.codecov.com/docs/github-2).
-
-name: CI
+name: Build, Test & Coverage
 
 on:
   push:
@@ -41,14 +38,13 @@ jobs:
           --configuration Release
           --no-build
           --verbosity normal
-          --collect:"XPlat Code Coverage"
-          --results-directory "${{ github.workspace }}/TestResults"
+          /p:CollectCoverage=true
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
-          files: ./TestResults/**/coverage.cobertura.xml
+          fail_ci_if_error: true
+          files: ./src/coverage/**/coverage.cobertura.xml
           flags: unittests
           name: polyinstall-coverage
