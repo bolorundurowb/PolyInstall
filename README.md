@@ -54,14 +54,20 @@ and [macOS DMG](#macos-dmg).
 2. **Create a manifest** — start from `examples/polyinstall.sample.yaml` and adjust `metadata`, `files`, and
    `build.targets`.
 
-3. **Publish the stub** for each RID you need (example: Windows x64):
+3. **Publish the runtime stub** for each RID you need (example: Windows x64):
 
    ```bash
    dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r win-x64 -o stubs/win-x64
    ```
 
+   For **Windows** targets, also publish the dedicated trimmed uninstaller into the same RID folder:
+
+   ```bash
+   dotnet publish src/PolyInstall.Uninstall/PolyInstall.Uninstall.csproj -c Release -r win-x64 -o stubs/win-x64
+   ```
+
    The CLI looks for `PolyInstall.Runtime.exe` (Windows) or `PolyInstall.Runtime` (non-Windows) under `<stubs>/<rid>/`
-   by default.
+   by default. For Windows targets it also expects `<stubs>/<rid>/PolyInstall.Uninstall.exe`.
 
 4. **Build the installer**:
 
@@ -119,7 +125,7 @@ The manifest is grouped into five sections. All are represented in JSON Schema; 
 | `output_dir` | Directory for built installers, relative to `--base` (default in model: `dist`). |
 | `compression` | `brotli` or `gzip` (see [Compression](#compression)). |
 | `targets` | List of **manifest tokens** (not raw .NET RIDs); see [Build targets](#build-targets). |
-| `stub_path` | Optional path to the stub for a target; use `{rid}` for the **.NET RID** (e.g. `C:\stubs\{rid}\PolyInstall.Runtime.exe`). If omitted, the CLI uses `--stubs/<rid>/PolyInstall.Runtime[.exe]`. |
+| `stub_path` | Optional path to the installer stub for a target; use `{rid}` for the **.NET RID** (e.g. `C:\stubs\{rid}\PolyInstall.Runtime.exe`). If omitted, the CLI uses `--stubs/<rid>/PolyInstall.Runtime[.exe]` (and for Windows targets also expects `--stubs/<rid>/PolyInstall.Uninstall.exe`). |
 | `windows` | Optional [Windows build options](#windows-build-options). |
 | `linux` | Optional [Linux build options](#linux-build-options). |
 | `macos` | Optional [macOS build options](#macos-build-options). |
@@ -237,7 +243,7 @@ For each token, publish the runtime once:
 dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r linux-x64 -o stubs/linux-x64
 ```
 
-Use the same folder layout the CLI expects (`stubs/<rid>/PolyInstall.Runtime...`), or set `build.stub_path`.
+Use the same folder layout the CLI expects (`stubs/<rid>/PolyInstall.Runtime...`, and on Windows also `stubs/<rid>/PolyInstall.Uninstall.exe`), or set `build.stub_path`.
 
 
 
@@ -372,7 +378,7 @@ Invalid file-name characters in `metadata.name` are replaced with underscores.
 
 | Symptom | What to check |
 |---------|----------------|
-| **Stub not found** | Publish `PolyInstall.Runtime` to `--stubs/<rid>/` or set `build.stub_path` with `{rid}`. |
+| **Stub not found** | Publish `PolyInstall.Runtime` to `--stubs/<rid>/` (and for Windows targets also publish `PolyInstall.Uninstall.exe` there) or set `build.stub_path` with `{rid}`. |
 | **Schema validation errors** | Run `polyinstall validate`; ensure YAML keys are snake_case and match `schema/v1.json`. |
 | **No files matched** | Check `source_dir` relative to `--base`, and `include` / `exclude` patterns. |
 | **Wrong OS** | The stub RID must match the machine (e.g. do not run a `win-x64` build on Linux). |

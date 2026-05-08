@@ -3,6 +3,7 @@
     <Project Path="PolyInstall.Cli/PolyInstall.Cli.csproj" />
     <Project Path="PolyInstall.Core/PolyInstall.Core.csproj" />
     <Project Path="PolyInstall.Runtime/PolyInstall.Runtime.csproj" />
+    <Project Path="PolyInstall.Uninstall/PolyInstall.Uninstall.csproj" />
     <Project Path="PolyInstall.SchemaGen/PolyInstall.SchemaGen.csproj" />
     <Project Path="PolyInstall.UI/PolyInstall.UI.csproj" />
     <Project Path="tests/PolyInstall.Core.Tests/PolyInstall.Core.Tests.csproj" />

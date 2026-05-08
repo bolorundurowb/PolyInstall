@@ -1,8 +1,8 @@
 using PolyInstall.Core.Install;
 using PolyInstall.Core.Manifest;
-using PolyInstall.Runtime.Pal;
+using PolyInstall.Core.Pal;
 
-namespace PolyInstall.Runtime.Uninstall;
+namespace PolyInstall.Uninstall;
 
 internal static class UninstallRunner
 {

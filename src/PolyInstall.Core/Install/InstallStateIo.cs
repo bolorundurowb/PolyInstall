@@ -10,7 +10,7 @@ public static class InstallStateIo
         var polyDir = InstallStatePaths.PolyDir(installRoot);
         Directory.CreateDirectory(polyDir);
         var path = Path.Combine(polyDir, InstallStatePaths.EmbeddedManifestFileName);
-        var json = JsonSerializer.Serialize(manifest, InstallManifest.JsonOptions);
+        var json = JsonSerializer.Serialize(manifest, InstallJsonContext.Default.InstallManifest);
         File.WriteAllText(path, json);
     }
 
@@ -19,7 +19,7 @@ public static class InstallStateIo
         var polyDir = InstallStatePaths.PolyDir(installRoot);
         Directory.CreateDirectory(polyDir);
         var path = Path.Combine(polyDir, InstallStatePaths.InstallStateFileName);
-        var json = JsonSerializer.Serialize(state, InstallManifest.JsonOptions);
+        var json = JsonSerializer.Serialize(state, InstallJsonContext.Default.InstallStateDocument);
         File.WriteAllText(path, json);
     }
 
@@ -27,7 +27,7 @@ public static class InstallStateIo
     {
         var path = InstallStatePaths.InstallStatePath(installRoot);
         var json = File.ReadAllText(path);
-        return JsonSerializer.Deserialize<InstallStateDocument>(json, InstallManifest.JsonOptions)
+        return JsonSerializer.Deserialize(json, InstallJsonContext.Default.InstallStateDocument)
                ?? throw new InvalidOperationException("Invalid install-state.json.");
     }
 
@@ -35,7 +35,7 @@ public static class InstallStateIo
     {
         var path = InstallStatePaths.EmbeddedManifestPath(installRoot);
         var json = File.ReadAllText(path);
-        return JsonSerializer.Deserialize<InstallManifest>(json, InstallManifest.JsonOptions)
+        return JsonSerializer.Deserialize(json, InstallJsonContext.Default.InstallManifest)
                ?? throw new InvalidOperationException("Invalid embedded-manifest.json.");
     }
 }

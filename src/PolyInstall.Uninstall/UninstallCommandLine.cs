@@ -1,4 +1,4 @@
-namespace PolyInstall.Runtime.Uninstall;
+namespace PolyInstall.Uninstall;
 
 internal sealed class UninstallCommandLine
 {

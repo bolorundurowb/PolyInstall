@@ -578,7 +578,6 @@ public partial class MainWindow : Window
                 "Per-machine installs require Administrator rights for Add/Remove Programs registration. Use install_scope: user or run the installer elevated.");
         }
 
-        var hostExe = Environment.ProcessPath ?? throw new InvalidOperationException("Cannot resolve host executable path.");
         InstallStateIo.WriteEmbeddedManifest(dest, manifest);
 
         var guidStr = ProductIdHelper.StableProductGuidString(manifest.Metadata);
@@ -597,8 +596,15 @@ public partial class MainWindow : Window
 
         InstallStateIo.WriteState(dest, state);
 
+        var bundledUninstallPath = InstallStatePaths.UninstallPayloadPath(dest);
+        if (!File.Exists(bundledUninstallPath))
+        {
+            throw new InvalidOperationException(
+                $"Bundled uninstaller not found at '{bundledUninstallPath}'. Publish PolyInstall.Uninstall into stubs for this target before building installers.");
+        }
+
         var uninstallPath = InstallStatePaths.UninstallExePath(dest);
-        File.Copy(hostExe, uninstallPath, overwrite: true);
+        File.Copy(bundledUninstallPath, uninstallPath, overwrite: true);
 
         var estimatedKb = InstallDirectoryEstimator.EstimateKibRecursive(dest);
 #pragma warning disable CA1416 // Guarded by OperatingSystem.IsWindows() at call site

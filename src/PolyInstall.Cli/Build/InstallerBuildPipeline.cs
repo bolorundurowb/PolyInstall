@@ -3,6 +3,7 @@ using System.Text.Json;
 using PolyInstall.Cli.Validation;
 using PolyInstall.Core.Build;
 using PolyInstall.Core.Globbing;
+using PolyInstall.Core.Install;
 using PolyInstall.Core.Manifest;
 using PolyInstall.Core.Payload;
 
@@ -27,19 +28,18 @@ public sealed class InstallerBuildPipeline
         var json = JsonSerializer.Serialize(manifest, InstallManifest.JsonOptions);
         ManifestJsonValidator.Validate(json, schemaPath);
 
-        var allFiles = new List<(string EntryName, string FullPath)>();
+        var baseFiles = new List<(string EntryName, string FullPath)>();
         foreach (var entry in manifest.Files)
         {
             var globs = GlobResolver.Collect(baseDirectory, entry.SourceDir, entry.Include, entry.Exclude);
             foreach (var g in globs)
-                allFiles.Add((g.RelativePath, g.FullPath));
+                baseFiles.Add((g.RelativePath, g.FullPath));
         }
 
-        if (allFiles.Count == 0)
+        if (baseFiles.Count == 0)
             throw new InvalidOperationException("No files matched manifest files entries; nothing to pack.");
 
         var compression = PayloadArchive.ParseCompression(manifest.Build.Compression);
-        var compressed = await Task.Run(() => PayloadArchive.PackAndCompress(allFiles, compression, ct), ct);
 
         var outDir = Path.GetFullPath(Path.Combine(baseDirectory, manifest.Build.OutputDir));
         Directory.CreateDirectory(outDir);
@@ -62,6 +62,9 @@ public sealed class InstallerBuildPipeline
             var outName = $"{safeName}-{target}{ext}";
             var outPath = Path.Combine(outDir, outName);
             var manifestJson = JsonSerializer.Serialize(manifest, InstallManifest.JsonOptions);
+            var targetFiles = new List<(string EntryName, string FullPath)>(baseFiles);
+            AddTargetSpecificFiles(targetFiles, stubRoot, rid);
+            var compressed = await Task.Run(() => PayloadArchive.PackAndCompress(targetFiles, compression, ct), ct);
 
             await using (var stubFs = File.OpenRead(stubPath))
             await using (var outFs = File.Create(outPath))
@@ -101,6 +104,33 @@ public sealed class InstallerBuildPipeline
         var isWinTarget = dotnetRid.StartsWith("win-", StringComparison.OrdinalIgnoreCase);
         var ext = isWinTarget ? ".exe" : "";
         return Path.GetFullPath(Path.Combine(stubRoot, dotnetRid, $"PolyInstall.Runtime{ext}"));
+    }
+
+    private static void AddTargetSpecificFiles(
+        List<(string EntryName, string FullPath)> files,
+        string stubRoot,
+        string dotnetRid)
+    {
+        if (!dotnetRid.StartsWith("win-", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        var uninstallStubPath = ResolveUninstallStubPath(stubRoot, dotnetRid);
+        if (!File.Exists(uninstallStubPath))
+        {
+            throw new FileNotFoundException(
+                $"Uninstall stub binary not found for RID {dotnetRid}: {uninstallStubPath}. Publish PolyInstall.Uninstall for this RID into stubs/{dotnetRid}/.");
+        }
+
+        var payloadEntry = $"{InstallStatePaths.PolyDirName}/{InstallStatePaths.ToolsDirName}/{InstallStatePaths.UninstallPayloadFileName}";
+        if (files.Any(f => string.Equals(f.EntryName, payloadEntry, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException($"Payload already contains reserved path '{payloadEntry}'.");
+        files.Add((payloadEntry, uninstallStubPath));
+    }
+
+    private static string ResolveUninstallStubPath(string stubRoot, string dotnetRid)
+    {
+        const string uninstallExe = "PolyInstall.Uninstall.exe";
+        return Path.GetFullPath(Path.Combine(stubRoot, dotnetRid, uninstallExe));
     }
 
     private static string FindRepoSchema()

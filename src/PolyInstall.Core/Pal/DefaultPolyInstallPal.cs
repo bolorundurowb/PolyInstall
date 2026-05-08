@@ -3,9 +3,8 @@ using System.Runtime.Versioning;
 using System.Text;
 using Microsoft.Win32;
 using PolyInstall.Core.Hosting;
-using PolyInstall.Core.Pal;
 
-namespace PolyInstall.Runtime.Pal;
+namespace PolyInstall.Core.Pal;
 
 public sealed class DefaultPolyInstallPal : IPolyInstallPal
 {
@@ -88,7 +87,7 @@ internal static class UnixSymlinkShortcut
         }
         catch (PlatformNotSupportedException)
         {
-            File.WriteAllText(shortcutPath, "#!/bin/sh\nexec \"" + targetPath.Replace("\"", "\\\"") + "\" \"$@\"\n");
+            File.WriteAllText(shortcutPath, "#!/bin/sh\nexec \"" + targetPath.Replace("\"", "\\\"", StringComparison.Ordinal) + "\" \"$@\"\n");
             Chmod(shortcutPath, 0b111_101_101);
         }
     }
@@ -111,7 +110,6 @@ internal sealed class WindowsRegistryPal : IRegistryPal
     [SupportedOSPlatform("windows")]
     public void SetValue(string keyPath, string? valueName, string value, string valueKind)
     {
-        // keyPath like HKCU\Software\Vendor\App
         var parts = keyPath.Split('\\', 2, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length < 2)
             throw new ArgumentException("Expected key path like HKCU\\Software\\...", nameof(keyPath));

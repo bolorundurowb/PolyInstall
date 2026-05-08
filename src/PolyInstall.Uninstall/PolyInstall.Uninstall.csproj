@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>PolyInstall.Uninstall</RootNamespace>
+    <Description>Minimal uninstall host for PolyInstall.</Description>
+    <PublishTrimmed>true</PublishTrimmed>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PolyInstall.Core\PolyInstall.Core.csproj" />
+  </ItemGroup>
+</Project>

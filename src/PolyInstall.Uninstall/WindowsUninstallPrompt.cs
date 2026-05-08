@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace PolyInstall.Runtime.Uninstall;
+namespace PolyInstall.Uninstall;
 
 internal static class WindowsUninstallPrompt
 {
