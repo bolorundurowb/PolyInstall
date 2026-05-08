@@ -39,6 +39,27 @@ public class InstallPathResolverTests
         result.Should().Be(expected);
     }
 
+    [Theory]
+    [InlineData("win-x64", true, TargetOperatingSystem.Windows)]
+    [InlineData("windows-arm64", true, TargetOperatingSystem.Windows)]
+    [InlineData("linux-x64", true, TargetOperatingSystem.Linux)]
+    [InlineData("osx-arm64", true, TargetOperatingSystem.MacOs)]
+    [InlineData("macos-14", true, TargetOperatingSystem.MacOs)]
+    [InlineData(null, false, TargetOperatingSystem.Windows)]
+    [InlineData("", false, TargetOperatingSystem.Windows)]
+    [InlineData("   ", false, TargetOperatingSystem.Windows)]
+    [InlineData("freebsd-x64", false, TargetOperatingSystem.Windows)]
+    public void TryParseInstallerTargetOperatingSystem_MapsKnownRidPrefixes(
+        string? token,
+        bool expectedOk,
+        TargetOperatingSystem expectedOs)
+    {
+        var ok = InstallPathResolver.TryParseInstallerTargetOperatingSystem(token, out var os);
+        ok.Should().Be(expectedOk);
+        if (expectedOk)
+            os.Should().Be(expectedOs);
+    }
+
     [Fact]
     public void Expand_UsesInstallerTargetToken_FromManifest()
     {

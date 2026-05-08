@@ -1,6 +1,8 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Platform;
 using Avalonia.Styling;
 using PolyInstall.Core.Hosting;
 
@@ -15,15 +17,34 @@ public class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var m = InstallBootstrap.Manifest;
-            desktop.MainWindow = new MainWindow
+            var main = new MainWindow
             {
                 Title = m.Metadata.Name + " Setup",
             };
-            desktop.MainWindow.ExtendClientAreaToDecorationsHint = false;
+            main.ExtendClientAreaToDecorationsHint = false;
+            TrySetInstallerIcon(main);
+            desktop.MainWindow = main;
         }
 
         ApplyTheme(InstallBootstrap.Manifest.Ui.Theme);
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private static void TrySetInstallerIcon(Window window)
+    {
+        try
+        {
+            const string avares = "avares://PolyInstall.UI/Assets/polyinstall-icon.png";
+            using var stream = AssetLoader.Open(new Uri(avares));
+            using var copy = new MemoryStream();
+            stream.CopyTo(copy);
+            copy.Position = 0;
+            window.Icon = new WindowIcon(copy);
+        }
+        catch
+        {
+            // Optional branding asset; wizard still works without it.
+        }
     }
 
     private static void ApplyTheme(string theme)

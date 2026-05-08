@@ -25,11 +25,18 @@ public static class InstallPathResolver
     private static TargetOperatingSystem GetTargetOsFromInstallerOrHost()
     {
         var installerTarget = InstallBootstrap.Manifest?.Build?.InstallerTarget;
-        if (TryParseTargetOs(installerTarget, out var targetOs))
+        if (TryParseInstallerTargetOperatingSystem(installerTarget, out var targetOs))
             return targetOs;
 
         return GetCurrentHostOs();
     }
+
+    /// <summary>
+    /// Maps a build <c>installer_target</c> RID token (for example <c>win-x64</c>, <c>linux-arm64</c>, <c>osx-arm64</c>)
+    /// to the OS family used for path normalization. Returns <c>false</c> when the token is missing or unrecognized.
+    /// </summary>
+    public static bool TryParseInstallerTargetOperatingSystem(string? targetToken, out TargetOperatingSystem targetOs)
+        => TryParseTargetOs(targetToken, out targetOs);
 
     private static bool TryParseTargetOs(string? targetToken, out TargetOperatingSystem targetOs)
     {

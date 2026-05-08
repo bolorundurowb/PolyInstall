@@ -3,6 +3,8 @@
     <OutputType>WinExe</OutputType>
     <RootNamespace>PolyInstall.Runtime</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Win32 PE icon must be .ico; keep in sync with assets/polyinstall-icon.png (regenerate .ico when PNG changes). -->
+    <ApplicationIcon>..\..\assets\polyinstall-icon.ico</ApplicationIcon>
     <Description>PolyInstall installer stub host.</Description>
   </PropertyGroup>
   <ItemGroup>

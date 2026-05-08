@@ -1,0 +1,25 @@
+<Project>
+  <!-- Nested Directory.Build.props stops MSBuild from auto-importing parent folders; pull in src/ settings first. -->
+  <Import Project="$(MSBuildThisFileDirectory)..\Directory.Build.props" />
+  <!-- Shared settings for every test project under src/tests (coverage collector, SDK). -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="AwesomeAssertions" Version="9.4.0" />
+    <PackageReference Include="coverlet.msbuild" Version="6.0.4">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="AwesomeAssertions" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>

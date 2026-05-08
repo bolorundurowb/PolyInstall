@@ -73,6 +73,7 @@ $RECYCLE.BIN/
 *~
 
 ## Coverage / test tooling
+src/coverage/
 coverage*.json
 coverage*.xml
 *.coverage

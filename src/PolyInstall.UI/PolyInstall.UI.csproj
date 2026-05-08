@@ -10,4 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\PolyInstall.Core\PolyInstall.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="..\..\assets\polyinstall-icon.png" Link="Assets\polyinstall-icon.png" />
+  </ItemGroup>
 </Project>

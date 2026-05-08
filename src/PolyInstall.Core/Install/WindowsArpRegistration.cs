@@ -24,6 +24,8 @@ public static class WindowsArpRegistration
         var unquoted = $"\"{uninstallExePath}\" --uninstall";
         key.SetValue("UninstallString", unquoted);
         key.SetValue("QuietUninstallString", $"{unquoted} --quiet");
+        // First icon index in the uninstaller PE (same host as installer; embeds branding .ico).
+        key.SetValue("DisplayIcon", $"{uninstallExePath},0");
 
         if (estimatedSizeKib > int.MaxValue)
             estimatedSizeKib = int.MaxValue;

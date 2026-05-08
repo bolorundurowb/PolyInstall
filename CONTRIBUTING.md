@@ -27,10 +27,10 @@ dotnet build src/PolyInstall.slnx -c Release --no-restore
 dotnet test src/PolyInstall.slnx -c Release --no-build --verbosity normal
 ```
 
-To run with coverage (same shape as CI):
+To run with coverage (same shape as CI; Cobertura files land under `src/coverage/<test-project-name>/`):
 
 ```bash
-dotnet test src/PolyInstall.slnx -c Release --no-build --collect:"XPlat Code Coverage" --results-directory "./TestResults"
+dotnet test src/PolyInstall.slnx -c Release --no-build /p:CollectCoverage=true
 ```
 
 ## Local development workflow

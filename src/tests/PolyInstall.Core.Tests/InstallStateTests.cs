@@ -24,6 +24,16 @@ public class InstallStateTests
     }
 
     [Fact]
+    public void ProductIdHelper_NonGuidId_IsStableDeterministicGuid()
+    {
+        var m = new ManifestMetadata { Id = "contoso-product-key", Name = "X", Version = "1.0" };
+        var a = ProductIdHelper.StableProductGuidString(m);
+        var b = ProductIdHelper.StableProductGuidString(m);
+        a.Should().Be(b);
+        Guid.TryParse(a.Trim('{', '}'), out _).Should().BeTrue();
+    }
+
+    [Fact]
     public void InstallState_RoundTripsJson()
     {
         var state = new InstallStateDocument
