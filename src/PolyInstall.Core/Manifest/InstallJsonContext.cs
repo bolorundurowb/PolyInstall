@@ -3,6 +3,10 @@ using PolyInstall.Core.Install;
 
 namespace PolyInstall.Core.Manifest;
 
+/// <summary>
+/// Source-generated JSON serialization for persisted install state and embedded manifest on disk
+/// (<c>install-state.json</c>, <c>embedded-manifest.json</c>).
+/// </summary>
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,

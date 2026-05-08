@@ -9,6 +9,12 @@ using PolyInstall.Core.Payload;
 
 namespace PolyInstall.Cli.Build;
 
+/// <summary>
+/// Builds self-extracting installers by appending manifest + compressed payload to a pre-published
+/// PolyInstall.Runtime stub binary. On Windows, also requires <c>PolyInstall.Uninstall.exe</c> next to the stub;
+/// the build pipeline adds it to the zip payload under <c>.polyinstall/tools/</c> so the installer can copy it to
+/// <c>Uninstall.exe</c> and register Add/Remove Programs.
+/// </summary>
 public sealed class InstallerBuildPipeline
 {
     public static async Task RunAsync(

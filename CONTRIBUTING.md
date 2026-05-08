@@ -54,14 +54,15 @@ Commit `schema/v1.json` updates alongside the related code changes.
 
 Quick smoke test loop:
 
-1. Publish a runtime stub for your target RID.
+1. Publish a runtime stub for your target RID (and on **Windows**, publish **`PolyInstall.Uninstall`** into the same `stubs/<rid>/` folder so the CLI can embed it).
 2. Build an installer from `examples/polyinstall.sample.yaml`.
 3. Run the produced installer on a matching OS.
 
-Example commands:
+Example commands (Windows x64):
 
 ```bash
 dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r win-x64 -o stubs/win-x64
+dotnet publish src/PolyInstall.Uninstall/PolyInstall.Uninstall.csproj -c Release -r win-x64 -o stubs/win-x64
 dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj -- build examples/polyinstall.sample.yaml --base examples --stubs stubs
 ```
 

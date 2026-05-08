@@ -1,3 +1,4 @@
+# Release workflow builds/tests the solution and publishes the polyinstall CLI only (not installer stubs).
 name: Generate Release
 
 on:

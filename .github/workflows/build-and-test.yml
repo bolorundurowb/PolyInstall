@@ -1,3 +1,4 @@
+# CI restores/builds/tests PolyInstall.slnx (includes PolyInstall.Runtime, PolyInstall.Uninstall, CLI, UI, Core, tests).
 name: Build, Test & Coverage
 
 on:

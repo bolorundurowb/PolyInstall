@@ -568,6 +568,11 @@ public partial class MainWindow : Window
         return selected;
     }
 
+    /// <summary>
+    /// Persists manifest and install state under <c>.polyinstall</c>, copies the bundled
+    /// <see cref="InstallStatePaths.UninstallPayloadFileName"/> to <see cref="InstallStatePaths.UninstallExeFileName"/>,
+    /// and registers Add/Remove Programs when <c>register_arp</c> is enabled.
+    /// </summary>
     private static void FinalizeWindowsInstall(InstallManifest manifest, string dest)
     {
         var win = manifest.Build.Windows ?? new WindowsBuildOptions();

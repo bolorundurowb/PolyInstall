@@ -12,7 +12,7 @@ installation UI built on **Avalonia**, PolyInstall simplifies the deployment pro
 
 - YAML-Based Manifests: Define your installer metadata, files, and build configurations in a single, simple YAML file.
 - Cross-Platform Support: Generate self-extracting installers for Windows (.exe), Linux (AppImage), and macOS (DMG).
-- Modern Avalonia UI: A clean, responsive installation interface that works
+- Modern Avalonia UI: A clean, responsive installation interface that works across Windows, Linux, and macOS.
 
 ---
 
@@ -30,11 +30,11 @@ runtime identifier (RID).
 | Piece                            | Role                                                                                                                                                                                                      |
 |----------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **`polyinstall` CLI**            | Parses YAML, substitutes environment variables, validates against JSON Schema, globs files, builds a zip payload, compresses it, and produces one output binary per `build.targets` entry.                |
-| **Stub (`PolyInstall.Runtime`)** | The actual "installer.exe" you ship. It reads the bundle appended to itself, shows a wizard (`PolyInstall.UI`), copies files, and can run **tasks** (shortcuts, registry, `.desktop` files, permissions). |
+| **Stub (`PolyInstall.Runtime`)** | The actual installer binary you ship. It reads the bundle appended to itself, shows a wizard (`PolyInstall.UI`), copies files, and can run **tasks** (shortcuts, registry, `.desktop` files, permissions). |
+| **`PolyInstall.Uninstall` (Windows)** | A small, trimmed **uninstall host** published beside the stub. The CLI embeds it in the payload as `.polyinstall/tools/PolyInstall.Uninstall.exe`; after install it is copied to **`Uninstall.exe`** at the install root for Add/Remove Programs and command-line uninstall. |
 | **`schema/v1.json`**             | JSON Schema generated from the same C# models as the runtime. Use it in your editor for completion and diagnostics (see [Manifest and schema](#manifest-and-schema)).                                     |
 
-**Platform outputs:** On **Windows**, the stub can register **Add/Remove Programs** and ship an **`Uninstall.exe`** copy
-that supports `--uninstall`. On **Linux**, the CLI can optionally emit an **AppImage** (requires `mksquashfs` on a Linux
+**Platform outputs:** On **Windows**, the installer can register **Add/Remove Programs** and deploy a dedicated **`Uninstall.exe`** (the published `PolyInstall.Uninstall` host) that runs **`--uninstall`**. On **Linux**, the CLI can optionally emit an **AppImage** (requires `mksquashfs` on a Linux
 host). On **macOS**, the CLI can optionally emit a **DMG** via `hdiutil` (requires building on macOS).
 See [Windows uninstall and ARP](#windows-uninstall-and-arp), [Linux AppImage](#linux-appimage),
 and [macOS DMG](#macos-dmg).
@@ -135,7 +135,7 @@ The manifest is grouped into five sections. All are represented in JSON Schema; 
 | Field | Meaning |
 |--------|---------|
 | `install_scope` | `user` (default) or `machine`. Controls whether Add/Remove Programs entries go under **HKCU** or **HKLM**. |
-| `register_arp` | When `true` (default), after a successful install the stub writes `.polyinstall/install-state.json`, copies itself to `Uninstall.exe`, and registers the product in Add/Remove Programs. |
+| `register_arp` | When `true` (default), after a successful install the installer writes **`.polyinstall/install-state.json`** and **`embedded-manifest.json`**, copies the bundled **`.polyinstall/tools/PolyInstall.Uninstall.exe`** to **`Uninstall.exe`** at the install root, and registers the product in Add/Remove Programs. |
 
 **Elevation:** `install_scope: machine` writes to **HKLM** and requires an **elevated** (Administrator) install. If the installer is not elevated, registration fails with a clear error; use `user` scope for per-user installs under HKCU.
 
@@ -265,12 +265,12 @@ The stub reads `build.compression` from the embedded JSON and decompresses accor
 When `build.windows.register_arp` is true (default), a successful install:
 
 1. Writes **`.polyinstall/embedded-manifest.json`** (full manifest JSON) and **`.polyinstall/install-state.json`** (product id, paths, registry key path).
-2. Copies the running installer binary to **`Uninstall.exe`** in the install directory.
+2. Copies **`.polyinstall/tools/PolyInstall.Uninstall.exe`** (placed in the payload at build time from your stubs folder) to **`Uninstall.exe`** in the install directory.
 3. Registers **Add/Remove Programs** under `HKCU` or `HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\{GUID}` depending on `install_scope`.
 
-**Uninstall:** Run `Uninstall.exe --uninstall` (or add `--quiet` for no prompt). The stub **does not** read the embedded payload in this mode; it loads state from disk, runs `pre_uninstall` / `post_uninstall` tasks, removes the ARP key, deletes installed files, and schedules removal of the install folder (the copy of `Uninstall.exe` is removed after the process exits).
+**Uninstall:** From the install directory, run **`Uninstall.exe --uninstall`** (add **`--quiet`** to skip the confirmation prompt). The uninstall host is **not** the installer stub: it has **no** appended payload; it reads **`.polyinstall/install-state.json`** and **`embedded-manifest.json`** from disk, runs **`pre_uninstall`** / **`post_uninstall`** tasks, removes the ARP key, deletes installed files, and schedules removal of the install folder (including **`Uninstall.exe`** after the process exits).
 
-**Single EXE from download:** You can also run the original downloaded installer with `--uninstall --install-location "C:\Path\To\Install"` if it is not named `Uninstall.exe`.
+**Alternate path:** From any directory you can run **`.polyinstall/tools/PolyInstall.Uninstall.exe`** (or a copy) with **`--uninstall --install-location "C:\Path\To\Install"`**. The self-extracting **installer** binary does **not** implement **`--uninstall`**; use **`Uninstall.exe`** or the bundled uninstall tool as above.
 
 
 
@@ -404,6 +404,6 @@ Consumers typically:
 1. Depend on a **released** `polyinstall` tool and/or packages, **or**
 2. **Vendor** this repository (or a fork) and run `dotnet publish` / `dotnet run` from source as shown above.
 
-If you embed PolyInstall into your own product, keep the **schema version** (`schema/v1.json`) and **stub version** in sync — mismatches between CLI bundle format and an older stub will fail at the magic/footer check or during decompression.
+If you embed PolyInstall into your own product, keep the **schema version** (`schema/v1.json`), **installer stub**, and (on Windows) **`PolyInstall.Uninstall`** outputs in sync — mismatches between the CLI bundle format and an older stub or uninstall host can fail at the magic/footer check, during decompression, or when the bundled uninstall path is missing.
 
 For development and pull request guidance, see [CONTRIBUTING.md](CONTRIBUTING.md).

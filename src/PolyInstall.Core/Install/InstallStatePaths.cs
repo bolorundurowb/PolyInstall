@@ -1,5 +1,9 @@
 namespace PolyInstall.Core.Install;
 
+/// <summary>
+/// Relative paths under the install directory for PolyInstall metadata, embedded JSON, and the Windows uninstall layout
+/// (<c>Uninstall.exe</c> at the root and <c>PolyInstall.Uninstall.exe</c> under <c>.polyinstall/tools</c>).
+/// </summary>
 public static class InstallStatePaths
 {
     public const string PolyDirName = ".polyinstall";

@@ -2,6 +2,8 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <RootNamespace>PolyInstall.Uninstall</RootNamespace>
+    <!-- Win32 PE icon for shell and ARP DisplayIcon (path,0). Installer stub keeps assets/polyinstall-icon.ico. -->
+    <ApplicationIcon>..\..\assets\polyinstall-uninstall-icon.ico</ApplicationIcon>
     <Description>Minimal uninstall host for PolyInstall.</Description>
     <PublishTrimmed>true</PublishTrimmed>
     <PublishSingleFile>true</PublishSingleFile>
