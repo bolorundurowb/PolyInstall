@@ -18,10 +18,11 @@ public static class InstallBundleReader
         var (manifestStart, payloadStart) = InstallPayloadTrailer.GetBlobOffsets(len, manifestLen, payloadLen);
         var json = InstallPayloadTrailer.ReadManifestUtf8(stream, manifestStart, manifestLen);
         stream.Seek(payloadStart, SeekOrigin.Begin);
+        if (payloadLen > Array.MaxLength)
+            throw new NotSupportedException(
+                $"Payload is too large to load into memory ({payloadLen:N0} bytes). Maximum supported size is {Array.MaxLength:N0} bytes.");
         var payload = new byte[payloadLen];
-        var read = stream.Read(payload, 0, (int)payloadLen);
-        if (read != payloadLen)
-            throw new EndOfStreamException("Could not read full payload.");
+        stream.ReadExactly(payload);
         var manifest = JsonSerializer.Deserialize<InstallManifest>(json, InstallManifest.JsonOptions)
                        ?? throw new InvalidOperationException("Invalid embedded manifest JSON.");
         return (manifest, payload);

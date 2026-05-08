@@ -247,6 +247,7 @@
             "array",
             "null"
           ],
+          "description": "Tasks that run after the user confirms the install destination, before any files are copied to disk.",
           "items": {
             "$ref": "#/definitions/InstallTask"
           }
@@ -256,6 +257,7 @@
             "array",
             "null"
           ],
+          "description": "Tasks that run after all files have been copied to the install directory and the installation is complete.",
           "items": {
             "$ref": "#/definitions/InstallTask"
           }
@@ -265,6 +267,7 @@
             "array",
             "null"
           ],
+          "description": "Tasks that run at the very start of uninstall, before the Add/Remove Programs entry is removed and before any installed files are deleted from disk. Installed files are still fully accessible here.",
           "items": {
             "$ref": "#/definitions/InstallTask"
           }
@@ -274,6 +277,7 @@
             "array",
             "null"
           ],
+          "description": "Tasks that run after pre_uninstall tasks \u2014 but STILL BEFORE files are deleted from disk and BEFORE the Add/Remove Programs entry is removed. Despite its name, post_uninstall does not execute after the installation has been cleaned up. Both pre_uninstall and post_uninstall run while installed files are still present. Use post_uninstall for tasks that must follow pre_uninstall sequentially (e.g., stopping a service before removing its config) rather than for tasks that need the install tree to be gone.",
           "items": {
             "$ref": "#/definitions/InstallTask"
           }
@@ -288,16 +292,19 @@
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Optional OS predicate that must be true for this task to run. Supported values: os.isWindows, os.isLinux, os.isOSX (or os.isMacOS), os.isUnix. If omitted the task always runs."
         },
         "action": {
-          "type": "string"
+          "type": "string",
+          "description": "The action to perform. One of: create_shortcut, write_registry (Windows only), create_desktop_entry (Linux/macOS only), set_permissions (Unix only)."
         },
         "parameters": {
           "type": [
             "null",
             "object"
           ],
+          "description": "Key/value map of parameters for the chosen action. Keys are snake_case strings.",
           "additionalProperties": {}
         }
       }

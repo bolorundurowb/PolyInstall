@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using PolyInstall.Core.Hosting;
 using PolyInstall.Core.Manifest;
 using PolyInstall.Core.Pal;
@@ -98,11 +99,23 @@ public static class UninstallCoordinator
         installRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(installRoot));
 
         // Run detached and retry because Uninstall.exe is still running while this method executes.
-        var args = $"/c for /l %i in (1,1,15) do @rmdir /s /q \"{installRoot}\" && exit /b 0 || timeout /t 1 /nobreak >nul";
+        // PowerShell encoded-command avoids all shell-quoting concerns; the path is embedded using
+        // PS single-quote escaping (double each single-quote) so special characters in directory
+        // names cannot break out of the string literal or inject additional commands.
+        var escapedPath = installRoot.Replace("'", "''", StringComparison.Ordinal);
+        var script =
+            $"$d = '{escapedPath}'; " +
+            "for ($i = 0; $i -lt 15; $i++) { " +
+            "  if (-not (Test-Path -LiteralPath $d)) { exit 0 } " +
+            "  try { Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction Stop; exit 0 } " +
+            "  catch { Start-Sleep -Seconds 1 } " +
+            "} " +
+            "Remove-Item -LiteralPath $d -Recurse -Force";
+        var enc = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
         Process.Start(new ProcessStartInfo
         {
-            FileName = "cmd.exe",
-            Arguments = args,
+            FileName = "powershell.exe",
+            Arguments = $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand {enc}",
             UseShellExecute = false,
             CreateNoWindow = true,
         });
