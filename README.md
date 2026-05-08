@@ -1,47 +1,58 @@
 # PolyInstall
 
-This repository was developed with the help of **generative AI** tools (for example, assisted coding and drafting). Treat the code, manifests, and documentation accordingly: verify behavior, review changes before you rely on them in production, and apply your own judgment and testing.
+**PolyInstall** is a powerful, manifest-driven installer generator. It allows you to package your applications into
+cross-platform, self-extracting binaries using a single YAML configuration file. With a modern, customisable
+installation UI built on **Avalonia**, PolyInstall simplifies the deployment process for Windows, Linux, and macOS.
 
-**PolyInstall** is a powerful, manifest-driven installer generator. It allows you to package your applications into cross-platform, self-extracting binaries using a single YAML configuration file. With a modern, customizable installation UI built on **Avalonia**, PolyInstall simplifies the deployment process for Windows, Linux, and macOS.
+> This repository was developed with the help of **generative AI** tools (for example, assisted coding and drafting).
+> Treat the code, manifests, and documentation accordingly: verify behaviour, review changes before you rely on them in
+> production, and apply your own judgement and testing.
 
 ## Key Features
+
 - YAML-Based Manifests: Define your installer metadata, files, and build configurations in a single, simple YAML file.
 - Cross-Platform Support: Generate self-extracting installers for Windows (.exe), Linux (AppImage), and macOS (DMG).
 - Modern Avalonia UI: A clean, responsive installation interface that works
 
 ---
 
-PolyInstall is a **modern toolchain** for building **self-contained installer executables** from a **YAML manifest**. At build time, the CLI packs your application files, compresses them, and appends them (with an embedded JSON manifest) to a **pre-published stub** — a small Avalonia-based host that extracts the payload and walks the end user through an installer wizard.
+PolyInstall is a **modern toolchain** for building **self-contained installer executables** from a **YAML manifest**. At
+build time, the CLI packs your application files, compresses them, and appends them (with an embedded JSON manifest) to
+a **pre-published stub** — a small Avalonia-based host that extracts the payload and walks the end user through an
+installer wizard.
 
-This document is written for **consumers**: teams who want to ship installers without adopting a separate installer product, and who are comfortable with YAML, the .NET CLI, and publishing self-contained or framework-dependent apps per runtime identifier (RID).
-
-
+This document is written for **consumers**: teams who want to ship installers without adopting a separate installer
+product, and who are comfortable with YAML, the .NET CLI, and publishing self-contained or framework-dependent apps per
+runtime identifier (RID).
 
 ## What you get
 
-| Piece | Role |
-|--------|------|
-| **`polyinstall` CLI** | Parses YAML, substitutes environment variables, validates against JSON Schema, globs files, builds a zip payload, compresses it, and produces one output binary per `build.targets` entry. |
-| **Stub (`PolyInstall.Runtime`)** | The actual “installer.exe” you ship. It reads the bundle appended to itself, shows a wizard (`PolyInstall.UI`), copies files, and can run **tasks** (shortcuts, registry, `.desktop` files, permissions). |
-| **`schema/v1.json`** | JSON Schema generated from the same C# models as the runtime. Use it in your editor for completion and diagnostics (see [Manifest and schema](#manifest-and-schema)). |
+| Piece                            | Role                                                                                                                                                                                                      |
+|----------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **`polyinstall` CLI**            | Parses YAML, substitutes environment variables, validates against JSON Schema, globs files, builds a zip payload, compresses it, and produces one output binary per `build.targets` entry.                |
+| **Stub (`PolyInstall.Runtime`)** | The actual "installer.exe" you ship. It reads the bundle appended to itself, shows a wizard (`PolyInstall.UI`), copies files, and can run **tasks** (shortcuts, registry, `.desktop` files, permissions). |
+| **`schema/v1.json`**             | JSON Schema generated from the same C# models as the runtime. Use it in your editor for completion and diagnostics (see [Manifest and schema](#manifest-and-schema)).                                     |
 
-**Platform outputs:** On **Windows**, the stub can register **Add/Remove Programs** and ship an **`Uninstall.exe`** copy that supports `--uninstall`. On **Linux**, the CLI can optionally emit an **AppImage** (requires `mksquashfs` on a Linux host). On **macOS**, the CLI can optionally emit a **DMG** via `hdiutil` (requires building on macOS). See [Windows uninstall and ARP](#windows-uninstall-and-arp), [Linux AppImage](#linux-appimage), and [macOS DMG](#macos-dmg).
-
-
+**Platform outputs:** On **Windows**, the stub can register **Add/Remove Programs** and ship an **`Uninstall.exe`** copy
+that supports `--uninstall`. On **Linux**, the CLI can optionally emit an **AppImage** (requires `mksquashfs` on a Linux
+host). On **macOS**, the CLI can optionally emit a **DMG** via `hdiutil` (requires building on macOS).
+See [Windows uninstall and ARP](#windows-uninstall-and-arp), [Linux AppImage](#linux-appimage),
+and [macOS DMG](#macos-dmg).
 
 ## Requirements
 
 - **.NET SDK 10** (or the version aligned with `src/Directory.Build.props` / `TargetFramework` in this repo).
-- A **64-bit** target OS matching the stubs you publish (Windows, Linux, or macOS RIDs supported in the manifest; see [Build targets](#build-targets)).
-- **Windows** stubs: PowerShell available for shortcut creation when using `create_shortcut` tasks (COM via `WScript.Shell`).
-
-
+- A **64-bit** target OS matching the stubs you publish (Windows, Linux, or macOS RIDs supported in the manifest;
+  see [Build targets](#build-targets)).
+- **Windows** stubs: PowerShell available for shortcut creation when using `create_shortcut` tasks (COM via
+  `WScript.Shell`).
 
 ## Quick start
 
 1. **Clone or copy** this repository (or consume the published packages / tool if you publish them yourself).
 
-2. **Create a manifest** — start from `examples/polyinstall.sample.yaml` and adjust `metadata`, `files`, and `build.targets`.
+2. **Create a manifest** — start from `examples/polyinstall.sample.yaml` and adjust `metadata`, `files`, and
+   `build.targets`.
 
 3. **Publish the stub** for each RID you need (example: Windows x64):
 
@@ -49,7 +60,8 @@ This document is written for **consumers**: teams who want to ship installers wi
    dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r win-x64 -o stubs/win-x64
    ```
 
-   The CLI looks for `PolyInstall.Runtime.exe` (Windows) or `PolyInstall.Runtime` (non-Windows) under `<stubs>/<rid>/` by default.
+   The CLI looks for `PolyInstall.Runtime.exe` (Windows) or `PolyInstall.Runtime` (non-Windows) under `<stubs>/<rid>/`
+   by default.
 
 4. **Build the installer**:
 
@@ -57,23 +69,25 @@ This document is written for **consumers**: teams who want to ship installers wi
    dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj -- build examples/polyinstall.sample.yaml --base examples --stubs stubs
    ```
 
-   Outputs appear under `build.output_dir` from the manifest (relative to `--base`), e.g. `examples/dist/SampleApp-windows-x64.exe`.
+   Outputs appear under `build.output_dir` from the manifest (relative to `--base`), e.g.
+   `examples/dist/SampleApp-windows-x64.exe`.
 
-5. **Run the produced `.exe`** (or non-Windows binary) on a matching OS. It will extract to a temp folder and launch the wizard.
-
-
+5. **Run the produced `.exe`** (or non-Windows binary) on a matching OS. It will extract to a temp folder and launch the
+   wizard.
 
 ## Manifest and Schema
 
 - **Authoring format:** YAML with **snake_case** keys (see examples).
 - **Runtime format:** The stub reads an **embedded JSON** manifest (snake_case property names) produced by the CLI.
-- **Schema for editors:** After building the repo, `schema/v1.json` is the source of truth. To regenerate it from the C# models:
+- **Schema for editors:** After building the repo, `schema/v1.json` is the source of truth. To regenerate it from the C#
+  models:
 
   ```bash
   dotnet run --project src/PolyInstall.SchemaGen/PolyInstall.SchemaGen.csproj
   ```
 
-  Optional MSBuild integration: pass **`/p:GeneratePolyInstallSchema=true`** so `src/Directory.Build.targets` runs the generator before compile (opt-in).
+  Optional MSBuild integration: pass **`/p:GeneratePolyInstallSchema=true`** so `src/Directory.Build.targets` runs the
+  generator before compile (opt-in).
 
 **IDE integration:** Point your YAML at the schema for validation and IntelliSense, for example:
 
@@ -231,7 +245,7 @@ Use the same folder layout the CLI expects (`stubs/<rid>/PolyInstall.Runtime...`
 
 The payload is **zip** bytes, then **compressed** as configured:
 
-| `build.compression` | Behavior |
+| `build.compression` | Behaviour |
 |---------------------|----------|
 | **`brotli`** | Brotli compression (recommended default). |
 | **`gzip`** | GZip compression. |
@@ -278,8 +292,8 @@ Set `build.macos.package: dmg` for `osx-*` targets. After the Mach-O bundle is b
 
 The CLI **does not** rebuild the stub per package. It copies the stub bytes, then appends:
 
-1. UTF-8 JSON manifest  
-2. Compressed payload bytes  
+1. UTF-8 JSON manifest
+2. Compressed payload bytes
 3. A **20-byte footer**: payload length (8 LE), manifest length (4 LE), magic `POLYIN01` (8 bytes)
 
 The stub opens its own executable path, seeks to the end, validates the magic, and reads manifest + payload. You can re-sign the final binary with your own pipeline if you add signing **after** this append step (signing details are outside this README).
@@ -290,10 +304,10 @@ The stub opens its own executable path, seeks to the end, validates the magic, a
 
 `ui.wizard_steps` is a list of steps. Each step has a **`type`** and optional fields:
 
-| `type` | Typical fields | Behavior |
+| `type` | Typical fields | Behaviour |
 |--------|----------------|----------|
 | `welcome` | `title` | Introduction text. |
-| `eula` | `title`, `source` | Loads license text from `source` (path under extracted payload or absolute). |
+| `eula` | `title`, `source` | Loads licence text from `source` (path under extracted payload or absolute). |
 | `destination` | `title`, `default_path` | User chooses install directory; placeholders expanded (see below). |
 | `progress` | `title` | Runs **pre-install** tasks, copies extracted payload to the install directory, then **post-install** tasks. |
 | `finish` | `title` | Summary. |
@@ -368,7 +382,7 @@ Invalid file-name characters in `metadata.name` are replaced with underscores.
 
 ## Examples
 
-- **`examples/polyinstall.sample.yaml`** — Minimal end-to-end manifest.  
+- **`examples/polyinstall.sample.yaml`** — Minimal end-to-end manifest.
 - **`examples/sample-payload/`** — Tiny payload tree for testing globs.
 
 
@@ -381,7 +395,7 @@ See **`THIRD_PARTY_NOTICES.txt`** in the repository for NuGet components used by
 
 Consumers typically:
 
-1. Depend on a **released** `polyinstall` tool and/or packages, **or**  
+1. Depend on a **released** `polyinstall` tool and/or packages, **or**
 2. **Vendor** this repository (or a fork) and run `dotnet publish` / `dotnet run` from source as shown above.
 
 If you embed PolyInstall into your own product, keep the **schema version** (`schema/v1.json`) and **stub version** in sync — mismatches between CLI bundle format and an older stub will fail at the magic/footer check or during decompression.

@@ -38,6 +38,7 @@ public class CoreManifestTests
                 - windows-x64
             ui:
               theme: light
+              logo_path: branding/logo.png
               wizard_steps:
                 - type: welcome
                   title: Hi
@@ -49,6 +50,7 @@ public class CoreManifestTests
         var m = ManifestYaml.Parse(yaml);
         m.Metadata.Name.Should().Be("T");
         m.Build.Targets.Should().ContainSingle();
+        m.Ui.LogoPath.Should().Be("branding/logo.png");
         m.Ui.WizardSteps[0].Type.Should().Be("welcome");
     }
 

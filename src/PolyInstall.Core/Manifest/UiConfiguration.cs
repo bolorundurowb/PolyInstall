@@ -3,6 +3,7 @@ namespace PolyInstall.Core.Manifest;
 public sealed class UiConfiguration
 {
     public string Theme { get; set; } = "system";
+    public string? LogoPath { get; set; }
     public List<UiAssetEntry>? Assets { get; set; }
     public List<WizardStep> WizardSteps { get; set; } = [];
 }

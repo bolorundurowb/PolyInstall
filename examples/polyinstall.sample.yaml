@@ -17,6 +17,9 @@ build:
   #   package: dmg        # requires macOS host + hdiutil
 ui:
   theme: system
+  # Optional branding image shown in installer top-left.
+  # Supports SVG and raster files; path is resolved from extracted payload at install time.
+  # logo_path: "branding/logo.svg"
   wizard_steps:
     - type: welcome
       title: Welcome

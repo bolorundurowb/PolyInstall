@@ -71,6 +71,12 @@
             "type": "string"
           }
         },
+        "installer_target": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
         "stub_path": {
           "type": [
             "null",
@@ -145,6 +151,12 @@
       "properties": {
         "theme": {
           "type": "string"
+        },
+        "logo_path": {
+          "type": [
+            "null",
+            "string"
+          ]
         },
         "assets": {
           "type": [

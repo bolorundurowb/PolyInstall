@@ -36,13 +36,13 @@ dotnet test src/PolyInstall.slnx -c Release --no-build /p:CollectCoverage=true
 ## Local development workflow
 
 1. Create a feature branch from `master`.
-2. Make focused changes with tests when behavior changes.
+2. Make focused changes with tests when behaviour changes.
 3. Run restore/build/test locally before opening a PR.
 4. Update docs/examples/schema when relevant.
 
 ## Schema changes
 
-If you change manifest models or validation behavior, regenerate the schema:
+If you change manifest models or validation behaviour, regenerate the schema:
 
 ```bash
 dotnet run --project src/PolyInstall.SchemaGen/PolyInstall.SchemaGen.csproj
@@ -69,7 +69,7 @@ dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj -- build example
 
 - Keep PRs focused and reviewable.
 - Include or update tests for functional changes.
-- Keep documentation aligned with behavior changes.
+- Keep documentation aligned with behaviour changes.
 - Ensure CI is passing before merge.
 
 ## Commit messages

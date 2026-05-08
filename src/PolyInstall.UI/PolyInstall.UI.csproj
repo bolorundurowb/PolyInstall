@@ -6,11 +6,13 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Svg.Skia" Version="4.6.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\PolyInstall.Core\PolyInstall.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
     <AvaloniaResource Include="..\..\assets\polyinstall-icon.png" Link="Assets\polyinstall-icon.png" />
+    <AvaloniaResource Include="..\..\assets\polyinstall-logo.svg" Link="Assets\polyinstall-logo.svg" />
   </ItemGroup>
 </Project>
