@@ -186,7 +186,7 @@ Each task supports:
 |--------|---------|
 | `require` | Optional condition string (see [Conditions](#conditions)). If omitted, the task always runs when the phase runs. |
 | `action` | One of the supported actions (see [Task actions](#task-actions)). |
-| `parameters` | Key/value map; keys are snake_case strings matching the action. |
+| `parameters` | Key/value map; keys are snake_case strings matching the action. **String** values support the same [path placeholders](#path-placeholders) as wizard steps (expanded when the task runs). |
 
 ---
 
@@ -324,14 +324,18 @@ If `wizard_steps` is empty, the UI falls back to a minimal welcome + finish flow
 
 ## Path placeholders
 
-Strings such as `default_path` can include:
+Wizard strings (for example `ui.wizard_steps` → `destination.default_path`) and **task string parameters** (all string fields passed to `create_shortcut`, `write_registry`, `create_desktop_entry`, and `set_permissions`) can include:
 
 | Placeholder | Meaning |
 |-------------|---------|
-| `{AppDir}` | Chosen install directory (or extract root until a destination is chosen). |
+| `{AppDir}` | Install directory: the PAL’s `AppDir` when it is non-empty; otherwise the chosen install directory or extract root (same idea as the live installer host). |
 | `{ProgramFiles}` | OS-appropriate program files location. |
 | `{UserHome}` | Current user’s profile/home. |
 | `{Desktop}` | Desktop folder. |
+
+**Wizard UI** normalizes slashes using the manifest’s `build.targets` / installer-target hint when present, so a path typed on a build machine can match the target OS.
+
+**Tasks** always run on the **machine executing the installer**; placeholder expansion uses that host’s rules for directory separators (not the cross-build RID alone), so shortcuts and registry values match the OS where the install actually runs.
 
 
 
@@ -349,6 +353,8 @@ Unknown expressions throw at runtime — there is **no** general-purpose express
 
 
 ## Task actions
+
+String parameter values are passed through [path placeholder](#path-placeholders) expansion before the action runs (except `value_kind`, which is interpreted as a registry kind token only).
 
 | `action` | Platform | `parameters` (keys) |
 |----------|----------|----------------------|

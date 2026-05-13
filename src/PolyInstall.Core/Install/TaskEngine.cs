@@ -28,39 +28,56 @@ public static class TaskEngine
         {
             case "create_shortcut":
                 pal.Shortcuts.CreateFileShortcut(
-                    GetString(p, "target_path"),
-                    GetString(p, "shortcut_path"),
-                    GetOptionalString(p, "description"),
-                    GetOptionalString(p, "icon_path"));
+                    Expand(GetString(p, "target_path"), pal),
+                    Expand(GetString(p, "shortcut_path"), pal),
+                    ExpandOptional(GetOptionalString(p, "description"), pal),
+                    ExpandOptional(GetOptionalString(p, "icon_path"), pal));
                 break;
             case "write_registry":
                 if (pal.Registry is null)
                     throw new PlatformNotSupportedException("Registry tasks are not supported on this platform.");
                 pal.Registry.SetValue(
-                    GetString(p, "key_path"),
-                    GetOptionalString(p, "value_name"),
-                    GetString(p, "value"),
+                    Expand(GetString(p, "key_path"), pal),
+                    ExpandOptional(GetOptionalString(p, "value_name"), pal),
+                    Expand(GetString(p, "value"), pal),
                     GetString(p, "value_kind"));
                 break;
             case "create_desktop_entry":
                 if (pal.DesktopEntries is null)
                     throw new PlatformNotSupportedException("Desktop entry tasks are not supported on this platform.");
                 pal.DesktopEntries.CreateDesktopEntry(
-                    GetString(p, "file_name"),
-                    GetString(p, "name"),
-                    GetString(p, "exec"),
-                    GetOptionalString(p, "icon"),
-                    GetOptionalString(p, "comment"));
+                    Expand(GetString(p, "file_name"), pal),
+                    Expand(GetString(p, "name"), pal),
+                    Expand(GetString(p, "exec"), pal),
+                    ExpandOptional(GetOptionalString(p, "icon"), pal),
+                    ExpandOptional(GetOptionalString(p, "comment"), pal));
                 break;
             case "set_permissions":
                 if (pal.FilePermissions is null)
                     throw new PlatformNotSupportedException("Permission tasks are not supported on this platform.");
-                pal.FilePermissions.SetUnixFileMode(GetString(p, "path"), GetInt(p, "mode"));
+                pal.FilePermissions.SetUnixFileMode(Expand(GetString(p, "path"), pal), GetInt(p, "mode"));
                 break;
             default:
                 throw new NotSupportedException($"Unknown task action: '{task.Action}'.");
         }
     }
+
+    /// <summary>
+    /// Install tasks always execute on the machine running the installer (the install host),
+    /// not the OS implied by <see cref="Hosting.InstallBootstrap.Manifest"/>'s build RID.
+    /// </summary>
+    private static string Expand(string s, IPolyInstallPal pal)
+    {
+        var hostOs = OperatingSystem.IsWindows()
+            ? TargetOperatingSystem.Windows
+            : OperatingSystem.IsMacOS()
+                ? TargetOperatingSystem.MacOs
+                : TargetOperatingSystem.Linux;
+        return InstallPathResolver.Expand(s, pal, hostOs);
+    }
+
+    private static string? ExpandOptional(string? s, IPolyInstallPal pal)
+        => s is null ? null : Expand(s, pal);
 
     private static string GetString(Dictionary<string, object?> p, string key)
     {

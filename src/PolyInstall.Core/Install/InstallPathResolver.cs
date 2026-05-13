@@ -12,7 +12,9 @@ public static class InstallPathResolver
 
     public static string Expand(string path, IInstallPathPal pal, TargetOperatingSystem targetOs)
     {
-        var appDir = InstallBootstrap.InstallDirectory ?? InstallBootstrap.ExtractRoot;
+        var appDir = !string.IsNullOrEmpty(pal.AppDir)
+            ? pal.AppDir
+            : InstallBootstrap.InstallDirectory ?? InstallBootstrap.ExtractRoot;
         var expanded = path
             .Replace("{AppDir}", appDir, StringComparison.OrdinalIgnoreCase)
             .Replace("{ProgramFiles}", pal.ProgramFiles, StringComparison.OrdinalIgnoreCase)
