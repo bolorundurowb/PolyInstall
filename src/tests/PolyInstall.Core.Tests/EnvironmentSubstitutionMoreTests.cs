@@ -6,7 +6,7 @@ namespace PolyInstall.Core.Tests;
 public class EnvironmentSubstitutionMoreTests
 {
     [Fact]
-    public void Substitute_KeepsPlaceholder_WhenUnsetAndNoDefault()
+    public void Substitute_WhenVariableUnsetAndNoDefault_PreservesPlaceholder()
     {
         const string name = "POLYINSTALL_TEST_UNSET_VAR_9F3A";
         Environment.SetEnvironmentVariable(name, null);
@@ -16,7 +16,7 @@ public class EnvironmentSubstitutionMoreTests
     }
 
     [Fact]
-    public void Substitute_UsesExtraDictionary_OverEnvironment()
+    public void Substitute_WithExtraVariables_PrecedenceOverEnvironment()
     {
         const string name = "POLYINSTALL_TEST_EXTRA_9F3A";
         Environment.SetEnvironmentVariable(name, "from-env");
@@ -32,7 +32,7 @@ public class EnvironmentSubstitutionMoreTests
     }
 
     [Fact]
-    public void ApplyToManifest_ReplacesNestedStrings()
+    public void ApplyToManifest_WithNestedObject_ReplacesConfiguredStrings()
     {
         var manifest = new InstallManifest
         {

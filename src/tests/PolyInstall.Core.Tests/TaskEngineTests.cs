@@ -7,7 +7,7 @@ namespace PolyInstall.Core.Tests;
 public class TaskEngineTests
 {
     [Fact]
-    public void RunPhase_InvokesCreateShortcut_WhenRequireEmpty()
+    public void RunPhase_WhenRequireEmpty_CreatesShortcut()
     {
         var pal = new RecordingPal();
         var tasks = new[]
@@ -36,7 +36,7 @@ public class TaskEngineTests
     }
 
     [Fact]
-    public void RunPhase_SkipsTask_WhenRequireEvaluatesFalse()
+    public void RunPhase_WhenRequireFalse_SkipsTask()
     {
         var pal = new RecordingPal();
         var require = OperatingSystem.IsWindows() ? "os.isLinux" : "os.isWindows";
@@ -59,7 +59,7 @@ public class TaskEngineTests
     }
 
     [Fact]
-    public void RunPhase_UnknownAction_Throws()
+    public void RunPhase_WhenActionUnknown_ThrowsNotSupportedException()
     {
         var pal = new RecordingPal();
         FluentActions.Invoking(() => TaskEngine.RunPhase(
@@ -70,7 +70,7 @@ public class TaskEngineTests
     }
 
     [Fact]
-    public void RunPhase_WriteRegistry_ThrowsWhenRegistryUnsupported()
+    public void RunPhase_WhenRegistryUnsupported_ThrowsPlatformNotSupportedException()
     {
         var pal = new RecordingPal { RegistryBacking = null };
         var tasks = new[]
@@ -93,21 +93,56 @@ public class TaskEngineTests
     }
 
     [Fact]
-    public void RunPhase_NullEnumerable_IsNoOp()
+    public void RunPhase_WhenTasksNull_DoesNothing()
     {
         var pal = new RecordingPal();
         TaskEngine.RunPhase(null, pal);
         pal.ShortcutCalls.Should().BeEmpty();
     }
 
+    [Fact]
+    public void RunPhase_WhenCreateShortcutContainsPlaceholders_ExpandsPaths()
+    {
+        var pal = new RecordingPal
+        {
+            AppDirBacking = @"C:\Install\Open Exam Suite",
+            DesktopBacking = @"C:\Users\Test\Desktop",
+        };
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "create_shortcut",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["target_path"] = @"{AppDir}\Simulator\app.exe",
+                    ["shortcut_path"] = @"{Desktop}\Sim.lnk",
+                },
+            },
+        };
+
+        TaskEngine.RunPhase(tasks, pal);
+
+        pal.ShortcutCalls.Should().ContainSingle();
+        var c = pal.ShortcutCalls[0];
+        c.Target.Should().Be(@"C:\Install\Open Exam Suite\Simulator\app.exe");
+        c.Shortcut.Should().Be(@"C:\Users\Test\Desktop\Sim.lnk");
+    }
+
     private sealed class RecordingPal : IPolyInstallPal
     {
         public IRegistryPal? RegistryBacking { get; init; } = new RecordingRegistryPal();
 
-        public string AppDir => "";
-        public string ProgramFiles => "";
-        public string UserHome => "";
-        public string Desktop => "";
+        public string AppDirBacking { get; init; } = "";
+        public string ProgramFilesBacking { get; init; } = "";
+        public string UserHomeBacking { get; init; } = "";
+        public string DesktopBacking { get; init; } = "";
+
+        public string AppDir => AppDirBacking;
+        public string ProgramFiles => ProgramFilesBacking;
+        public string UserHome => UserHomeBacking;
+        public string Desktop => DesktopBacking;
+
         public IShortcutPal Shortcuts { get; }
         public IRegistryPal? Registry => RegistryBacking;
         public IDesktopEntryPal? DesktopEntries => null;

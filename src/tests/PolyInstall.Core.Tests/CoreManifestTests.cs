@@ -8,7 +8,7 @@ namespace PolyInstall.Core.Tests;
 public class CoreManifestTests
 {
     [Fact]
-    public void EnvironmentSubstitution_Replaces_VarAndDefault()
+    public void ApplyToJson_WithVarSyntax_ReplacesEnvironmentAndDefaults()
     {
         var json = """{"a":"x${MISSING:-d}y","b":{"c":"${FOO}"}}""";
         Environment.SetEnvironmentVariable("FOO", "bar");
@@ -25,7 +25,7 @@ public class CoreManifestTests
     }
 
     [Fact]
-    public void ManifestYaml_RoundTrip_Minimal()
+    public void ManifestYaml_WithMinimalDoc_RoundTrips()
     {
         var yaml = """
             metadata:
@@ -55,28 +55,28 @@ public class CoreManifestTests
     }
 
     [Fact]
-    public void GlobResolver_FindsFiles()
+    public void GlobResolver_WithNestedTextFiles_ReturnsRelativePaths()
     {
         var root = Path.Combine(Path.GetTempPath(), "polyinstall-glob-" + Guid.NewGuid().ToString("n"));
         Directory.CreateDirectory(Path.Combine(root, "sub"));
         File.WriteAllText(Path.Combine(root, "a.txt"), "a");
         File.WriteAllText(Path.Combine(root, "sub", "b.txt"), "b");
-        var files = GlobResolver.Collect(root, ".", ["**/*.txt"], null);
         try
         {
+            var files = GlobResolver.Collect(root, ".", ["**/*.txt"], null);
             files.Should().HaveCount(2);
             files.Select(f => f.RelativePath).Should().BeEquivalentTo("a.txt", "sub/b.txt");
         }
         finally
         {
-            try { Directory.Delete(root, true); } catch { /* ignore */ }
+            try { Directory.Delete(root, true); } catch { }
         }
     }
 
     [Theory]
     [InlineData("os.isWindows")]
     [InlineData("os.isLinux")]
-    public void ConditionEvaluator_KnownOsPredicates_DoNotThrow(string expr)
+    public void Evaluate_WithKnownOsPredicates_DoesNotThrow(string expr)
     {
         FluentActions.Invoking(() => ConditionEvaluator.Evaluate(expr)).Should().NotThrow();
     }
@@ -85,7 +85,7 @@ public class CoreManifestTests
     [InlineData("lzma")]
     [InlineData("xz")]
     [InlineData("deflate")]
-    public void ParseCompression_RejectsUnsupportedAlgorithms(string name)
+    public void ParseCompression_WithUnsupportedName_ThrowsArgumentException(string name)
     {
         FluentActions.Invoking(() => PayloadArchive.ParseCompression(name))
             .Should().Throw<ArgumentException>()
@@ -96,7 +96,7 @@ public class CoreManifestTests
     [InlineData("brotli")]
     [InlineData("gzip")]
     [InlineData("Brotli")]
-    public void ParseCompression_AcceptsBrotliAndGzip(string name)
+    public void ParseCompression_WithSupportedName_DoesNotThrow(string name)
     {
         FluentActions.Invoking(() => PayloadArchive.ParseCompression(name)).Should().NotThrow();
     }

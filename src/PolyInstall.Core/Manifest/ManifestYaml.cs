@@ -33,7 +33,6 @@ public static class ManifestYaml
         return m;
     }
 
-    // DTO mirrors YAML shape; YamlDotNet maps snake_case → PascalCase via UnderscoreNamingConvention.
     private sealed class YamlManifestDto
     {
         public ManifestMetadata? Metadata { get; set; }

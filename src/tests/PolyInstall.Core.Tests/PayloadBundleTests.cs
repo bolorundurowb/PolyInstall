@@ -9,7 +9,7 @@ namespace PolyInstall.Core.Tests;
 public class PayloadBundleTests
 {
     [Fact]
-    public void InstallPayloadTrailer_RoundTripsFooter()
+    public void InstallPayloadTrailer_WriteAndReadFooter_PreservesLengthsAndManifest()
     {
         using var ms = new MemoryStream();
         var stub = Encoding.UTF8.GetBytes("stub-exe-prefix");
@@ -40,7 +40,7 @@ public class PayloadBundleTests
     }
 
     [Fact]
-    public void InstallBundleReader_ReadFromStream_RoundTripsWithDecompression()
+    public void InstallBundleReader_FromStream_DecompressesPayloadZip()
     {
         var root = Path.Combine(Path.GetTempPath(), "polyinstall-bundle-" + Guid.NewGuid().ToString("n"));
         Directory.CreateDirectory(root);
@@ -94,13 +94,12 @@ public class PayloadBundleTests
             }
             catch
             {
-                /* ignore */
             }
         }
     }
 
     [Fact]
-    public void InstallPayloadTrailer_GetBlobOffsets_ThrowsWhenLengthsInvalid()
+    public void InstallPayloadTrailer_GetBlobOffsets_WithInvalidLengths_ThrowsInvalidOperationException()
     {
         FluentActions.Invoking(() => InstallPayloadTrailer.GetBlobOffsets(10, 100, 100))
             .Should().Throw<InvalidOperationException>()

@@ -29,15 +29,28 @@ public static class GlobResolver
         var results = new List<GlobbedFile>();
         foreach (var file in matcher.GetResultsInFullPath(fullSource))
         {
-            if (File.Exists(file))
-            {
-                var rel = Path.GetRelativePath(fullSource, file);
-                var normalized = rel.Replace('\\', '/');
-                results.Add(new GlobbedFile(normalized, file));
-            }
+            if (!File.Exists(file) || !IsPathWithinDirectory(fullSource, file))
+                continue;
+
+            var rel = Path.GetRelativePath(fullSource, file);
+            var normalized = rel.Replace('\\', '/');
+            results.Add(new GlobbedFile(normalized, file));
         }
 
         results.Sort((a, b) => string.CompareOrdinal(a.RelativePath, b.RelativePath));
         return results;
+    }
+
+    private static bool IsPathWithinDirectory(string directory, string candidatePath)
+    {
+        var root = Path.GetFullPath(directory);
+        var full = Path.GetFullPath(candidatePath);
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        var last = root[^1];
+        if (last != Path.DirectorySeparatorChar && last != Path.AltDirectorySeparatorChar)
+            root += Path.DirectorySeparatorChar;
+        return full.StartsWith(root, comparison);
     }
 }

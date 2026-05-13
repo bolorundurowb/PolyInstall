@@ -11,7 +11,7 @@ public class InstallPathResolverTests
     [InlineData(TargetOperatingSystem.Windows, @"C:\Users\bolorundurowb", @"C:\Users\bolorundurowb\SampleApp")]
     [InlineData(TargetOperatingSystem.Linux, "/home/bolorundurowb", "/home/bolorundurowb/SampleApp")]
     [InlineData(TargetOperatingSystem.MacOs, "/Users/bolorundurowb", "/Users/bolorundurowb/SampleApp")]
-    public void Expand_NormalizesForwardSlashes_ForTargetOs(
+    public void Expand_WithForwardSlashes_NormalizesSeparatorsForTargetOs(
         TargetOperatingSystem targetOs,
         string userHome,
         string expected)
@@ -27,7 +27,7 @@ public class InstallPathResolverTests
     [InlineData(TargetOperatingSystem.Windows, @"C:\Users\bolorundurowb", @"C:\Users\bolorundurowb\SampleApp")]
     [InlineData(TargetOperatingSystem.Linux, "/home/bolorundurowb", "/home/bolorundurowb/SampleApp")]
     [InlineData(TargetOperatingSystem.MacOs, "/Users/bolorundurowb", "/Users/bolorundurowb/SampleApp")]
-    public void Expand_NormalizesBackwardSlashes_ForTargetOs(
+    public void Expand_WithBackwardSlashes_NormalizesSeparatorsForTargetOs(
         TargetOperatingSystem targetOs,
         string userHome,
         string expected)
@@ -49,7 +49,7 @@ public class InstallPathResolverTests
     [InlineData("", false, TargetOperatingSystem.Windows)]
     [InlineData("   ", false, TargetOperatingSystem.Windows)]
     [InlineData("freebsd-x64", false, TargetOperatingSystem.Windows)]
-    public void TryParseInstallerTargetOperatingSystem_MapsKnownRidPrefixes(
+    public void TryParseInstallerTargetOperatingSystem_WithKnownRid_ReturnsExpectedOs(
         string? token,
         bool expectedOk,
         TargetOperatingSystem expectedOs)
@@ -61,7 +61,7 @@ public class InstallPathResolverTests
     }
 
     [Fact]
-    public void Expand_UsesInstallerTargetToken_FromManifest()
+    public void Expand_WhenInstallerTargetInBootstrap_UsesManifestRidForNormalization()
     {
         var pal = new TestPolyInstallPal(@"C:\Users\bolorundurowb");
         var manifest = new InstallManifest

@@ -6,7 +6,7 @@ namespace PolyInstall.Core.Tests;
 public class InstallStateTests
 {
     [Fact]
-    public void ProductIdHelper_IsStableForSameMetadata()
+    public void StableProductGuidString_WithIdenticalMetadata_ReturnsSameValue()
     {
         var m = new ManifestMetadata { Name = "App", Version = "1.0", Publisher = "Contoso" };
         var a = ProductIdHelper.StableProductGuidString(m);
@@ -16,7 +16,7 @@ public class InstallStateTests
     }
 
     [Fact]
-    public void ProductIdHelper_UsesExplicitIdWhenGuid()
+    public void StableProductGuidString_WithGuidId_ReturnsUpperInvariantGuid()
     {
         var id = "{11111111-1111-1111-1111-111111111111}";
         var m = new ManifestMetadata { Id = id, Name = "X", Version = "1.0" };
@@ -24,7 +24,7 @@ public class InstallStateTests
     }
 
     [Fact]
-    public void ProductIdHelper_NonGuidId_IsStableDeterministicGuid()
+    public void StableProductGuidString_WithNonGuidId_ReturnsDeterministicGuid()
     {
         var m = new ManifestMetadata { Id = "contoso-product-key", Name = "X", Version = "1.0" };
         var a = ProductIdHelper.StableProductGuidString(m);
@@ -34,7 +34,7 @@ public class InstallStateTests
     }
 
     [Fact]
-    public void InstallState_RoundTripsJson()
+    public void InstallStateIo_WriteState_ThenReadState_PreservesDocument()
     {
         var state = new InstallStateDocument
         {
@@ -62,7 +62,7 @@ public class InstallStateTests
         }
         finally
         {
-            try { Directory.Delete(installRoot, true); } catch { /* ignore */ }
+            try { Directory.Delete(installRoot, true); } catch { }
         }
     }
 }

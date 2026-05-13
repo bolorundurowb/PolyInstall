@@ -2,22 +2,11 @@ using PolyInstall.Core.Globbing;
 
 namespace PolyInstall.Core.Tests;
 
-/// <summary>
-/// Tests for <see cref="GlobResolver.Collect"/>.
-/// Each test creates its own isolated temp directory and cleans it up in a finally block.
-/// </summary>
 public class GlobResolverTests
 {
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
-
-    /// <summary>Creates a unique temp directory, writes the given relative paths into it,
-    /// and returns its full path.</summary>
     private static string MakeTempTree(params string[] relativePaths)
     {
         var root = Path.Combine(Path.GetTempPath(), "polyinstall-globtest-" + Guid.NewGuid().ToString("n"));
-        // Always create the root so callers get a valid (possibly empty) directory.
         Directory.CreateDirectory(root);
         foreach (var rel in relativePaths)
         {
@@ -30,15 +19,11 @@ public class GlobResolverTests
 
     private static void DeleteTree(string root)
     {
-        try { Directory.Delete(root, recursive: true); } catch { /* best-effort */ }
+        try { Directory.Delete(root, recursive: true); } catch { }
     }
 
-    // -------------------------------------------------------------------------
-    // Basic behaviour
-    // -------------------------------------------------------------------------
-
     [Fact]
-    public void Collect_ReturnsAllMatchingFiles_ForRecursiveGlob()
+    public void Collect_WithRecursiveGlob_ReturnsAllMatchingTextFiles()
     {
         var root = MakeTempTree("a.txt", "sub/b.txt", "sub/deep/c.txt");
         try
@@ -51,7 +36,7 @@ public class GlobResolverTests
     }
 
     [Fact]
-    public void Collect_RelativePaths_UseForwardSlashes()
+    public void Collect_WithNestedFiles_ReturnsForwardSlashRelativePaths()
     {
         var root = MakeTempTree("dir/nested/file.dat");
         try
@@ -65,7 +50,7 @@ public class GlobResolverTests
     }
 
     [Fact]
-    public void Collect_FullPath_PointsToExistingFile()
+    public void Collect_WhenMatchesExist_ReturnsAccessibleFullPaths()
     {
         var root = MakeTempTree("hello.bin");
         try
@@ -77,12 +62,8 @@ public class GlobResolverTests
         finally { DeleteTree(root); }
     }
 
-    // -------------------------------------------------------------------------
-    // Exclude patterns
-    // -------------------------------------------------------------------------
-
     [Fact]
-    public void Collect_ExcludePattern_FiltersMatchingFiles()
+    public void Collect_WithExcludePatterns_OmitsMatchingFiles()
     {
         var root = MakeTempTree("keep.txt", "skip.log", "sub/also-skip.log", "sub/keep2.txt");
         try
@@ -94,7 +75,7 @@ public class GlobResolverTests
     }
 
     [Fact]
-    public void Collect_ExcludeDirectory_FiltersAllFilesUnderIt()
+    public void Collect_WithExcludedDirectory_OmitsSubtree()
     {
         var root = MakeTempTree("include.txt", "excluded/a.txt", "excluded/b.txt");
         try
@@ -106,14 +87,9 @@ public class GlobResolverTests
         finally { DeleteTree(root); }
     }
 
-    // -------------------------------------------------------------------------
-    // Deterministic ordering
-    // -------------------------------------------------------------------------
-
     [Fact]
-    public void Collect_ResultsAreSortedByRelativePath()
+    public void Collect_WithManyFiles_ReturnsSortedRelativePaths()
     {
-        // Create in reverse alphabetical order to ensure sorting is applied.
         var root = MakeTempTree("z.txt", "m.txt", "a.txt", "sub/z.txt", "sub/a.txt");
         try
         {
@@ -125,14 +101,9 @@ public class GlobResolverTests
         finally { DeleteTree(root); }
     }
 
-    // -------------------------------------------------------------------------
-    // Source directory resolution
-    // -------------------------------------------------------------------------
-
     [Fact]
-    public void Collect_SourceDirRelativeToBase_ResolvesCorrectly()
+    public void Collect_WithRelativeSourceDir_MatchesUnderResolvedDirectory()
     {
-        // Structure: <root>/src/app.cs  — base is <root>, sourceDir is "src"
         var root = MakeTempTree("src/app.cs", "other/readme.txt");
         try
         {
@@ -144,9 +115,9 @@ public class GlobResolverTests
     }
 
     [Fact]
-    public void Collect_EmptyDirectory_ReturnsEmpty()
+    public void Collect_WithEmptyDirectory_ReturnsEmpty()
     {
-        var root = MakeTempTree(); // no files
+        var root = MakeTempTree();
         try
         {
             var results = GlobResolver.Collect(root, ".", ["**/*"], null);
@@ -156,7 +127,7 @@ public class GlobResolverTests
     }
 
     [Fact]
-    public void Collect_NoFileMatchesPattern_ReturnsEmpty()
+    public void Collect_WhenNothingMatchesPattern_ReturnsEmpty()
     {
         var root = MakeTempTree("file.txt");
         try
@@ -167,12 +138,8 @@ public class GlobResolverTests
         finally { DeleteTree(root); }
     }
 
-    // -------------------------------------------------------------------------
-    // Multiple include patterns
-    // -------------------------------------------------------------------------
-
     [Fact]
-    public void Collect_MultipleIncludePatterns_UnionResults()
+    public void Collect_WithMultipleIncludePatterns_ReturnsUnion()
     {
         var root = MakeTempTree("a.txt", "b.dll", "c.png", "d.log");
         try
@@ -183,12 +150,8 @@ public class GlobResolverTests
         finally { DeleteTree(root); }
     }
 
-    // -------------------------------------------------------------------------
-    // Error cases
-    // -------------------------------------------------------------------------
-
     [Fact]
-    public void Collect_NonExistentSourceDir_ThrowsDirectoryNotFoundException()
+    public void Collect_WithMissingSourceDirectory_ThrowsDirectoryNotFoundException()
     {
         var root = MakeTempTree("dummy.txt");
         try
@@ -201,43 +164,27 @@ public class GlobResolverTests
     }
 
     [Fact]
-    public void Collect_EmptyIncludeList_ReturnsEmpty()
+    public void Collect_WithEmptyIncludeList_ReturnsEmpty()
     {
         var root = MakeTempTree("file.txt");
         try
         {
-            // No patterns → Matcher with no includes matches nothing
             var results = GlobResolver.Collect(root, ".", [], null);
             results.Should().BeEmpty();
         }
         finally { DeleteTree(root); }
     }
 
-    // -------------------------------------------------------------------------
-    // Path-traversal safety
-    // -------------------------------------------------------------------------
-
     [Fact]
-    public void Collect_GlobPatternCannotEscapeSourceDir()
+    public void Collect_WithParentRelativeIncludePattern_ReturnsOnlyFilesUnderSourceDirectory()
     {
-        // A crafted pattern containing ".." should still only return files
-        // inside (or at) the resolved source directory. The FileSystemGlobbing
-        // Matcher doesn't traverse above its root, so the result must be empty
-        // or limited to the source dir — never files from outside.
         var root = MakeTempTree("inside.txt");
-        // Place a sentinel file one level above so we can assert it was NOT matched.
-        var sentinel = Path.Combine(Path.GetTempPath(), "polyinstall-sentinel-" + Guid.NewGuid().ToString("n") + ".txt");
-        File.WriteAllText(sentinel, "should-not-appear");
         try
         {
-            var results = GlobResolver.Collect(root, ".", ["../*.txt"], null);
-            var paths = results.Select(f => f.FullPath).ToList();
-            paths.Should().NotContain(sentinel, "glob patterns must not escape the source directory");
+            var results = GlobResolver.Collect(root, ".", ["**/*.txt", "../*.txt"], null);
+            results.Should().ContainSingle();
+            results[0].RelativePath.Should().Be("inside.txt");
         }
-        finally
-        {
-            DeleteTree(root);
-            try { File.Delete(sentinel); } catch { /* ignore */ }
-        }
+        finally { DeleteTree(root); }
     }
 }
