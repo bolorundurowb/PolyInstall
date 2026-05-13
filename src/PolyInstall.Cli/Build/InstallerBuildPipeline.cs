@@ -50,7 +50,7 @@ public sealed class InstallerBuildPipeline
         var outDir = Path.GetFullPath(Path.Combine(baseDirectory, manifest.Build.OutputDir));
         Directory.CreateDirectory(outDir);
 
-        var stubRoot = stubsRoot ?? Path.Combine(baseDirectory, "stubs");
+        var stubRoot = ResolveStubRoot(baseDirectory, stubsRoot);
         foreach (var target in manifest.Build.Targets)
         {
             ct.ThrowIfCancellationRequested();
@@ -97,6 +97,22 @@ public sealed class InstallerBuildPipeline
                 DmgPackager.Create(outPath, dmgOut, manifest.Metadata.Name);
             }
         }
+    }
+
+    /// <summary>
+    /// Resolves the stubs root: explicit <paramref name="stubsRoot"/> wins; otherwise a <c>stubs</c> directory next to
+    /// the CLI (<see cref="AppContext.BaseDirectory"/>) if present (official release zips); otherwise <c>&lt;base&gt;/stubs</c>.
+    /// </summary>
+    private static string ResolveStubRoot(string baseDirectory, string? stubsRoot)
+    {
+        if (!string.IsNullOrWhiteSpace(stubsRoot))
+            return Path.GetFullPath(stubsRoot);
+
+        var cliAdjacent = Path.Combine(AppContext.BaseDirectory, "stubs");
+        if (Directory.Exists(cliAdjacent))
+            return Path.GetFullPath(cliAdjacent);
+
+        return Path.GetFullPath(Path.Combine(baseDirectory, "stubs"));
     }
 
     private static string ResolveStubPath(InstallManifest manifest, string stubRoot, string dotnetRid)

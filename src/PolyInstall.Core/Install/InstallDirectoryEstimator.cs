@@ -16,7 +16,6 @@ public static class InstallDirectoryEstimator
             }
             catch
             {
-                // ignore locked or transient files
             }
         }
 

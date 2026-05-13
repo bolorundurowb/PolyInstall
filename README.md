@@ -54,7 +54,9 @@ and [macOS DMG](#macos-dmg).
 2. **Create a manifest** — start from `examples/polyinstall.sample.yaml` and adjust `metadata`, `files`, and
    `build.targets`.
 
-3. **Publish the runtime stub** for each RID you need (example: Windows x64):
+3. **Publish the runtime stub** for each RID you need (example: Windows x64). Skip this if you use an **official
+   GitHub release** zip: each archive includes `stubs/<rid>/` next to `polyinstall` (runtime for that RID; on Windows
+   RIDs, `PolyInstall.Uninstall.exe` as well).
 
    ```bash
    dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r win-x64 -o stubs/win-x64
@@ -66,14 +68,17 @@ and [macOS DMG](#macos-dmg).
    dotnet publish src/PolyInstall.Uninstall/PolyInstall.Uninstall.csproj -c Release -r win-x64 -o stubs/win-x64
    ```
 
-   The CLI looks for `PolyInstall.Runtime.exe` (Windows) or `PolyInstall.Runtime` (non-Windows) under `<stubs>/<rid>/`
-   by default. For Windows targets it also expects `<stubs>/<rid>/PolyInstall.Uninstall.exe`.
+   The CLI looks for `PolyInstall.Runtime.exe` (Windows) or `PolyInstall.Runtime` (non-Windows) under `<stubs>/<rid>/`.
+   For Windows targets it also expects `<stubs>/<rid>/PolyInstall.Uninstall.exe`. When you omit `--stubs`, the CLI uses
+   a `stubs` directory next to the `polyinstall` executable if it exists; otherwise it uses `<base>/stubs`.
 
 4. **Build the installer**:
 
    ```bash
    dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj -- build examples/polyinstall.sample.yaml --base examples --stubs stubs
    ```
+
+   If `polyinstall` sits beside a bundled `stubs` folder (release layout), you can omit `--stubs`.
 
    Outputs appear under `build.output_dir` from the manifest (relative to `--base`), e.g.
    `examples/dist/SampleApp-windows-x64.exe`.
@@ -125,7 +130,7 @@ The manifest is grouped into five sections. All are represented in JSON Schema; 
 | `output_dir` | Directory for built installers, relative to `--base` (default in model: `dist`). |
 | `compression` | `brotli` or `gzip` (see [Compression](#compression)). |
 | `targets` | List of **manifest tokens** (not raw .NET RIDs); see [Build targets](#build-targets). |
-| `stub_path` | Optional path to the installer stub for a target; use `{rid}` for the **.NET RID** (e.g. `C:\stubs\{rid}\PolyInstall.Runtime.exe`). If omitted, the CLI uses `--stubs/<rid>/PolyInstall.Runtime[.exe]` (and for Windows targets also expects `--stubs/<rid>/PolyInstall.Uninstall.exe`). |
+| `stub_path` | Optional path to the installer stub for a target; use `{rid}` for the **.NET RID** (e.g. `C:\stubs\{rid}\PolyInstall.Runtime.exe`). If omitted, the CLI uses `<resolved-stubs-root>/<rid>/PolyInstall.Runtime[.exe]` where the resolved stubs root is `--stubs`, or `stubs` next to `polyinstall` when present, else `<base>/stubs` (and for Windows targets also expects `PolyInstall.Uninstall.exe` in that `<rid>` folder). |
 | `windows` | Optional [Windows build options](#windows-build-options). |
 | `linux` | Optional [Linux build options](#linux-build-options). |
 | `macos` | Optional [macOS build options](#macos-build-options). |
@@ -218,7 +223,7 @@ polyinstall validate <manifest.yaml> [--base <dir>]
 | Option | Purpose |
 |--------|---------|
 | **`--base`** | Working directory used to resolve `files[].source_dir` and default `output_dir`. Defaults to the manifest file’s directory. |
-| **`--stubs`** | Root folder containing per-RID stub directories. Defaults to `<base>/stubs`. |
+| **`--stubs`** | Root folder containing per-RID stub directories. When omitted: `stubs` next to the `polyinstall` executable if that directory exists, otherwise `<base>/stubs`. |
 
 The CLI loads `schema/v1.json` from next to the built CLI assembly, or walks upward from the current base path to find `schema/v1.json`.
 
@@ -384,7 +389,7 @@ Invalid file-name characters in `metadata.name` are replaced with underscores.
 
 | Symptom | What to check |
 |---------|----------------|
-| **Stub not found** | Publish `PolyInstall.Runtime` to `--stubs/<rid>/` (and for Windows targets also publish `PolyInstall.Uninstall.exe` there) or set `build.stub_path` with `{rid}`. |
+| **Stub not found** | Publish `PolyInstall.Runtime` under `<rid>/` in the resolved stubs root (`--stubs`, or `stubs` next to `polyinstall`, or `<base>/stubs`). On Windows targets also publish `PolyInstall.Uninstall.exe` there, or set `build.stub_path` with `{rid}`. |
 | **Schema validation errors** | Run `polyinstall validate`; ensure YAML keys are snake_case and match `schema/v1.json`. |
 | **No files matched** | Check `source_dir` relative to `--base`, and `include` / `exclude` patterns. |
 | **Wrong OS** | The stub RID must match the machine (e.g. do not run a `win-x64` build on Linux). |

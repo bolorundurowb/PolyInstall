@@ -1,4 +1,5 @@
-# Release workflow builds/tests the solution and publishes the polyinstall CLI only (not installer stubs).
+# Release workflow builds/tests the solution and publishes self-contained polyinstall CLI zips with matching
+# PolyInstall.Runtime stubs (and PolyInstall.Uninstall on Windows RIDs) under stubs/<rid>/ next to the CLI.
 name: Generate Release
 
 on:
@@ -118,6 +119,22 @@ jobs:
           -p:IncludeNativeLibrariesForSelfExtract=true
           -p:DebugType=embedded
           -o "./publish/${{ matrix.artifact }}"
+
+      - name: Publish runtime stub (${{ matrix.rid }})
+        run: >
+          dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj
+          -c Release
+          -r ${{ matrix.rid }}
+          --self-contained true
+          -o "./publish/${{ matrix.artifact }}/stubs/${{ matrix.rid }}"
+
+      - name: Publish uninstall stub (Windows RIDs)
+        if: startsWith(matrix.rid, 'win-')
+        run: >
+          dotnet publish src/PolyInstall.Uninstall/PolyInstall.Uninstall.csproj
+          -c Release
+          -r ${{ matrix.rid }}
+          -o "./publish/${{ matrix.artifact }}/stubs/${{ matrix.rid }}"
 
       - name: Zip artifact
         env:

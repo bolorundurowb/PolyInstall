@@ -64,7 +64,6 @@ public static class UninstallCoordinator
         }
         catch
         {
-            // best-effort
         }
     }
 
@@ -77,7 +76,6 @@ public static class UninstallCoordinator
         }
         catch
         {
-            // best-effort
         }
     }
 
@@ -90,7 +88,6 @@ public static class UninstallCoordinator
         }
         catch
         {
-            // best-effort
         }
     }
 
@@ -98,10 +95,7 @@ public static class UninstallCoordinator
     {
         installRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(installRoot));
 
-        // Run detached and retry because Uninstall.exe is still running while this method executes.
-        // PowerShell encoded-command avoids all shell-quoting concerns; the path is embedded using
-        // PS single-quote escaping (double each single-quote) so special characters in directory
-        // names cannot break out of the string literal or inject additional commands.
+        // Uninstall.exe may still be running from installRoot; schedule a detached cleanup with retries.
         var escapedPath = installRoot.Replace("'", "''", StringComparison.Ordinal);
         var script =
             $"$d = '{escapedPath}'; " +
