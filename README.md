@@ -22,8 +22,10 @@ a **pre-published stub** — a small Avalonia-based host that extracts the paylo
 installer wizard.
 
 This document is written for **consumers**: teams who want to ship installers without adopting a separate installer
-product, and who are comfortable with YAML, the .NET CLI, and publishing self-contained or framework-dependent apps per
-runtime identifier (RID).
+product, and who are comfortable with YAML and a small command-line tool. **Prefer the self-contained `polyinstall`
+binaries from [GitHub Releases](https://github.com/bolorundurowb/PolyInstall/releases)** (each zip includes bundled
+stubs); build from source only when you contribute to PolyInstall, need unreleased changes, or want custom stub
+layouts.
 
 ## What you get
 
@@ -41,22 +43,58 @@ and [macOS DMG](#macos-dmg).
 
 ## Requirements
 
-- **.NET SDK 10** (or the version aligned with `src/Directory.Build.props` / `TargetFramework` in this repo).
-- A **64-bit** target OS matching the stubs you publish (Windows, Linux, or macOS RIDs supported in the manifest;
-  see [Build targets](#build-targets)).
-- **Windows** stubs: PowerShell available for shortcut creation when using `create_shortcut` tasks (COM via
+**Using a [GitHub Release](https://github.com/bolorundurowb/PolyInstall/releases) build (recommended)**
+
+- A **64-bit** host OS that matches the zip you download (Windows, Linux, or macOS).
+- **No .NET SDK** is required to run `polyinstall`; the published CLI is self-contained.
+- The **machine that runs your finished installer** must match the RID you built for (see [Build targets](#build-targets)).
+- **Windows** installers that use `create_shortcut` tasks expect **PowerShell** on the end user’s machine (COM via
   `WScript.Shell`).
+
+**Building PolyInstall from source** (optional; contributors and advanced setups)
+
+- **.NET SDK 10** (or the version aligned with `src/Directory.Build.props` / `TargetFramework` in this repo).
 
 ## Quick start
 
-1. **Clone or copy** this repository (or consume the published packages / tool if you publish them yourself).
+### Recommended: GitHub Releases (compiled binaries)
+
+Use the **pre-built** `polyinstall` from [GitHub Releases](https://github.com/bolorundurowb/PolyInstall/releases) instead
+of compiling this repository yourself. Pick the zip for your **host** OS (for example `polyinstall-win-x64-<tag>.zip` on
+Windows). Each archive contains a self-contained `polyinstall` executable, `schema/v1.json`, and a `stubs/` tree with
+**every** release RID (`win-x64`, `linux-x64`, `osx-arm64`) plus `PolyInstall.Uninstall.exe` under `stubs/win-x64/`.
+
+1. **Download and extract** the release zip so `polyinstall` (or `polyinstall.exe` on Windows) sits in the same folder
+   as the `stubs/` directory.
+
+2. **Author a manifest** — copy `examples/polyinstall.sample.yaml` from this repository (or start from scratch) and set
+   `metadata`, `files`, and `build.targets`.
+
+3. **Build your installer** from a shell in that extracted folder (omit `--stubs`; the CLI picks up the bundled
+   `stubs/` next to the executable):
+
+   ```bash
+   ./polyinstall build /path/to/your.manifest.yaml --base /path/to/payload-root
+   ```
+
+   On Windows, run `polyinstall.exe` instead of `./polyinstall`.
+
+4. **Run the produced `.exe`** (or non-Windows binary) on a machine that matches the target you built. It extracts to a
+   temp folder and launches the wizard.
+
+Built files land under `build.output_dir` from the manifest (relative to `--base`).
+
+### Optional: build PolyInstall from source
+
+Use this path when you contribute to PolyInstall, need an unreleased build, or want to publish your own stubs (for
+example extra RIDs not bundled in releases).
+
+1. **Clone** this repository.
 
 2. **Create a manifest** — start from `examples/polyinstall.sample.yaml` and adjust `metadata`, `files`, and
    `build.targets`.
 
-3. **Publish the runtime stub** for each RID you need (example: Windows x64). Skip this if you use an **official
-   GitHub release** zip: each archive includes `stubs/<rid>/` next to `polyinstall` (runtime for that RID; on Windows
-   RIDs, `PolyInstall.Uninstall.exe` as well).
+3. **Publish the runtime stub** for each RID you need (example: Windows x64):
 
    ```bash
    dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r win-x64 -o stubs/win-x64
@@ -77,11 +115,6 @@ and [macOS DMG](#macos-dmg).
    ```bash
    dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj -- build examples/polyinstall.sample.yaml --base examples --stubs stubs
    ```
-
-   If `polyinstall` sits beside a bundled `stubs` folder (release layout), you can omit `--stubs`.
-
-   Outputs appear under `build.output_dir` from the manifest (relative to `--base`), e.g.
-   `examples/dist/SampleApp-windows-x64.exe`.
 
 5. **Run the produced `.exe`** (or non-Windows binary) on a matching OS. It will extract to a temp folder and launch the
    wizard.
@@ -208,7 +241,10 @@ This is intended for **CI and local paths**, not for security-sensitive runtime 
 
 ## CLI reference
 
-Invoke the CLI via `dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj --` or by running the built `polyinstall.dll` with `dotnet polyinstall.dll`.
+**Release builds:** run `polyinstall` or `polyinstall.exe` from the extracted [GitHub Release](https://github.com/bolorundurowb/PolyInstall/releases) zip (self-contained; no `dotnet` prefix).
+
+**From source:** invoke via `dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj --` or run the built
+`polyinstall.dll` with `dotnet polyinstall.dll`.
 
 ```text
 polyinstall build <manifest.yaml> [--base <dir>] [--stubs <dir>]
@@ -242,7 +278,10 @@ Manifest `build.targets` entries use **tokens** that map to .NET RIDs:
 | `osx-x64` | `osx-x64` |
 | `osx-arm64` | `osx-arm64` |
 
-For each token, publish the runtime once:
+If you use **official release** zips, the bundled `stubs/` already contains these RIDs; you only need the commands
+below when you **publish stubs yourself** (from-source workflow or custom RIDs).
+
+For each token you support outside bundled stubs, publish the runtime once:
 
 ```bash
 dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r linux-x64 -o stubs/linux-x64
@@ -410,10 +449,12 @@ See **`THIRD_PARTY_NOTICES.txt`** in the repository for NuGet components used by
 
 ## Relationship to this repository
 
-Consumers typically:
+**Prefer [GitHub Releases](https://github.com/bolorundurowb/PolyInstall/releases):** download the zip for your host OS
+and use the bundled `polyinstall` and `stubs/` instead of building this repository from source.
 
-1. Depend on a **released** `polyinstall` tool and/or packages, **or**
-2. **Vendor** this repository (or a fork) and run `dotnet publish` / `dotnet run` from source as shown above.
+Only if you need unreleased behaviour, private forks, or custom stub layouts should you **vendor** this repository (or a
+fork) and run `dotnet publish` / `dotnet run` from source as described in [Quick start](#quick-start) and
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 If you embed PolyInstall into your own product, keep the **schema version** (`schema/v1.json`), **installer stub**, and (on Windows) **`PolyInstall.Uninstall`** outputs in sync — mismatches between the CLI bundle format and an older stub or uninstall host can fail at the magic/footer check, during decompression, or when the bundled uninstall path is missing.
 

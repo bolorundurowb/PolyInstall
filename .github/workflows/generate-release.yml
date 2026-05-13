@@ -1,5 +1,6 @@
-# Release workflow builds/tests the solution and publishes self-contained polyinstall CLI zips with matching
-# PolyInstall.Runtime stubs (and PolyInstall.Uninstall on Windows RIDs) under stubs/<rid>/ next to the CLI.
+# Release workflow builds/tests the solution and publishes self-contained polyinstall CLI zips. Each zip bundles
+# PolyInstall.Runtime under stubs/<rid>/ for every release RID (win-x64, linux-x64, osx-arm64), plus
+# PolyInstall.Uninstall under stubs/win-x64/, so any platform's CLI can build installers for all targets.
 name: Generate Release
 
 on:
@@ -120,21 +121,33 @@ jobs:
           -p:DebugType=embedded
           -o "./publish/${{ matrix.artifact }}"
 
-      - name: Publish runtime stub (${{ matrix.rid }})
-        run: >
-          dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj
-          -c Release
-          -r ${{ matrix.rid }}
-          --self-contained true
-          -o "./publish/${{ matrix.artifact }}/stubs/${{ matrix.rid }}"
+      - name: Publish runtime stubs (all release RIDs)
+        shell: bash
+        env:
+          ARTIFACT: ${{ matrix.artifact }}
+        run: |
+          set -euo pipefail
+          stubs_root="./publish/${ARTIFACT}/stubs"
+          for rid in win-x64 linux-x64 osx-arm64; do
+            echo "Publishing PolyInstall.Runtime for ${rid}..."
+            dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj \
+              -c Release \
+              -r "${rid}" \
+              --self-contained true \
+              -o "${stubs_root}/${rid}"
+          done
 
-      - name: Publish uninstall stub (Windows RIDs)
-        if: startsWith(matrix.rid, 'win-')
-        run: >
-          dotnet publish src/PolyInstall.Uninstall/PolyInstall.Uninstall.csproj
-          -c Release
-          -r ${{ matrix.rid }}
-          -o "./publish/${{ matrix.artifact }}/stubs/${{ matrix.rid }}"
+      - name: Publish Windows uninstall stub (into stubs/win-x64)
+        shell: bash
+        env:
+          ARTIFACT: ${{ matrix.artifact }}
+        run: |
+          set -euo pipefail
+          stubs_root="./publish/${ARTIFACT}/stubs"
+          dotnet publish src/PolyInstall.Uninstall/PolyInstall.Uninstall.csproj \
+            -c Release \
+            -r win-x64 \
+            -o "${stubs_root}/win-x64"
 
       - name: Zip artifact
         env:
