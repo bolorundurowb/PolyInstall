@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Reflection;
+using System.Text.Json;
 using PolyInstall.Cli.Build;
 using PolyInstall.Cli.Validation;
 using PolyInstall.Core.Manifest;
@@ -6,9 +7,19 @@ using PolyInstall.Core.Manifest;
 static void Usage()
 {
     Console.WriteLine("""
+        polyinstall --version
         polyinstall build <manifest.yaml> [--base <dir>] [--stubs <dir>]
         polyinstall validate <manifest.yaml> [--base <dir>]
         """);
+}
+
+static string GetCliVersion()
+{
+    var asm = Assembly.GetExecutingAssembly();
+    var informational = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+    if (!string.IsNullOrEmpty(informational))
+        return informational;
+    return asm.GetName().Version?.ToString() ?? "0.0.0";
 }
 
 static string? Take(ref int i, string[] args)
@@ -20,6 +31,12 @@ static string? Take(ref int i, string[] args)
 
 try
 {
+    if (args.Length > 0 && args[0].Equals("--version", StringComparison.OrdinalIgnoreCase))
+    {
+        Console.WriteLine(GetCliVersion());
+        return 0;
+    }
+
     if (args.Length < 2)
     {
         Usage();
