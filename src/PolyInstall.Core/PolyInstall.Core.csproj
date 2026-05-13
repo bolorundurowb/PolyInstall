@@ -4,7 +4,7 @@
     <Description>Shared manifest models, parsing, globbing, and payload format for PolyInstall.</Description>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.8" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
 </Project>
