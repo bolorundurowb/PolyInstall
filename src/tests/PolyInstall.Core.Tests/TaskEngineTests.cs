@@ -9,6 +9,7 @@ public class TaskEngineTests
     [Fact]
     public void RunPhase_WhenRequireEmpty_CreatesShortcut()
     {
+        var s = Path.DirectorySeparatorChar;
         var pal = new RecordingPal();
         var tasks = new[]
         {
@@ -29,10 +30,10 @@ public class TaskEngineTests
 
         pal.ShortcutCalls.Should().ContainSingle();
         var c = pal.ShortcutCalls[0];
-        c.Target.Should().Be(@"C:\app\app.exe");
-        c.Shortcut.Should().Be(@"C:\Public\app.lnk");
+        c.Target.Should().Be($"C:{s}app{s}app.exe");
+        c.Shortcut.Should().Be($"C:{s}Public{s}app.lnk");
         c.Description.Should().Be("App");
-        c.Icon.Should().Be(@"C:\app\app.ico");
+        c.Icon.Should().Be($"C:{s}app{s}app.ico");
     }
 
     [Fact]
@@ -103,10 +104,11 @@ public class TaskEngineTests
     [Fact]
     public void RunPhase_WhenCreateShortcutContainsPlaceholders_ExpandsPaths()
     {
+        var s = Path.DirectorySeparatorChar;
         var pal = new RecordingPal
         {
-            AppDirBacking = @"C:\Install\Open Exam Suite",
-            DesktopBacking = @"C:\Users\Test\Desktop",
+            AppDirBacking = $"C:{s}Install{s}Open Exam Suite",
+            DesktopBacking = $"C:{s}Users{s}Test{s}Desktop",
         };
         var tasks = new[]
         {
@@ -125,8 +127,8 @@ public class TaskEngineTests
 
         pal.ShortcutCalls.Should().ContainSingle();
         var c = pal.ShortcutCalls[0];
-        c.Target.Should().Be(@"C:\Install\Open Exam Suite\Simulator\app.exe");
-        c.Shortcut.Should().Be(@"C:\Users\Test\Desktop\Sim.lnk");
+        c.Target.Should().Be($"C:{s}Install{s}Open Exam Suite{s}Simulator{s}app.exe");
+        c.Shortcut.Should().Be($"C:{s}Users{s}Test{s}Desktop{s}Sim.lnk");
     }
 
     private sealed class RecordingPal : IPolyInstallPal
