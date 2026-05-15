@@ -67,9 +67,8 @@ jobs:
         with:
           dotnet-version: |
             10.0.x
-      - name: Install Linux packaging tools
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y squashfs-tools
+      # squashfs-tools / mksquashfs are only needed when running polyinstall to build AppImages
+      # (manifest linux.package: appimage). dotnet restore/build/test does not invoke that path.
       - run: dotnet restore src/PolyInstall.slnx
       - run: dotnet build src/PolyInstall.slnx -c Release --no-restore
       - name: Test with coverage
@@ -107,8 +106,8 @@ jobs:
           dotnet-version: |
             10.0.x
 
-      - name: Install squashfs-tools (AppImage / CLI packaging)
-        run: sudo apt-get update && sudo apt-get install -y squashfs-tools
+      # mksquashfs is only required on hosts that run polyinstall with AppImage packaging enabled,
+      # not for dotnet publish of the CLI itself (see AppImagePackager / InstallerBuildPipeline).
 
       - name: Publish CLI (${{ matrix.rid }})
         run: >
