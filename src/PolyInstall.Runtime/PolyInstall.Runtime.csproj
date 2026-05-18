@@ -6,6 +6,10 @@
     <!-- Win32 PE icon must be .ico; keep in sync with assets/polyinstall-icon.png (regenerate .ico when PNG changes). -->
     <ApplicationIcon>..\..\assets\polyinstall-icon.ico</ApplicationIcon>
     <Description>PolyInstall installer stub host.</Description>
+    <!-- Append-bundle installers embed only this executable; must be single-file self-contained. -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <SelfContained>true</SelfContained>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />

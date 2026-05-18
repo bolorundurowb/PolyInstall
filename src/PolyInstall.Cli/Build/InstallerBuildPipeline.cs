@@ -84,7 +84,9 @@ public sealed class InstallerBuildPipeline
             if (!File.Exists(stubPath))
                 throw new FileNotFoundException($"Stub binary not found for target '{target}' (RID {rid}): {stubPath}. Publish PolyInstall.Runtime for this RID into stubs/{rid}/.");
 
-            BuildLog.Info($"Using runtime stub: {stubPath} ({BuildLog.FormatBytes(new FileInfo(stubPath).Length)})");
+            StubPublishValidator.ValidateRuntimeStub(stubPath);
+            var stubSize = new FileInfo(stubPath).Length;
+            BuildLog.Info($"Using runtime stub: {stubPath} ({BuildLog.FormatBytes(stubSize)})");
 
             var isWinTarget = rid.StartsWith("win-", StringComparison.OrdinalIgnoreCase);
             var ext = isWinTarget ? ".exe" : "";
