@@ -1,10 +1,24 @@
-# PolyInstall
+<div align="center">
+  <img
+    src="https://raw.githubusercontent.com/bolorundurowb/PolyInstall/refs/heads/master/assets/polyinstall-logo.svg"
+    alt="poly install logo"  />
+  <h1 align="center">PolyInstall</h1>
+</div>
+
+<p align="center">
+  <a href="https://github.com/bolorundurowb/PolyInstall/actions/workflows/build-and-test.yml">
+    <img src="https://github.com/bolorundurowb/PolyInstall/actions/workflows/build-and-test.yml/badge.svg" alt="Build, Test & Coverage" />
+  </a>
+  <a href="./LICENSE">
+    <img alt="GitHub License" src="https://img.shields.io/github/license/bolorundurowb/polyinstall">
+  </a>
+</p>
 
 **PolyInstall** is a powerful, manifest-driven installer generator. It allows you to package your applications into
 cross-platform, self-extracting binaries using a single YAML configuration file. With a modern, customisable
 installation UI built on **Avalonia**, PolyInstall simplifies the deployment process for Windows, Linux, and macOS.
 
-> This repository was developed with the help of **generative AI** tools (for example, assisted coding and drafting).
+> This project was developed with the help of **generative AI** tools.
 > Treat the code, manifests, and documentation accordingly: verify behaviour, review changes before you rely on them in
 > production, and apply your own judgement and testing.
 
