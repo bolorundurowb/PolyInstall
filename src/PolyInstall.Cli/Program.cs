@@ -8,7 +8,7 @@ static void Usage()
 {
     Console.WriteLine("""
         polyinstall --version
-        polyinstall build <manifest.yaml> [--base <dir>] [--stubs <dir>]
+        polyinstall build <manifest.yaml> [--base <dir>] [--stubs <dir>] [--verbose]
         polyinstall validate <manifest.yaml> [--base <dir>]
         """);
 }
@@ -53,6 +53,7 @@ try
     var manifestPath = Path.GetFullPath(args[1]);
     string? baseDir = null;
     string? stubsDir = null;
+    var verbose = false;
     for (var i = 2; i < args.Length; i++)
     {
         switch (args[i].ToLowerInvariant())
@@ -62,6 +63,10 @@ try
                 break;
             case "--stubs":
                 stubsDir = Take(ref i, args);
+                break;
+            case "--verbose":
+            case "-v":
+                verbose = true;
                 break;
             default:
                 Console.Error.WriteLine($"Unknown option: {args[i]}");
@@ -101,6 +106,7 @@ try
             return 0;
         }
         case "build":
+            BuildLog.Verbose = verbose;
             await InstallerBuildPipeline.RunAsync(manifestPath, basePath, stubsDir, default);
             return 0;
         default:

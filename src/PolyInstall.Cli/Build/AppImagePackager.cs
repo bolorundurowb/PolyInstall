@@ -30,13 +30,16 @@ public static class AppImagePackager
                 "AppImage packaging must run on Linux: mksquashfs (squashfs-tools) is required. Build on a Linux host or CI agent.");
         }
 
+        BuildLog.Info("AppImage: resolving mksquashfs…");
         var mksquashfs = FindOnPath("mksquashfs");
         if (mksquashfs is null)
             throw new InvalidOperationException("mksquashfs not found on PATH. Install squashfs-tools (e.g. apt install squashfs-tools).");
+        BuildLog.VerboseLine($"AppImage: mksquashfs at {mksquashfs}");
 
         var rid = RidMapping.ToDotNetRid(manifestTargetToken);
         if (!RidToRuntimeUrl.TryGetValue(rid, out var runtimeUrl))
             throw new InvalidOperationException($"No AppImage runtime URL mapped for RID '{rid}'.");
+        BuildLog.VerboseLine($"AppImage: runtime URL for {rid}: {runtimeUrl}");
 
         var binName = Path.GetFileName(bundleElfPath);
         var appDir = Path.Combine(Path.GetTempPath(), "polyinstall-appdir-" + Guid.NewGuid().ToString("n"));
@@ -45,6 +48,7 @@ public static class AppImagePackager
         var outPath = Path.Combine(outputDirectory, outName);
         try
         {
+            BuildLog.Info($"AppImage: staging AppDir at {appDir}");
             var usrBin = Path.Combine(appDir, "usr", "bin");
             Directory.CreateDirectory(usrBin);
             File.Copy(bundleElfPath, Path.Combine(usrBin, binName), overwrite: true);
@@ -78,8 +82,10 @@ public static class AppImagePackager
                 ct);
             ChmodExec(appRunPath);
 
+            BuildLog.Info("AppImage: creating squashfs image…");
             RunMksquashfs(mksquashfs, appDir, squashfs, ct);
 
+            BuildLog.Info("AppImage: assembling type-2 image (runtime + squashfs)…");
             await using var outFs = File.Create(outPath);
             await using (var runtimeFs = await OpenRuntimeAsync(runtimeUrl, ct))
                 await runtimeFs.CopyToAsync(outFs, ct);
@@ -88,7 +94,7 @@ public static class AppImagePackager
 
             ChmodExec(outPath);
 
-            Console.WriteLine($"Built {outPath}");
+            BuildLog.Info($"Built AppImage {outPath} ({BuildLog.FormatBytes(new FileInfo(outPath).Length)})");
         }
         finally
         {

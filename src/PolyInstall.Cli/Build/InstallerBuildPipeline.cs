@@ -24,20 +24,35 @@ public sealed class InstallerBuildPipeline
         CancellationToken ct)
     {
         baseDirectory = Path.GetFullPath(baseDirectory);
+        manifestPath = Path.GetFullPath(manifestPath);
+        BuildLog.Info($"Building from manifest {manifestPath}");
+        BuildLog.Info($"Base directory: {baseDirectory}");
+        if (!string.IsNullOrWhiteSpace(stubsRoot))
+            BuildLog.VerboseLine($"Stubs directory (explicit): {Path.GetFullPath(stubsRoot)}");
+
+        BuildLog.Info("Reading and parsing manifest…");
         var yaml = await File.ReadAllTextAsync(manifestPath, ct);
         var manifest = ManifestYaml.Parse(yaml);
+        BuildLog.Info("Applying environment variable substitution…");
         manifest = EnvironmentSubstitution.ApplyToManifest(manifest);
+        BuildLog.VerboseLine($"Product: {manifest.Metadata.Name} v{manifest.Metadata.Version}");
 
         var schemaPath = Path.Combine(AppContext.BaseDirectory, "schema", "v1.json");
         if (!File.Exists(schemaPath))
             schemaPath = Path.Combine(FindRepoSchema(), "v1.json");
+        BuildLog.Info($"Validating manifest against schema ({schemaPath})…");
         var json = JsonSerializer.Serialize(manifest, InstallManifest.JsonOptions);
         ManifestJsonValidator.Validate(json, schemaPath);
+        BuildLog.Info("Manifest validation passed.");
 
+        BuildLog.Info("Collecting files from manifest entries…");
         var baseFiles = new List<(string EntryName, string FullPath)>();
         foreach (var entry in manifest.Files)
         {
             var globs = GlobResolver.Collect(baseDirectory, entry.SourceDir, entry.Include, entry.Exclude);
+            var excludeList = entry.Exclude is { } ex ? string.Join(", ", ex) : "(none)";
+            BuildLog.VerboseLine(
+                $"  {entry.SourceDir}: {globs.Count} file(s) (include: {string.Join(", ", entry.Include)}; exclude: {excludeList})");
             foreach (var g in globs)
                 baseFiles.Add((g.RelativePath, g.FullPath));
         }
@@ -45,20 +60,31 @@ public sealed class InstallerBuildPipeline
         if (baseFiles.Count == 0)
             throw new InvalidOperationException("No files matched manifest files entries; nothing to pack.");
 
+        BuildLog.Info($"Collected {baseFiles.Count} file(s) for the payload.");
+
         var compression = PayloadArchive.ParseCompression(manifest.Build.Compression);
+        BuildLog.Info($"Payload compression: {compression}");
 
         var outDir = Path.GetFullPath(Path.Combine(baseDirectory, manifest.Build.OutputDir));
         Directory.CreateDirectory(outDir);
+        BuildLog.Info($"Output directory: {outDir}");
 
         var stubRoot = ResolveStubRoot(baseDirectory, stubsRoot);
+        BuildLog.Info($"Stubs root: {stubRoot}");
+        BuildLog.Info($"Build targets: {string.Join(", ", manifest.Build.Targets)}");
+
         foreach (var target in manifest.Build.Targets)
         {
             ct.ThrowIfCancellationRequested();
+            BuildLog.Info($"--- Target: {target} ---");
             manifest.Build.InstallerTarget = target;
             var rid = RidMapping.ToDotNetRid(target);
+            BuildLog.VerboseLine($"  .NET RID: {rid}");
             var stubPath = ResolveStubPath(manifest, stubRoot, rid);
             if (!File.Exists(stubPath))
                 throw new FileNotFoundException($"Stub binary not found for target '{target}' (RID {rid}): {stubPath}. Publish PolyInstall.Runtime for this RID into stubs/{rid}/.");
+
+            BuildLog.Info($"Using runtime stub: {stubPath} ({BuildLog.FormatBytes(new FileInfo(stubPath).Length)})");
 
             var isWinTarget = rid.StartsWith("win-", StringComparison.OrdinalIgnoreCase);
             var ext = isWinTarget ? ".exe" : "";
@@ -70,8 +96,11 @@ public sealed class InstallerBuildPipeline
             var manifestJson = JsonSerializer.Serialize(manifest, InstallManifest.JsonOptions);
             var targetFiles = new List<(string EntryName, string FullPath)>(baseFiles);
             AddTargetSpecificFiles(targetFiles, stubRoot, rid);
+            BuildLog.Info($"Packing {targetFiles.Count} file(s) into zip payload…");
             var compressed = await Task.Run(() => PayloadArchive.PackAndCompress(targetFiles, compression, ct), ct);
+            BuildLog.Info($"Compressed payload: {BuildLog.FormatBytes(compressed.LongLength)}");
 
+            BuildLog.Info($"Writing installer: {outPath}");
             await using (var stubFs = File.OpenRead(stubPath))
             await using (var outFs = File.Create(outPath))
             {
@@ -82,11 +111,13 @@ public sealed class InstallerBuildPipeline
                 InstallPayloadTrailer.WriteFooter(outFs, mBytes.Length, compressed.LongLength);
             }
 
-            Console.WriteLine($"Built {outPath}");
+            var totalSize = new FileInfo(outPath).Length;
+            BuildLog.Info($"Built {outPath} ({BuildLog.FormatBytes(totalSize)})");
 
             if (target.StartsWith("linux-", StringComparison.OrdinalIgnoreCase)
                 && string.Equals(manifest.Build.Linux?.Package, "appimage", StringComparison.OrdinalIgnoreCase))
             {
+                BuildLog.Info("Packaging AppImage…");
                 await AppImagePackager.CreateAsync(outPath, manifest, target, safeName, outDir, baseDirectory, ct);
             }
 
@@ -94,9 +125,12 @@ public sealed class InstallerBuildPipeline
                 && string.Equals(manifest.Build.Macos?.Package, "dmg", StringComparison.OrdinalIgnoreCase))
             {
                 var dmgOut = Path.Combine(outDir, $"{safeName}-{target}.dmg");
+                BuildLog.Info($"Packaging DMG: {dmgOut}");
                 DmgPackager.Create(outPath, dmgOut, manifest.Metadata.Name);
             }
         }
+
+        BuildLog.Info("Build finished.");
     }
 
     /// <summary>
@@ -110,9 +144,14 @@ public sealed class InstallerBuildPipeline
 
         var cliAdjacent = Path.Combine(AppContext.BaseDirectory, "stubs");
         if (Directory.Exists(cliAdjacent))
+        {
+            BuildLog.VerboseLine($"Using stubs directory next to CLI: {cliAdjacent}");
             return Path.GetFullPath(cliAdjacent);
+        }
 
-        return Path.GetFullPath(Path.Combine(baseDirectory, "stubs"));
+        var baseStubs = Path.GetFullPath(Path.Combine(baseDirectory, "stubs"));
+        BuildLog.VerboseLine($"Using stubs under base directory: {baseStubs}");
+        return baseStubs;
     }
 
     private static string ResolveStubPath(InstallManifest manifest, string stubRoot, string dotnetRid)
@@ -146,7 +185,10 @@ public sealed class InstallerBuildPipeline
         var payloadEntry = $"{InstallStatePaths.PolyDirName}/{InstallStatePaths.ToolsDirName}/{InstallStatePaths.UninstallPayloadFileName}";
         if (files.Any(f => string.Equals(f.EntryName, payloadEntry, StringComparison.OrdinalIgnoreCase)))
             throw new InvalidOperationException($"Payload already contains reserved path '{payloadEntry}'.");
+
         files.Add((payloadEntry, uninstallStubPath));
+        BuildLog.Info($"Added Windows uninstall stub to payload: {payloadEntry}");
+        BuildLog.VerboseLine($"  Source: {uninstallStubPath}");
     }
 
     private static string ResolveUninstallStubPath(string stubRoot, string dotnetRid)

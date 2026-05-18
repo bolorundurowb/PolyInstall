@@ -15,6 +15,7 @@ public static class DmgPackager
         var stage = Path.Combine(Path.GetTempPath(), "polyinstall-dmg-" + Guid.NewGuid().ToString("n"));
         try
         {
+            BuildLog.Info($"DMG: staging bundle at {stage}");
             Directory.CreateDirectory(stage);
             var name = Path.GetFileName(bundleMachOPath);
             File.Copy(bundleMachOPath, Path.Combine(stage, name), overwrite: true);
@@ -38,6 +39,7 @@ public static class DmgPackager
             psi.ArgumentList.Add("-ov");
             psi.ArgumentList.Add(outputDmgPath);
 
+            BuildLog.Info($"DMG: running hdiutil create → {outputDmgPath}");
             using var p = Process.Start(psi) ?? throw new InvalidOperationException("Could not start hdiutil.");
             p.WaitForExit();
             if (p.ExitCode != 0)
@@ -47,7 +49,7 @@ public static class DmgPackager
                 throw new InvalidOperationException($"hdiutil failed ({p.ExitCode}): {err}\n{o}");
             }
 
-            Console.WriteLine($"Built {outputDmgPath}");
+            BuildLog.Info($"Built DMG {outputDmgPath} ({BuildLog.FormatBytes(new FileInfo(outputDmgPath).Length)})");
         }
         finally
         {
