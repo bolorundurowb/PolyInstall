@@ -592,6 +592,7 @@
         <a href="#installation">Install</a>
         <a href="#quick-start">Quick start</a>
         <a href="#advanced">Advanced</a>
+        <a href="#schema-reference">Schema</a>
         <a href="#faq">FAQ</a>
         <a href="#contributing">Contribute</a>
       </nav>
@@ -658,8 +659,9 @@ polyinstall validate manifest.yaml</code></pre>
         <a href="#installation">3. Installation guide</a>
         <a href="#quick-start">4. Quick start</a>
         <a href="#advanced">5. Advanced usage</a>
-        <a href="#faq">6. Troubleshooting and FAQ</a>
-        <a href="#contributing">7. Contributing and support</a>
+        <a href="#schema-reference">6. Schema reference</a>
+        <a href="#faq">7. Troubleshooting and FAQ</a>
+        <a href="#contributing">8. Contributing and support</a>
       </aside>
 
       <main>
@@ -1063,12 +1065,16 @@ tasks:
 
           <div class="grid two" style="margin-top: 1rem;">
             <div class="card">
-              <h3>Build target tokens</h3>
+              <h3>Custom stub RID note</h3>
+              <p>
+                Most users only need the manifest target tokens. The .NET runtime identifiers matter when you publish
+                your own stubs or set <code>build.stub_path</code>; otherwise the release archive handles the mapping.
+              </p>
               <table>
                 <thead>
                   <tr>
                     <th>Manifest token</th>
-                    <th>.NET RID</th>
+                    <th>Stub folder</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1161,8 +1167,347 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
           </table>
         </section>
 
+        <section class="section" id="schema-reference">
+          <span class="eyebrow">6. Schema reference</span>
+          <h2>Manifest options in detail</h2>
+          <p class="section-intro">
+            PolyInstall manifests are YAML documents that validate against the published schema at
+            <code>https://bolorundurowb.github.io/PolyInstall/schema/v1.json</code>. Keys use snake_case and unknown
+            properties are rejected, so this section explains the intended purpose of each supported option.
+          </p>
+
+          <div class="callout">
+            <strong>Recommended schema header</strong>
+            Add this comment to the top of a manifest to enable YAML language server completion and validation.
+            <pre><code class="language-yaml"># yaml-language-server: $schema=https://bolorundurowb.github.io/PolyInstall/schema/v1.json</code></pre>
+          </div>
+
+          <h3>Root object</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>metadata</code></td>
+                <td>object</td>
+                <td>Product identity used by output naming, UI labels, registry metadata, and user-facing installer text.</td>
+              </tr>
+              <tr>
+                <td><code>build</code></td>
+                <td>object</td>
+                <td>Controls output location, compression, target platforms, stubs, and platform-specific packaging.</td>
+              </tr>
+              <tr>
+                <td><code>ui</code></td>
+                <td>object</td>
+                <td>Configures the wizard theme, branding assets, and ordered installer pages.</td>
+              </tr>
+              <tr>
+                <td><code>files</code></td>
+                <td>array</td>
+                <td>Defines one or more payload file groups using source directories and glob patterns.</td>
+              </tr>
+              <tr>
+                <td><code>tasks</code></td>
+                <td>object or null</td>
+                <td>Optional lifecycle actions that run before or after install and uninstall phases.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 style="margin-top: 1.6rem;">metadata</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>metadata.name</code></td>
+                <td>string</td>
+                <td>Display name for the product. It is also used when PolyInstall derives output filenames.</td>
+              </tr>
+              <tr>
+                <td><code>metadata.version</code></td>
+                <td>string</td>
+                <td>Product version shown in metadata and packaging surfaces. Semantic versioning is recommended.</td>
+              </tr>
+              <tr>
+                <td><code>metadata.id</code></td>
+                <td>string or null</td>
+                <td>Stable product identifier. Use a reverse-DNS value, GUID, or another ID that will not change between releases.</td>
+              </tr>
+              <tr>
+                <td><code>metadata.publisher</code></td>
+                <td>string or null</td>
+                <td>Publisher or organisation name shown in UI and platform metadata where supported.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 style="margin-top: 1.6rem;">build</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>build.output_dir</code></td>
+                <td>string</td>
+                <td>Directory where generated installers are written, resolved relative to <code>--base</code>.</td>
+              </tr>
+              <tr>
+                <td><code>build.compression</code></td>
+                <td>string</td>
+                <td>Payload compression format. Use <code>brotli</code> for the default compact output or <code>gzip</code> when required.</td>
+              </tr>
+              <tr>
+                <td><code>build.targets</code></td>
+                <td>array of strings</td>
+                <td>Installer targets to produce, such as <code>windows-x64</code>, <code>linux-x64</code>, or <code>osx-arm64</code>.</td>
+              </tr>
+              <tr>
+                <td><code>build.installer_target</code></td>
+                <td>string or null</td>
+                <td>Optional target hint used by the runtime when it needs one specific installer target context.</td>
+              </tr>
+              <tr>
+                <td><code>build.stub_path</code></td>
+                <td>string or null</td>
+                <td>Advanced override for locating runtime stubs. Supports <code>{rid}</code> when you manage custom stub folders.</td>
+              </tr>
+              <tr>
+                <td><code>build.windows</code></td>
+                <td>object or null</td>
+                <td>Windows-specific install and Add/Remove Programs options.</td>
+              </tr>
+              <tr>
+                <td><code>build.linux</code></td>
+                <td>object or null</td>
+                <td>Linux-specific packaging options.</td>
+              </tr>
+              <tr>
+                <td><code>build.macos</code></td>
+                <td>object or null</td>
+                <td>macOS-specific packaging options.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="grid three" style="margin-top: 1rem;">
+            <div class="card">
+              <h3>Windows options</h3>
+              <p><code>install_scope</code> accepts <code>user</code> or <code>machine</code>. User scope writes per-user registration; machine scope writes to HKLM and requires elevation.</p>
+              <p><code>register_arp</code> controls whether Windows Add/Remove Programs registration and the dedicated uninstaller are installed.</p>
+            </div>
+            <div class="card">
+              <h3>Linux options</h3>
+              <p><code>package</code> accepts <code>none</code> or <code>appimage</code>. AppImage output requires a Linux host with <code>mksquashfs</code>.</p>
+            </div>
+            <div class="card">
+              <h3>macOS options</h3>
+              <p><code>package</code> accepts <code>none</code> or <code>dmg</code>. DMG output requires macOS because the build invokes <code>hdiutil</code>.</p>
+            </div>
+          </div>
+
+          <h3 style="margin-top: 1.6rem;">ui</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>ui.theme</code></td>
+                <td>string</td>
+                <td>Wizard theme. Use <code>light</code>, <code>dark</code>, or <code>system</code>.</td>
+              </tr>
+              <tr>
+                <td><code>ui.logo_path</code></td>
+                <td>string or null</td>
+                <td>Optional path to an SVG or raster logo inside the extracted payload.</td>
+              </tr>
+              <tr>
+                <td><code>ui.assets</code></td>
+                <td>array or null</td>
+                <td>Optional named assets with <code>id</code> and <code>path</code>, resolved from the extracted payload.</td>
+              </tr>
+              <tr>
+                <td><code>ui.wizard_steps</code></td>
+                <td>array</td>
+                <td>Ordered pages shown by the installer wizard. Include a <code>progress</code> step when files should be copied during the wizard.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 style="margin-top: 1.6rem;">wizard_steps entries</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>type</code></td>
+                <td>string</td>
+                <td>Step kind. Common values are <code>welcome</code>, <code>eula</code>, <code>destination</code>, <code>progress</code>, and <code>finish</code>.</td>
+              </tr>
+              <tr>
+                <td><code>title</code></td>
+                <td>string or null</td>
+                <td>Heading shown for that wizard step.</td>
+              </tr>
+              <tr>
+                <td><code>source</code></td>
+                <td>string or null</td>
+                <td>Content source for steps that read a file, such as an <code>eula</code> licence page.</td>
+              </tr>
+              <tr>
+                <td><code>default_path</code></td>
+                <td>string or null</td>
+                <td>Initial destination path for <code>destination</code> steps. Supports placeholders such as <code>{UserHome}</code>.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 style="margin-top: 1.6rem;">files entries</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>source_dir</code></td>
+                <td>string</td>
+                <td>Root directory to scan, resolved relative to <code>--base</code>.</td>
+              </tr>
+              <tr>
+                <td><code>include</code></td>
+                <td>array of strings</td>
+                <td>Glob patterns to include in the payload. Use <code>"**/*"</code> to include everything under <code>source_dir</code>.</td>
+              </tr>
+              <tr>
+                <td><code>exclude</code></td>
+                <td>array or null</td>
+                <td>Optional glob patterns removed from the included set, useful for debug symbols, maps, caches, or temporary files.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 style="margin-top: 1.6rem;">tasks</h3>
+          <p>
+            Lifecycle task arrays are optional. Install tasks run around file copy. Uninstall tasks run while installed
+            files are still present, so they can stop services, remove shortcuts, or clean configuration before the
+            install tree is deleted.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>When it runs</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>tasks.pre_install</code></td>
+                <td>After the user confirms the destination and before files are copied.</td>
+              </tr>
+              <tr>
+                <td><code>tasks.post_install</code></td>
+                <td>After files have been copied to the install directory.</td>
+              </tr>
+              <tr>
+                <td><code>tasks.pre_uninstall</code></td>
+                <td>At the start of uninstall, before registration and files are removed.</td>
+              </tr>
+              <tr>
+                <td><code>tasks.post_uninstall</code></td>
+                <td>After <code>pre_uninstall</code>, but still before files and Add/Remove Programs entries are removed.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 style="margin-top: 1.6rem;">InstallTask entries</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>require</code></td>
+                <td>string or null</td>
+                <td>Optional OS predicate. Supported values include <code>os.isWindows</code>, <code>os.isLinux</code>, <code>os.isOSX</code>, <code>os.isMacOS</code>, and <code>os.isUnix</code>.</td>
+              </tr>
+              <tr>
+                <td><code>action</code></td>
+                <td>string</td>
+                <td>Task action to run. Supported actions are <code>create_shortcut</code>, <code>write_registry</code>, <code>create_desktop_entry</code>, and <code>set_permissions</code>.</td>
+              </tr>
+              <tr>
+                <td><code>parameters</code></td>
+                <td>object or null</td>
+                <td>Action-specific key/value map. String values can use path placeholders such as <code>{AppDir}</code>, <code>{Desktop}</code>, and <code>{ProgramFiles}</code>.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 style="margin-top: 1.6rem;">Task action parameters</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>Typical parameters</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>create_shortcut</code></td>
+                <td><code>target_path</code>, <code>shortcut_path</code>, optional <code>description</code>, optional <code>icon_path</code>.</td>
+              </tr>
+              <tr>
+                <td><code>write_registry</code></td>
+                <td><code>key_path</code>, <code>value_name</code>, <code>value</code>, and <code>value_kind</code>. Windows only.</td>
+              </tr>
+              <tr>
+                <td><code>create_desktop_entry</code></td>
+                <td><code>file_name</code>, <code>name</code>, <code>exec</code>, optional <code>icon</code>, optional <code>comment</code>. Linux and macOS.</td>
+              </tr>
+              <tr>
+                <td><code>set_permissions</code></td>
+                <td><code>path</code> and <code>mode</code>. Unix platforms only.</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
         <section class="section" id="faq">
-          <span class="eyebrow">6. Troubleshooting and FAQ</span>
+          <span class="eyebrow">7. Troubleshooting and FAQ</span>
           <h2>Common issues</h2>
           <p class="section-intro">
             Most build failures come from missing stubs, schema mismatches, host-specific packaging tools, or file globs
@@ -1223,7 +1568,7 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
         </section>
 
         <section class="section" id="contributing">
-          <span class="eyebrow">7. Contributing and support</span>
+          <span class="eyebrow">8. Contributing and support</span>
           <h2>Help improve PolyInstall</h2>
           <p class="section-intro">
             PolyInstall welcomes focused issues, documentation improvements, tests, and implementation changes that keep
