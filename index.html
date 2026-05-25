@@ -1,0 +1,1282 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="PolyInstall documentation: build self-contained cross-platform installers from a YAML manifest.">
+  <title>PolyInstall Documentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <style>
+    :root {
+      --paper: #f5f3ee;
+      --paper-2: #ebe8e0;
+      --paper-3: #fffdf8;
+      --ink: #0e1116;
+      --muted: #5d6068;
+      --rule: #d8d4c8;
+      --plum: #6c0450;
+      --plum-dark: #4a0337;
+      --plum-light: #9a2877;
+      --danger: #dc493a;
+      --code-bg: #10131a;
+      --code-border: rgba(245, 243, 238, 0.12);
+      --shadow: 0 24px 80px rgba(14, 17, 22, 0.16);
+      --radius-lg: 28px;
+      --radius-md: 18px;
+      --radius-sm: 12px;
+      color-scheme: light;
+      scroll-behavior: smooth;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top left, rgba(154, 40, 119, 0.18), transparent 34rem),
+        linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.65;
+    }
+
+    a {
+      color: var(--plum);
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    a:hover {
+      color: var(--plum-light);
+      text-decoration: underline;
+      text-underline-offset: 0.2em;
+    }
+
+    code,
+    pre,
+    kbd {
+      font-family: "JetBrains Mono", "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    code:not(pre code) {
+      background: rgba(108, 4, 80, 0.08);
+      border: 1px solid rgba(108, 4, 80, 0.12);
+      border-radius: 0.4rem;
+      color: var(--plum-dark);
+      font-size: 0.92em;
+      padding: 0.1rem 0.32rem;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--code-border);
+      border-radius: var(--radius-md);
+      box-shadow: 0 16px 48px rgba(14, 17, 22, 0.24);
+      margin: 1rem 0 0;
+      overflow-x: auto;
+      padding: 1.2rem;
+      tab-size: 2;
+    }
+
+    pre code.hljs {
+      background: transparent;
+      padding: 0;
+    }
+
+    .page-shell {
+      margin: 0 auto;
+      max-width: 1180px;
+      padding: 0 1.25rem 4rem;
+    }
+
+    .site-header {
+      align-items: center;
+      display: flex;
+      gap: 1rem;
+      justify-content: space-between;
+      padding: 1.25rem 0;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .site-header::before {
+      background: rgba(245, 243, 238, 0.86);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(216, 212, 200, 0.72);
+      content: "";
+      inset: 0 calc(50% - 50vw);
+      position: absolute;
+      z-index: -1;
+    }
+
+    .brand {
+      align-items: center;
+      color: var(--ink);
+      display: inline-flex;
+      font-weight: 800;
+      gap: 0.7rem;
+      letter-spacing: -0.03em;
+      text-decoration: none;
+    }
+
+    .brand img {
+      height: 42px;
+      width: 42px;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      justify-content: flex-end;
+    }
+
+    .nav-links a {
+      border-radius: 999px;
+      color: var(--ink);
+      font-size: 0.88rem;
+      font-weight: 700;
+      padding: 0.55rem 0.82rem;
+    }
+
+    .nav-links a:hover {
+      background: rgba(108, 4, 80, 0.08);
+      color: var(--plum);
+      text-decoration: none;
+    }
+
+    .hero {
+      align-items: center;
+      display: grid;
+      gap: 2.5rem;
+      grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+      padding: 5rem 0 3rem;
+    }
+
+    .eyebrow {
+      align-items: center;
+      color: var(--plum);
+      display: inline-flex;
+      font-size: 0.78rem;
+      font-weight: 800;
+      gap: 0.5rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      background: var(--plum);
+      border-radius: 999px;
+      content: "";
+      height: 0.55rem;
+      width: 0.55rem;
+    }
+
+    h1,
+    h2,
+    h3 {
+      letter-spacing: -0.045em;
+      line-height: 1.05;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(3.2rem, 8vw, 6.8rem);
+      margin-top: 1rem;
+    }
+
+    h2 {
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      margin-bottom: 1rem;
+    }
+
+    h3 {
+      font-size: clamp(1.25rem, 2vw, 1.6rem);
+      margin-top: 0;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    .hero-copy {
+      color: var(--muted);
+      font-size: 1.18rem;
+      margin-top: 1.25rem;
+      max-width: 61ch;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+      margin-top: 1.8rem;
+    }
+
+    .button {
+      align-items: center;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      display: inline-flex;
+      font-weight: 800;
+      gap: 0.55rem;
+      justify-content: center;
+      padding: 0.85rem 1.1rem;
+      text-decoration: none;
+    }
+
+    .button.primary {
+      background: var(--plum);
+      box-shadow: 0 14px 34px rgba(108, 4, 80, 0.24);
+      color: #fff;
+    }
+
+    .button.secondary {
+      background: rgba(255, 253, 248, 0.72);
+      border-color: var(--rule);
+      color: var(--ink);
+    }
+
+    .button:hover {
+      transform: translateY(-1px);
+      text-decoration: none;
+    }
+
+    .hero-card {
+      background: rgba(255, 253, 248, 0.78);
+      border: 1px solid rgba(216, 212, 200, 0.86);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .hero-card-top {
+      align-items: center;
+      background:
+        linear-gradient(135deg, rgba(108, 4, 80, 0.94), rgba(74, 3, 55, 0.98)),
+        radial-gradient(circle at top right, rgba(154, 40, 119, 0.9), transparent 20rem);
+      color: #fff;
+      display: flex;
+      gap: 1.25rem;
+      padding: 1.4rem;
+    }
+
+    .hero-card-top img {
+      background: var(--paper);
+      border-radius: 20px;
+      height: 80px;
+      padding: 0.2rem;
+      width: 80px;
+    }
+
+    .hero-card-top strong {
+      display: block;
+      font-size: 1.2rem;
+      line-height: 1.2;
+    }
+
+    .hero-card-top span {
+      color: rgba(255, 255, 255, 0.78);
+      display: block;
+      margin-top: 0.25rem;
+    }
+
+    .hero-terminal {
+      padding: 1.35rem;
+    }
+
+    .terminal-label {
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.7rem;
+      text-transform: uppercase;
+    }
+
+    .stats-grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin: 1.5rem 0 3.5rem;
+    }
+
+    .stat {
+      background: rgba(255, 253, 248, 0.72);
+      border: 1px solid rgba(216, 212, 200, 0.8);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 1.8rem;
+      letter-spacing: -0.04em;
+      line-height: 1;
+    }
+
+    .stat span {
+      color: var(--muted);
+      display: block;
+      font-size: 0.92rem;
+      margin-top: 0.45rem;
+    }
+
+    .layout {
+      align-items: start;
+      display: grid;
+      gap: 2rem;
+      grid-template-columns: 260px minmax(0, 1fr);
+    }
+
+    .toc {
+      background: rgba(255, 253, 248, 0.74);
+      border: 1px solid rgba(216, 212, 200, 0.8);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      position: sticky;
+      top: 6rem;
+    }
+
+    .toc h2 {
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      margin-bottom: 0.7rem;
+      text-transform: uppercase;
+    }
+
+    .toc a {
+      border-radius: 0.75rem;
+      color: var(--muted);
+      display: block;
+      font-size: 0.92rem;
+      font-weight: 700;
+      padding: 0.48rem 0.6rem;
+    }
+
+    .toc a:hover {
+      background: rgba(108, 4, 80, 0.08);
+      color: var(--plum);
+      text-decoration: none;
+    }
+
+    main {
+      display: grid;
+      gap: 1.3rem;
+    }
+
+    .section {
+      background: rgba(255, 253, 248, 0.82);
+      border: 1px solid rgba(216, 212, 200, 0.86);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 10px 42px rgba(14, 17, 22, 0.08);
+      padding: clamp(1.4rem, 4vw, 2.4rem);
+      scroll-margin-top: 6.5rem;
+    }
+
+    .section-intro {
+      color: var(--muted);
+      font-size: 1.05rem;
+      margin-bottom: 1.25rem;
+      max-width: 76ch;
+    }
+
+    .grid {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .card {
+      background: rgba(245, 243, 238, 0.62);
+      border: 1px solid var(--rule);
+      border-radius: var(--radius-md);
+      padding: 1.1rem;
+    }
+
+    .card p {
+      color: var(--muted);
+      margin-top: 0.45rem;
+    }
+
+    .callout {
+      background: rgba(108, 4, 80, 0.08);
+      border: 1px solid rgba(108, 4, 80, 0.18);
+      border-radius: var(--radius-md);
+      margin: 1.2rem 0;
+      padding: 1rem 1.1rem;
+    }
+
+    .callout strong {
+      color: var(--plum-dark);
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+
+    .steps {
+      counter-reset: step;
+      display: grid;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .step {
+      background: rgba(245, 243, 238, 0.62);
+      border: 1px solid var(--rule);
+      border-radius: var(--radius-md);
+      padding: 1.1rem 1.1rem 1.1rem 4rem;
+      position: relative;
+    }
+
+    .step::before {
+      background: var(--plum);
+      border-radius: 999px;
+      color: #fff;
+      content: counter(step);
+      counter-increment: step;
+      font-weight: 800;
+      height: 2rem;
+      left: 1.1rem;
+      line-height: 2rem;
+      position: absolute;
+      text-align: center;
+      top: 1.1rem;
+      width: 2rem;
+    }
+
+    ul,
+    ol {
+      margin: 0.75rem 0 0;
+      padding-left: 1.2rem;
+    }
+
+    li + li {
+      margin-top: 0.35rem;
+    }
+
+    table {
+      border-collapse: collapse;
+      margin-top: 1rem;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--rule);
+      padding: 0.82rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--plum-dark);
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .feature-list {
+      display: grid;
+      gap: 0.85rem;
+      margin-top: 1rem;
+    }
+
+    .feature-item {
+      border-left: 4px solid var(--plum);
+      padding-left: 1rem;
+    }
+
+    .feature-item p {
+      color: var(--muted);
+      margin-top: 0.2rem;
+    }
+
+    .faq {
+      display: grid;
+      gap: 0.8rem;
+      margin-top: 1rem;
+    }
+
+    details {
+      background: rgba(245, 243, 238, 0.62);
+      border: 1px solid var(--rule);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.1rem;
+    }
+
+    summary {
+      color: var(--ink);
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    details p {
+      color: var(--muted);
+      margin-top: 0.7rem;
+    }
+
+    .footer {
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin-top: 2rem;
+      text-align: center;
+    }
+
+    @media (max-width: 980px) {
+      .hero,
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .toc {
+        position: static;
+      }
+
+      .stats-grid,
+      .grid.three {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      .site-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .nav-links {
+        justify-content: flex-start;
+      }
+
+      .hero {
+        padding-top: 3rem;
+      }
+
+      .stats-grid,
+      .grid.two,
+      .grid.three {
+        grid-template-columns: 1fr;
+      }
+
+      .step {
+        padding-left: 1.1rem;
+        padding-top: 4rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="PolyInstall home">
+        <img src="assets/polyinstall-logo.svg" alt="PolyInstall logo">
+        <span>PolyInstall</span>
+      </a>
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#overview">Overview</a>
+        <a href="#installation">Install</a>
+        <a href="#quick-start">Quick start</a>
+        <a href="#advanced">Advanced</a>
+        <a href="#faq">FAQ</a>
+        <a href="#contributing">Contribute</a>
+      </nav>
+    </header>
+
+    <section class="hero" id="top">
+      <div>
+        <span class="eyebrow">Manifest-driven installer builder</span>
+        <h1>Build native-feeling installers from one YAML manifest.</h1>
+        <p class="hero-copy">
+          PolyInstall is a cross-platform installer builder for teams that want predictable packaging without maintaining
+          separate Windows, Linux, and macOS installer projects. Describe your application once, bundle the payload with
+          Brotli compression, and produce self-contained installer binaries with a configurable wizard UI.
+        </p>
+        <div class="hero-actions">
+          <a class="button primary" href="#installation">Start installing</a>
+          <a class="button secondary" href="https://github.com/bolorundurowb/PolyInstall" rel="noreferrer">View on GitHub</a>
+        </div>
+      </div>
+
+      <aside class="hero-card" aria-label="Build command example">
+        <div class="hero-card-top">
+          <img src="assets/polyinstall-logo.svg" alt="">
+          <div>
+            <strong>One manifest. Many installers.</strong>
+            <span>Windows, Linux, and macOS targets from the same source of truth.</span>
+          </div>
+        </div>
+        <div class="hero-terminal">
+          <div class="terminal-label">Essential commands</div>
+          <pre><code class="language-bash"># Build an installer from a manifest
+polyinstall build manifest.yaml
+
+# Validate a manifest before shipping
+polyinstall validate manifest.yaml</code></pre>
+        </div>
+      </aside>
+    </section>
+
+    <section class="stats-grid" aria-label="Project highlights">
+      <div class="stat">
+        <strong>.NET</strong>
+        <span>C# across the CLI, core library, runtime, UI, uninstaller, and schema generator.</span>
+      </div>
+      <div class="stat">
+        <strong>YAML</strong>
+        <span>Human-readable manifests parsed via ManifestYaml and validated with JSON Schema.</span>
+      </div>
+      <div class="stat">
+        <strong>Brotli</strong>
+        <span>Default payload compression for compact self-contained installer binaries.</span>
+      </div>
+      <div class="stat">
+        <strong>Wizard</strong>
+        <span>A customisable Avalonia installer UI with themes, logos, and ordered steps.</span>
+      </div>
+    </section>
+
+    <div class="layout">
+      <aside class="toc" aria-label="Table of contents">
+        <h2>Documentation</h2>
+        <a href="#overview">1. Project overview</a>
+        <a href="#prerequisites">2. Prerequisites</a>
+        <a href="#installation">3. Installation guide</a>
+        <a href="#quick-start">4. Quick start</a>
+        <a href="#advanced">5. Advanced usage</a>
+        <a href="#faq">6. Troubleshooting and FAQ</a>
+        <a href="#contributing">7. Contributing and support</a>
+      </aside>
+
+      <main>
+        <section class="section" id="overview">
+          <span class="eyebrow">1. Project overview</span>
+          <h2>What PolyInstall does</h2>
+          <p class="section-intro">
+            PolyInstall turns a YAML manifest into one or more self-contained installer binaries. It is designed for
+            product teams, open-source maintainers, and internal platform engineers who need a repeatable packaging
+            flow without adopting a different installer authoring system for every operating system.
+          </p>
+
+          <div class="grid three">
+            <div class="card">
+              <h3>Single source of truth</h3>
+              <p>
+                Define metadata, files, build targets, UI steps, platform settings, and lifecycle tasks in one manifest.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Self-contained output</h3>
+              <p>
+                The CLI appends the compressed payload and embedded JSON manifest to a pre-published runtime stub.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Friendly install flow</h3>
+              <p>
+                Ship an Avalonia wizard with welcome, licence, destination, progress, and finish steps.
+              </p>
+            </div>
+          </div>
+
+          <div class="callout">
+            <strong>Value proposition</strong>
+            PolyInstall removes the overhead of maintaining separate installer definitions by giving you a clear YAML
+            contract, deterministic build commands, schema validation, bundled payload compression, and install-state
+            tracking for reliable uninstall behaviour.
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Project</th>
+                <th>Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>PolyInstall.Core</code></td>
+                <td>Shared manifest models, packaging logic, validation, and task/runtime primitives.</td>
+              </tr>
+              <tr>
+                <td><code>PolyInstall.Cli</code></td>
+                <td>Build tool that validates manifests, gathers files, compresses payloads, and emits installers.</td>
+              </tr>
+              <tr>
+                <td><code>PolyInstall.Runtime</code></td>
+                <td>The generated installer host that reads its appended bundle and launches the install flow.</td>
+              </tr>
+              <tr>
+                <td><code>PolyInstall.UI</code></td>
+                <td>Avalonia wizard UI used by the runtime.</td>
+              </tr>
+              <tr>
+                <td><code>PolyInstall.Uninstall</code></td>
+                <td>Dedicated Windows uninstall host used for Add/Remove Programs and command-line uninstall.</td>
+              </tr>
+              <tr>
+                <td><code>PolyInstall.SchemaGen</code></td>
+                <td>Generates <code>schema/v1.json</code> from the C# manifest model.</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="prerequisites">
+          <span class="eyebrow">2. Prerequisites</span>
+          <h2>Before you install</h2>
+          <p class="section-intro">
+            The recommended path is to download a release build of the CLI. Release archives are self-contained, so
+            users do not need the .NET SDK just to build installers from manifests.
+          </p>
+
+          <div class="grid two">
+            <div class="card">
+              <h3>For normal use</h3>
+              <ul>
+                <li>A 64-bit host OS that matches the downloaded release archive.</li>
+                <li>A YAML manifest describing your application.</li>
+                <li>A payload directory containing the files you want to install.</li>
+                <li>Bundled runtime stubs from the release archive, or a custom <code>stubs/</code> directory.</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>For source builds</h3>
+              <ul>
+                <li>.NET SDK 10.x, aligned with the repository target framework.</li>
+                <li>Git for cloning and contributing.</li>
+                <li><code>mksquashfs</code> from <code>squashfs-tools</code> for Linux AppImage output.</li>
+                <li><code>hdiutil</code> on macOS for DMG output.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="callout">
+            <strong>Target compatibility</strong>
+            The finished installer must run on a machine that matches its target runtime identifier. For example,
+            a <code>windows-x64</code> installer is intended for 64-bit Windows, not Linux or macOS.
+          </div>
+        </section>
+
+        <section class="section" id="installation">
+          <span class="eyebrow">3. Installation guide</span>
+          <h2>Install and configure PolyInstall</h2>
+          <p class="section-intro">
+            Use the release build when you want to package an application. Build from source only when contributing,
+            testing unreleased changes, or publishing custom runtime stubs.
+          </p>
+
+          <div class="steps">
+            <article class="step">
+              <h3>Download a release archive</h3>
+              <p>
+                Open the GitHub Releases page and download the archive that matches your build machine, such as
+                <code>polyinstall-win-x64-&lt;tag&gt;.zip</code>, <code>polyinstall-linux-x64-&lt;tag&gt;.zip</code>, or
+                <code>polyinstall-osx-arm64-&lt;tag&gt;.zip</code>.
+              </p>
+              <pre><code class="language-bash"># Example layout after extraction
+polyinstall/
+  polyinstall      # or polyinstall.exe on Windows
+  schema/v1.json
+  stubs/
+    win-x64/
+    linux-x64/
+    osx-arm64/</code></pre>
+            </article>
+
+            <article class="step">
+              <h3>Add the CLI to your shell</h3>
+              <p>
+                Either run <code>polyinstall</code> from the extracted folder or add that folder to <code>PATH</code>.
+              </p>
+              <pre><code class="language-powershell"># PowerShell example for the current session
+$env:PATH = "C:\Tools\polyinstall;$env:PATH"
+
+# Confirm the command is visible
+polyinstall validate .\manifest.yaml</code></pre>
+            </article>
+
+            <article class="step">
+              <h3>Connect your editor to the schema</h3>
+              <p>
+                Add the schema comment to the top of each manifest for completions and validation in YAML-aware editors.
+              </p>
+              <pre><code class="language-yaml"># yaml-language-server: $schema=https://raw.githubusercontent.com/bolorundurowb/PolyInstall/refs/heads/master/schema/v1.json</code></pre>
+            </article>
+
+            <article class="step">
+              <h3>Validate before building</h3>
+              <p>
+                Validation catches schema errors, unknown keys, and many manifest issues before the build step packages
+                files.
+              </p>
+              <pre><code class="language-bash">polyinstall validate manifest.yaml --base ./release-input
+polyinstall build manifest.yaml --base ./release-input</code></pre>
+            </article>
+          </div>
+
+          <h3 style="margin-top: 1.6rem;">Build from source</h3>
+          <p>
+            Contributors can build the CLI and publish runtime stubs directly from the repository.
+          </p>
+          <pre><code class="language-bash">git clone https://github.com/bolorundurowb/PolyInstall.git
+cd PolyInstall
+
+dotnet restore src/PolyInstall.slnx
+dotnet build src/PolyInstall.slnx -c Release --no-restore
+
+# Publish a Windows runtime stub and uninstaller
+dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r win-x64 -o stubs/win-x64
+dotnet publish src/PolyInstall.Uninstall/PolyInstall.Uninstall.csproj -c Release -r win-x64 -o stubs/win-x64
+
+# Build the sample installer
+dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj -- build examples/polyinstall.sample.yaml --base examples --stubs stubs</code></pre>
+        </section>
+
+        <section class="section" id="quick-start">
+          <span class="eyebrow">4. Quick start</span>
+          <h2>Build your first installer</h2>
+          <p class="section-intro">
+            This example packages a tiny application directory and creates a Windows x64 installer. It is intentionally
+            small, so you can validate the full build loop in minutes.
+          </p>
+
+          <div class="steps">
+            <article class="step">
+              <h3>Create a payload directory</h3>
+              <p>
+                Put the files you want to install under a stable source directory. This example uses a single text file.
+              </p>
+              <pre><code class="language-bash">mkdir -p hello-payload
+printf "Hello from PolyInstall\n" &gt; hello-payload/hello.txt</code></pre>
+            </article>
+
+            <article class="step">
+              <h3>Create <code>manifest.yaml</code></h3>
+              <p>
+                The manifest declares metadata, output settings, UI steps, and which files to include.
+              </p>
+              <pre><code class="language-yaml"># yaml-language-server: $schema=https://raw.githubusercontent.com/bolorundurowb/PolyInstall/refs/heads/master/schema/v1.json
+metadata:
+  name: HelloPoly
+  version: 0.1.0
+  publisher: Example Ltd
+
+build:
+  output_dir: dist
+  compression: brotli
+  targets:
+    - windows-x64
+  windows:
+    install_scope: user
+    register_arp: true
+
+ui:
+  theme: system
+  wizard_steps:
+    - type: welcome
+      title: Welcome to HelloPoly
+    - type: destination
+      title: Choose an install location
+      default_path: "{UserHome}/HelloPoly"
+    - type: progress
+      title: Installing HelloPoly
+    - type: finish
+      title: Installation complete
+
+files:
+  - source_dir: hello-payload
+    include:
+      - "**/*"</code></pre>
+            </article>
+
+            <article class="step">
+              <h3>Validate and build</h3>
+              <p>
+                Run validation first, then build the installer. Output files are written under
+                <code>build.output_dir</code>, relative to <code>--base</code>.
+              </p>
+              <pre><code class="language-bash">polyinstall validate manifest.yaml --base .
+polyinstall build manifest.yaml --base .</code></pre>
+            </article>
+
+            <article class="step">
+              <h3>Run the installer</h3>
+              <p>
+                Launch the generated binary on a matching target machine. The wizard lets the user choose the
+                destination, copies the payload, records install state, and finishes with a summary.
+              </p>
+              <pre><code class="language-bash"># Windows output
+dist/HelloPoly-windows-x64.exe</code></pre>
+            </article>
+          </div>
+        </section>
+
+        <section class="section" id="advanced">
+          <span class="eyebrow">5. Advanced usage and features</span>
+          <h2>Use the full manifest surface</h2>
+          <p class="section-intro">
+            PolyInstall supports multi-target builds, platform-specific packaging, wizard customisation, lifecycle
+            tasks, glob filtering, environment variable substitution, and install-state tracking.
+          </p>
+
+          <div class="feature-list">
+            <div class="feature-item">
+              <h3>Multi-platform targets</h3>
+              <p>
+                A single manifest can build installers for Windows, Linux, and macOS. Platform options let you enable
+                Add/Remove Programs registration, AppImage packaging, or DMG creation where the host supports it.
+              </p>
+            </div>
+            <div class="feature-item">
+              <h3>Wizard UI and branding</h3>
+              <p>
+                Configure the wizard sequence, select <code>light</code>, <code>dark</code>, or <code>system</code>
+                theme mode, and provide a logo path resolved from the extracted payload at install time.
+              </p>
+            </div>
+            <div class="feature-item">
+              <h3>Lifecycle tasks</h3>
+              <p>
+                Run pre-install, post-install, pre-uninstall, and post-uninstall actions such as shortcuts, registry
+                writes, desktop entries, and permission changes.
+              </p>
+            </div>
+            <div class="feature-item">
+              <h3>Reliable uninstall</h3>
+              <p>
+                Install state is written under <code>.polyinstall/</code>, allowing the Windows uninstaller to remove
+                registered entries, installed files, and configured resources consistently.
+              </p>
+            </div>
+          </div>
+
+          <h3 style="margin-top: 1.6rem;">Complete multi-platform manifest</h3>
+          <p>
+            This manifest demonstrates advanced build options, glob filtering, environment substitution, branding, and
+            OS-gated tasks.
+          </p>
+          <pre><code class="language-yaml"># yaml-language-server: $schema=https://raw.githubusercontent.com/bolorundurowb/PolyInstall/refs/heads/master/schema/v1.json
+metadata:
+  name: Contoso Studio
+  version: "${APP_VERSION:-1.0.0}"
+  id: com.contoso.studio
+  publisher: Contoso Ltd
+
+build:
+  output_dir: dist
+  compression: brotli
+  targets:
+    - windows-x64
+    - linux-x64
+    - osx-arm64
+  windows:
+    install_scope: user
+    register_arp: true
+  linux:
+    package: appimage
+  macos:
+    package: dmg
+
+ui:
+  theme: system
+  logo_path: "branding/contoso-logo.svg"
+  wizard_steps:
+    - type: welcome
+      title: Welcome to Contoso Studio
+    - type: eula
+      title: Licence agreement
+      source: "legal/LICENCE.txt"
+    - type: destination
+      title: Choose where to install
+      default_path: "{ProgramFiles}/Contoso Studio"
+    - type: progress
+      title: Installing
+    - type: finish
+      title: Ready to launch
+
+files:
+  - source_dir: app
+    include:
+      - "**/*"
+    exclude:
+      - "**/*.pdb"
+      - "**/*.map"
+      - "**/tmp/**"
+  - source_dir: packaging
+    include:
+      - "branding/**"
+      - "legal/**"
+
+tasks:
+  pre_install:
+    - require: os.isWindows
+      action: write_registry
+      parameters:
+        key_path: "HKCU\\Software\\Contoso\\Studio"
+        value_name: InstallStarted
+        value: "true"
+        value_kind: string
+  post_install:
+    - require: os.isWindows
+      action: create_shortcut
+      parameters:
+        target_path: "{AppDir}\\ContosoStudio.exe"
+        shortcut_path: "{Desktop}\\Contoso Studio.lnk"
+        description: "Launch Contoso Studio"
+        icon_path: "{AppDir}\\branding\\contoso.ico"
+    - require: os.isLinux
+      action: create_desktop_entry
+      parameters:
+        file_name: "contoso-studio.desktop"
+        name: "Contoso Studio"
+        exec: "{AppDir}/ContosoStudio"
+        icon: "{AppDir}/branding/contoso.png"
+        comment: "Launch Contoso Studio"
+    - require: os.isUnix
+      action: set_permissions
+      parameters:
+        path: "{AppDir}/ContosoStudio"
+        mode: 755
+  pre_uninstall:
+    - require: os.isWindows
+      action: write_registry
+      parameters:
+        key_path: "HKCU\\Software\\Contoso\\Studio"
+        value_name: UninstallStarted
+        value: "true"
+        value_kind: string</code></pre>
+
+          <div class="grid two" style="margin-top: 1rem;">
+            <div class="card">
+              <h3>Build target tokens</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Manifest token</th>
+                    <th>.NET RID</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td><code>windows-x64</code></td><td><code>win-x64</code></td></tr>
+                  <tr><td><code>windows-arm64</code></td><td><code>win-arm64</code></td></tr>
+                  <tr><td><code>linux-x64</code></td><td><code>linux-x64</code></td></tr>
+                  <tr><td><code>linux-arm64</code></td><td><code>linux-arm64</code></td></tr>
+                  <tr><td><code>osx-x64</code></td><td><code>osx-x64</code></td></tr>
+                  <tr><td><code>osx-arm64</code></td><td><code>osx-arm64</code></td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="card">
+              <h3>Path placeholders</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Placeholder</th>
+                    <th>Meaning</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td><code>{AppDir}</code></td><td>The selected install directory or extracted app directory.</td></tr>
+                  <tr><td><code>{ProgramFiles}</code></td><td>The OS-appropriate programme files location.</td></tr>
+                  <tr><td><code>{UserHome}</code></td><td>The current user's home directory.</td></tr>
+                  <tr><td><code>{Desktop}</code></td><td>The current user's desktop folder.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <h3 style="margin-top: 1.6rem;">Platform packaging notes</h3>
+          <div class="grid three">
+            <div class="card">
+              <h3>Windows ARP</h3>
+              <p>
+                With <code>register_arp: true</code>, PolyInstall records install state, copies
+                <code>Uninstall.exe</code>, and registers the app in Add/Remove Programs under HKCU or HKLM.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Linux AppImage</h3>
+              <p>
+                Set <code>build.linux.package: appimage</code>. AppImage creation must run on Linux with
+                <code>mksquashfs</code> available on <code>PATH</code>.
+              </p>
+            </div>
+            <div class="card">
+              <h3>macOS DMG</h3>
+              <p>
+                Set <code>build.macos.package: dmg</code>. DMG creation requires macOS because PolyInstall invokes
+                <code>hdiutil</code>.
+              </p>
+            </div>
+          </div>
+
+          <h3 style="margin-top: 1.6rem;">Environment variable substitution</h3>
+          <p>
+            During <code>build</code> and <code>validate</code>, string values support <code>${VAR}</code> and
+            <code>${VAR:-default}</code>. This is useful in CI, but avoid embedding secrets because the generated
+            manifest is stored inside the installer binary.
+          </p>
+          <pre><code class="language-yaml">metadata:
+  version: "${GITHUB_REF_NAME:-0.0.0-local}"
+
+build:
+  output_dir: "${DIST_DIR:-dist}"</code></pre>
+
+          <h3 style="margin-top: 1.6rem;">Command reference</h3>
+          <pre><code class="language-text">polyinstall build &lt;manifest.yaml&gt; [--base &lt;dir&gt;] [--stubs &lt;dir&gt;]
+polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
+          <table>
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>--base</code></td>
+                <td>Working directory used to resolve file source directories and the default output directory.</td>
+              </tr>
+              <tr>
+                <td><code>--stubs</code></td>
+                <td>Root folder containing per-RID runtime stubs. Omit it when using release archives with bundled stubs.</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section" id="faq">
+          <span class="eyebrow">6. Troubleshooting and FAQ</span>
+          <h2>Common issues</h2>
+          <p class="section-intro">
+            Most build failures come from missing stubs, schema mismatches, host-specific packaging tools, or file globs
+            that do not match the intended payload directory.
+          </p>
+
+          <div class="faq">
+            <details open>
+              <summary>The build says the stub cannot be found.</summary>
+              <p>
+                Confirm that the resolved stubs root contains <code>stubs/&lt;rid&gt;/PolyInstall.Runtime</code> or
+                <code>PolyInstall.Runtime.exe</code>. Windows targets also need
+                <code>stubs/&lt;rid&gt;/PolyInstall.Uninstall.exe</code> unless you provide a custom layout.
+              </p>
+            </details>
+
+            <details>
+              <summary>My manifest fails schema validation.</summary>
+              <p>
+                Use <code>polyinstall validate manifest.yaml</code> and check that keys use snake_case. Add the
+                <code>yaml-language-server</code> schema comment so your editor catches issues before the CLI runs.
+              </p>
+            </details>
+
+            <details>
+              <summary>No files are included in the installer.</summary>
+              <p>
+                Check <code>files[].source_dir</code> relative to <code>--base</code>, then review
+                <code>include</code> and <code>exclude</code> glob patterns. Start with <code>"**/*"</code> and narrow
+                the match once the build works.
+              </p>
+            </details>
+
+            <details>
+              <summary>AppImage or DMG output is missing.</summary>
+              <p>
+                AppImage output requires a Linux host with <code>mksquashfs</code>. DMG output requires macOS with
+                <code>hdiutil</code>. Cross-building the raw installer binary is separate from host-native packaging.
+              </p>
+            </details>
+
+            <details>
+              <summary>Windows shortcuts or registry tasks fail.</summary>
+              <p>
+                Check paths after placeholder expansion, confirm the install has sufficient permissions, and remember
+                that <code>install_scope: machine</code> writes to HKLM and requires elevation.
+              </p>
+            </details>
+
+            <details>
+              <summary>Can I put secrets in environment variables?</summary>
+              <p>
+                Do not use PolyInstall manifests for runtime secrets. Environment substitution happens before the
+                manifest is embedded in the installer, so substituted values can be inspected from the final binary.
+              </p>
+            </details>
+          </div>
+        </section>
+
+        <section class="section" id="contributing">
+          <span class="eyebrow">7. Contributing and support</span>
+          <h2>Help improve PolyInstall</h2>
+          <p class="section-intro">
+            PolyInstall welcomes focused issues, documentation improvements, tests, and implementation changes that keep
+            the manifest contract, generated schema, CLI behaviour, and runtime behaviour aligned.
+          </p>
+
+          <div class="grid two">
+            <div class="card">
+              <h3>Report an issue</h3>
+              <p>
+                Open a GitHub issue with the PolyInstall version, host OS, target OS, manifest excerpt, command output,
+                and the smallest payload structure that reproduces the problem.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Open a pull request</h3>
+              <p>
+                Create a branch from <code>master</code>, keep the change focused, add tests for behavioural changes,
+                and update docs, examples, or schema files when the manifest surface changes.
+              </p>
+            </div>
+          </div>
+
+          <h3 style="margin-top: 1.6rem;">Contributor workflow</h3>
+          <pre><code class="language-bash">git clone https://github.com/bolorundurowb/PolyInstall.git
+cd PolyInstall
+
+dotnet restore src/PolyInstall.slnx
+dotnet build src/PolyInstall.slnx -c Release --no-restore
+dotnet test src/PolyInstall.slnx -c Release --no-build --verbosity normal</code></pre>
+
+          <div class="callout">
+            <strong>When changing manifest models</strong>
+            Regenerate <code>schema/v1.json</code> with <code>dotnet run --project src/PolyInstall.SchemaGen/PolyInstall.SchemaGen.csproj</code>
+            and commit the schema update with the related code.
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <footer class="footer">
+      <p>
+        PolyInstall documentation page styled from the embedded logo palette:
+        ink <code>#0e1116</code>, plum <code>#6C0450</code>, paper <code>#f5f3ee</code>, and rule <code>#d8d4c8</code>.
+      </p>
+    </footer>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/powershell.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+  <script>
+    hljs.highlightAll();
+  </script>
+</body>
+</html>
