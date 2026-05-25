@@ -150,7 +150,7 @@ example extra RIDs not bundled in releases).
 **IDE integration:** Point your YAML at the schema for validation and IntelliSense, for example:
 
 ```yaml
-# yaml-language-server: $schema=https://polyinstall.dev/schema/v1.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bolorundurowb/PolyInstall/refs/heads/master/schema/v1.json
 ```
 
 If you work offline, use a **relative** or `file:` URL to `schema/v1.json` in your clone.

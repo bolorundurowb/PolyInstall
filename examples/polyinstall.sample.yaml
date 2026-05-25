@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://polyinstall.dev/schema/v1.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bolorundurowb/PolyInstall/refs/heads/master/schema/v1.json
 metadata:
   name: SampleApp
   version: 0.1.0
