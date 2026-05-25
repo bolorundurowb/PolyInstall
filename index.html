@@ -815,7 +815,7 @@ polyinstall validate .\manifest.yaml</code></pre>
               <p>
                 Add the schema comment to the top of each manifest for completions and validation in YAML-aware editors.
               </p>
-              <pre><code class="language-yaml"># yaml-language-server: $schema=https://raw.githubusercontent.com/bolorundurowb/PolyInstall/refs/heads/master/schema/v1.json</code></pre>
+              <pre><code class="language-yaml"># yaml-language-server: $schema=https://bolorundurowb.github.io/PolyInstall/schema/v1.json</code></pre>
             </article>
 
             <article class="step">
@@ -870,7 +870,7 @@ printf "Hello from PolyInstall\n" &gt; hello-payload/hello.txt</code></pre>
               <p>
                 The manifest declares metadata, output settings, UI steps, and which files to include.
               </p>
-              <pre><code class="language-yaml"># yaml-language-server: $schema=https://raw.githubusercontent.com/bolorundurowb/PolyInstall/refs/heads/master/schema/v1.json
+              <pre><code class="language-yaml"># yaml-language-server: $schema=https://bolorundurowb.github.io/PolyInstall/schema/v1.json
 metadata:
   name: HelloPoly
   version: 0.1.0
@@ -970,7 +970,7 @@ dist/HelloPoly-windows-x64.exe</code></pre>
             This manifest demonstrates advanced build options, glob filtering, environment substitution, branding, and
             OS-gated tasks.
           </p>
-          <pre><code class="language-yaml"># yaml-language-server: $schema=https://raw.githubusercontent.com/bolorundurowb/PolyInstall/refs/heads/master/schema/v1.json
+          <pre><code class="language-yaml"># yaml-language-server: $schema=https://bolorundurowb.github.io/PolyInstall/schema/v1.json
 metadata:
   name: Contoso Studio
   version: "${APP_VERSION:-1.0.0}"

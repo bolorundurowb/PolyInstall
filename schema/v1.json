@@ -1,0 +1,313 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "InstallManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "metadata": {
+      "$ref": "#/definitions/ManifestMetadata"
+    },
+    "build": {
+      "$ref": "#/definitions/BuildConfiguration"
+    },
+    "ui": {
+      "$ref": "#/definitions/UiConfiguration"
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/FilesEntry"
+      }
+    },
+    "tasks": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/definitions/TasksConfiguration"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "ManifestMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "id": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "publisher": {
+          "type": [
+            "null",
+            "string"
+          ]
+        }
+      }
+    },
+    "BuildConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "output_dir": {
+          "type": "string"
+        },
+        "compression": {
+          "type": "string"
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "installer_target": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "stub_path": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "windows": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/WindowsBuildOptions"
+            }
+          ]
+        },
+        "linux": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/LinuxBuildOptions"
+            }
+          ]
+        },
+        "macos": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/MacOsBuildOptions"
+            }
+          ]
+        }
+      }
+    },
+    "WindowsBuildOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "install_scope": {
+          "type": "string"
+        },
+        "register_arp": {
+          "type": "boolean"
+        }
+      }
+    },
+    "LinuxBuildOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "package": {
+          "type": "string"
+        }
+      }
+    },
+    "MacOsBuildOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "package": {
+          "type": "string"
+        }
+      }
+    },
+    "UiConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "theme": {
+          "type": "string"
+        },
+        "logo_path": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "assets": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/UiAssetEntry"
+          }
+        },
+        "wizard_steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/WizardStep"
+          }
+        }
+      }
+    },
+    "UiAssetEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "WizardStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "title": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "source": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "default_path": {
+          "type": [
+            "null",
+            "string"
+          ]
+        }
+      }
+    },
+    "FilesEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source_dir": {
+          "type": "string"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exclude": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "TasksConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pre_install": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "description": "Tasks that run after the user confirms the install destination, before any files are copied to disk.",
+          "items": {
+            "$ref": "#/definitions/InstallTask"
+          }
+        },
+        "post_install": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "description": "Tasks that run after all files have been copied to the install directory and the installation is complete.",
+          "items": {
+            "$ref": "#/definitions/InstallTask"
+          }
+        },
+        "pre_uninstall": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "description": "Tasks that run at the very start of uninstall, before the Add/Remove Programs entry is removed and before any installed files are deleted from disk. Installed files are still fully accessible here.",
+          "items": {
+            "$ref": "#/definitions/InstallTask"
+          }
+        },
+        "post_uninstall": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "description": "Tasks that run after pre_uninstall tasks \u2014 but STILL BEFORE files are deleted from disk and BEFORE the Add/Remove Programs entry is removed. Despite its name, post_uninstall does not execute after the installation has been cleaned up. Both pre_uninstall and post_uninstall run while installed files are still present. Use post_uninstall for tasks that must follow pre_uninstall sequentially (e.g., stopping a service before removing its config) rather than for tasks that need the install tree to be gone.",
+          "items": {
+            "$ref": "#/definitions/InstallTask"
+          }
+        }
+      }
+    },
+    "InstallTask": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "require": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "description": "Optional OS predicate that must be true for this task to run. Supported values: os.isWindows, os.isLinux, os.isOSX (or os.isMacOS), os.isUnix. If omitted the task always runs."
+        },
+        "action": {
+          "type": "string",
+          "description": "The action to perform. One of: create_shortcut, write_registry (Windows only), create_desktop_entry (Linux/macOS only), set_permissions (Unix only)."
+        },
+        "parameters": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "description": "Key/value map of parameters for the chosen action. Keys are snake_case strings.",
+          "additionalProperties": {}
+        }
+      }
+    }
+  }
+}
