@@ -189,7 +189,7 @@ The manifest is grouped into five sections. All are represented in JSON Schema; 
 | `install_scope` | `user` (default) or `machine`. Controls whether Add/Remove Programs entries go under **HKCU** or **HKLM**. |
 | `register_arp` | When `true` (default), after a successful install the installer writes **`.polyinstall/install-state.json`** and **`embedded-manifest.json`**, copies the bundled **`.polyinstall/tools/PolyInstall.Uninstall.exe`** to **`Uninstall.exe`** at the install root, and registers the product in Add/Remove Programs. |
 
-**Elevation:** `install_scope: machine` writes to **HKLM** and requires an **elevated** (Administrator) install. If the installer is not elevated, registration fails with a clear error; use `user` scope for per-user installs under HKCU.
+**Elevation:** `install_scope: machine` writes to **HKLM** and requires an **elevated** (Administrator) install. On Windows, the installer relaunches itself with a UAC prompt before showing the wizard when machine scope is configured; use `user` scope for per-user installs under HKCU.
 
 #### Linux build options
 
@@ -373,7 +373,7 @@ The stub opens its own executable path, seeks to the end, validates the magic, a
 |--------|----------------|----------|
 | `welcome` | `title` | Introduction text. |
 | `eula` | `title`, `source` | Loads licence text from `source` (path under extracted payload or absolute). |
-| `destination` | `title`, `default_path` | User chooses install directory; placeholders expanded (see below). |
+| `destination` | `title`, `default_path` | User chooses install directory; placeholders expanded (see below). If omitted on Windows, machine-scope installs default under Program Files and user-scope installs default under LocalAppData. |
 | `progress` | `title` | Runs **pre-install** tasks, copies extracted payload to the install directory, then **post-install** tasks. |
 | `finish` | `title` | Summary. |
 
