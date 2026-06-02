@@ -22,11 +22,22 @@ public class ConditionEvaluatorTests
     }
 
     [Theory]
-    [InlineData("os.is_windows")]
-    [InlineData("OS.ISWINDOWS")]
-    public void Evaluate_WithSnakeCaseOrDifferentCasing_EvaluatesOsPredicate(string require)
+    [InlineData("os.is_windows", "windows")]
+    [InlineData("OS.ISWINDOWS", "windows")]
+    [InlineData("os.is_linux", "linux")]
+    [InlineData("os.is_osx", "macos")]
+    [InlineData("os.is_macos", "macos")]
+    [InlineData("os.is_unix", "unix")]
+    public void Evaluate_WithSnakeCaseOrDifferentCasing_EvaluatesOsPredicate(string require, string osFamily)
     {
-        var expected = OperatingSystem.IsWindows();
+        var expected = osFamily switch
+        {
+            "windows" => OperatingSystem.IsWindows(),
+            "linux" => OperatingSystem.IsLinux(),
+            "macos" => OperatingSystem.IsMacOS(),
+            "unix" => OperatingSystem.IsLinux() || OperatingSystem.IsMacOS() || OperatingSystem.IsFreeBSD(),
+            _ => throw new ArgumentOutOfRangeException(nameof(osFamily), osFamily, null),
+        };
         ConditionEvaluator.Evaluate(require).Should().Be(expected);
     }
 }

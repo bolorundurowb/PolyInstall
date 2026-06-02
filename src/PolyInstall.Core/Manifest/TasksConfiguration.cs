@@ -30,7 +30,8 @@ public sealed class InstallTask
 {
     [Description(
         "Optional OS predicate that must be true for this task to run. " +
-        "Supported values: os.isWindows, os.isLinux, os.isOSX (or os.isMacOS), os.isUnix. " +
+        "Supported values: os.isWindows/os.is_windows, os.isLinux/os.is_linux, " +
+        "os.isOSX/os.is_osx, os.isMacOS/os.is_macos, os.isUnix/os.is_unix. " +
         "If omitted the task always runs.")]
     public string? Require { get; set; }
 

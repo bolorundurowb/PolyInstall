@@ -47,7 +47,7 @@ layouts.
 |----------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **`polyinstall` CLI**            | Parses YAML, substitutes environment variables, validates against JSON Schema, globs files, builds a zip payload, compresses it, and produces one output binary per `build.targets` entry.                |
 | **Stub (`PolyInstall.Runtime`)** | The actual installer binary you ship. It reads the bundle appended to itself, shows a wizard (`PolyInstall.UI`), copies files, and can run **tasks** (shortcuts, registry, `.desktop` files, permissions). |
-| **`PolyInstall.Uninstall` (Windows)** | A small, trimmed **uninstall host** published beside the stub. The CLI embeds it in the payload as `.polyinstall/tools/PolyInstall.Uninstall.exe`; after install it is copied to **`Uninstall.exe`** at the install root for Add/Remove Programs and command-line uninstall. |
+| **`PolyInstall.Uninstall` (Windows)** | A small, trimmed **uninstall host** published beside the stub. When Windows ARP registration is enabled, the CLI embeds it in the payload as `.polyinstall/tools/PolyInstall.Uninstall.exe`; after install it is copied to **`Uninstall.exe`** at the install root for Add/Remove Programs and command-line uninstall. |
 | **`schema/v1.json`**             | JSON Schema generated from the same C# models as the runtime. Use it in your editor for completion and diagnostics (see [Manifest and schema](#manifest-and-schema)).                                     |
 
 **Platform outputs:** On **Windows**, the installer can register **Add/Remove Programs** and deploy a dedicated **`Uninstall.exe`** (the published `PolyInstall.Uninstall` host) that runs **`--uninstall`**. On **Linux**, the CLI can optionally emit an **AppImage** (requires `mksquashfs` on a Linux
@@ -121,7 +121,7 @@ example extra RIDs not bundled in releases).
    ```
 
    The CLI looks for `PolyInstall.Runtime.exe` (Windows) or `PolyInstall.Runtime` (non-Windows) under `<stubs>/<rid>/`.
-   For Windows targets it also expects `<stubs>/<rid>/PolyInstall.Uninstall.exe`. When you omit `--stubs`, the CLI uses
+   For Windows targets with `register_arp: true` (the default), it also expects `<stubs>/<rid>/PolyInstall.Uninstall.exe`. When you omit `--stubs`, the CLI uses
    a `stubs` directory next to the `polyinstall` executable if it exists; otherwise it uses `<base>/stubs`.
 
 4. **Build the installer**:
@@ -177,7 +177,7 @@ The manifest is grouped into five sections. All are represented in JSON Schema; 
 | `output_dir` | Directory for built installers, relative to `--base` (default in model: `dist`). |
 | `compression` | `brotli` or `gzip` (see [Compression](#compression)). |
 | `targets` | List of **manifest tokens** (not raw .NET RIDs); see [Build targets](#build-targets). |
-| `stub_path` | Optional path to the installer stub for a target; use `{rid}` for the **.NET RID** (e.g. `C:\stubs\{rid}\PolyInstall.Runtime.exe`). If omitted, the CLI uses `<resolved-stubs-root>/<rid>/PolyInstall.Runtime[.exe]` where the resolved stubs root is `--stubs`, or `stubs` next to `polyinstall` when present, else `<base>/stubs` (and for Windows targets also expects `PolyInstall.Uninstall.exe` in that `<rid>` folder). |
+| `stub_path` | Optional path to the installer stub for a target; use `{rid}` for the **.NET RID** (e.g. `C:\stubs\{rid}\PolyInstall.Runtime.exe`). If omitted, the CLI uses `<resolved-stubs-root>/<rid>/PolyInstall.Runtime[.exe]` where the resolved stubs root is `--stubs`, or `stubs` next to `polyinstall` when present, else `<base>/stubs` (and for Windows targets with `register_arp: true`, also expects `PolyInstall.Uninstall.exe` in that `<rid>` folder). |
 | `windows` | Optional [Windows build options](#windows-build-options). |
 | `linux` | Optional [Linux build options](#linux-build-options). |
 | `macos` | Optional [macOS build options](#macos-build-options). |
@@ -208,7 +208,8 @@ The manifest is grouped into five sections. All are represented in JSON Schema; 
 | Field | Meaning |
 |--------|---------|
 | `theme` | `light`, `dark`, or `system`. |
-| `assets` | Optional list of `{ id, path }` entries for future asset wiring (paths resolved under the extracted payload). |
+| `logo_path` | Optional installer branding image shown in the wizard header; supports SVG and raster files resolved under the extracted payload unless absolute. |
+| `assets` | Optional list of `{ id, path }` entries. AppImage packaging uses the first PNG asset as the application icon. |
 | `wizard_steps` | Ordered steps for the Avalonia wizard (see [Wizard steps](#wizard-steps)). |
 
 ### `files`
@@ -275,7 +276,7 @@ polyinstall validate <manifest.yaml> [--base <dir>]
 | **`--base`** | Working directory used to resolve `files[].source_dir` and default `output_dir`. Defaults to the manifest file’s directory. |
 | **`--stubs`** | Root folder containing per-RID stub directories. When omitted: `stubs` next to the `polyinstall` executable if that directory exists, otherwise `<base>/stubs`. |
 
-The CLI loads `schema/v1.json` from next to the built CLI assembly, or walks upward from the current base path to find `schema/v1.json`.
+The CLI loads `schema/v1.json` from next to the built CLI assembly, walks upward from the CLI assembly directory, then falls back to `schema/v1.json` under the current working directory.
 
 
 
@@ -301,7 +302,7 @@ For each token you support outside bundled stubs, publish the runtime once:
 dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r linux-x64 -o stubs/linux-x64
 ```
 
-Use the same folder layout the CLI expects (`stubs/<rid>/PolyInstall.Runtime...`, and on Windows also `stubs/<rid>/PolyInstall.Uninstall.exe`), or set `build.stub_path`.
+Use the same folder layout the CLI expects (`stubs/<rid>/PolyInstall.Runtime...`, and on Windows with `register_arp: true` also `stubs/<rid>/PolyInstall.Uninstall.exe`), or set `build.stub_path`.
 
 
 
@@ -403,7 +404,7 @@ Wizard strings (for example `ui.wizard_steps` → `destination.default_path`) an
 
 - `os.isWindows` / `os.is_windows`
 - `os.isLinux` / `os.is_linux`
-- `os.isOSX` / `os.is_osx` / `os.is_macos` / `os.is_macos`
+- `os.isOSX` / `os.is_osx` / `os.isMacOS` / `os.is_macos`
 - `os.isUnix` / `os.is_unix` (Linux, macOS, or FreeBSD)
 
 Unknown expressions throw at runtime — there is **no** general-purpose expression language by design.
@@ -442,7 +443,7 @@ Invalid file-name characters in `metadata.name` are replaced with underscores.
 
 | Symptom | What to check |
 |---------|----------------|
-| **Stub not found** | Publish `PolyInstall.Runtime` under `<rid>/` in the resolved stubs root (`--stubs`, or `stubs` next to `polyinstall`, or `<base>/stubs`). On Windows targets also publish `PolyInstall.Uninstall.exe` there, or set `build.stub_path` with `{rid}`. |
+| **Stub not found** | Publish `PolyInstall.Runtime` under `<rid>/` in the resolved stubs root (`--stubs`, or `stubs` next to `polyinstall`, or `<base>/stubs`). On Windows targets with `register_arp: true`, also publish `PolyInstall.Uninstall.exe` there, or set `build.stub_path` with `{rid}`. |
 | **Schema validation errors** | Run `polyinstall validate`; ensure YAML keys are snake_case and match `schema/v1.json`. |
 | **No files matched** | Check `source_dir` relative to `--base`, and `include` / `exclude` patterns. |
 | **Wrong OS** | The stub RID must match the machine (e.g. do not run a `win-x64` build on Linux). |
@@ -470,6 +471,6 @@ Only if you need unreleased behaviour, private forks, or custom stub layouts sho
 fork) and run `dotnet publish` / `dotnet run` from source as described in [Quick start](#quick-start) and
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
-If you embed PolyInstall into your own product, keep the **schema version** (`schema/v1.json`), **installer stub**, and (on Windows) **`PolyInstall.Uninstall`** outputs in sync — mismatches between the CLI bundle format and an older stub or uninstall host can fail at the magic/footer check, during decompression, or when the bundled uninstall path is missing.
+If you embed PolyInstall into your own product, keep the **schema version** (`schema/v1.json`), **installer stub**, and (when Windows ARP registration is enabled) **`PolyInstall.Uninstall`** outputs in sync — mismatches between the CLI bundle format and an older stub or uninstall host can fail at the magic/footer check, during decompression, or when the bundled uninstall path is missing.
 
 For development and pull request guidance, see [CONTRIBUTING.md](CONTRIBUTING.md).

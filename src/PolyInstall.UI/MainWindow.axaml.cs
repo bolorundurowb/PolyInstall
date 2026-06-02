@@ -226,7 +226,7 @@ public partial class MainWindow : Window
     {
         var def = step.DefaultPath ?? Path.Combine(pal.ProgramFiles, InstallBootstrap.Manifest.Metadata.Name);
         def = InstallPathResolver.Expand(def, pal);
-        _destinationBox = new TextBox { Text = def, Watermark = "Install folder" };
+        _destinationBox = new TextBox { Text = def, PlaceholderText = "Install folder" };
         return new StackPanel { Spacing = 8, Children = { new TextBlock { Text = "Choose installation directory:" }, _destinationBox } };
     }
 

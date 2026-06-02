@@ -88,3 +88,9 @@ TestResults/
 *.bak
 *.swp
 *.orig
+
+
+# AI Tools
+.cursor/
+.claude/
+.junie/

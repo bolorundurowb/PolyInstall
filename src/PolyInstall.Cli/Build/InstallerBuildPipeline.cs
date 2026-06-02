@@ -11,11 +11,11 @@ namespace PolyInstall.Cli.Build;
 
 /// <summary>
 /// Builds self-extracting installers by appending manifest + compressed payload to a pre-published
-/// PolyInstall.Runtime stub binary. On Windows, also requires <c>PolyInstall.Uninstall.exe</c> next to the stub;
-/// the build pipeline adds it to the zip payload under <c>.polyinstall/tools/</c> so the installer can copy it to
-/// <c>Uninstall.exe</c> and register Add/Remove Programs.
+/// PolyInstall.Runtime stub binary. Windows installers with Add/Remove Programs registration enabled also embed
+/// <c>PolyInstall.Uninstall.exe</c> under <c>.polyinstall/tools/</c> so the installer can copy it to
+/// <c>Uninstall.exe</c>.
 /// </summary>
-public sealed class InstallerBuildPipeline
+public static class InstallerBuildPipeline
 {
     public static async Task RunAsync(
         string manifestPath,
@@ -97,7 +97,7 @@ public sealed class InstallerBuildPipeline
             var outPath = Path.Combine(outDir, outName);
             var manifestJson = JsonSerializer.Serialize(manifest, InstallManifest.JsonOptions);
             var targetFiles = new List<(string EntryName, string FullPath)>(baseFiles);
-            AddTargetSpecificFiles(targetFiles, stubRoot, rid);
+            AddTargetSpecificFiles(targetFiles, manifest, stubRoot, rid);
             BuildLog.Info($"Packing {targetFiles.Count} file(s) into zip payload…");
             var compressed = await Task.Run(() => PayloadArchive.PackAndCompress(targetFiles, compression, ct), ct);
             BuildLog.Info($"Compressed payload: {BuildLog.FormatBytes(compressed.LongLength)}");
@@ -171,10 +171,13 @@ public sealed class InstallerBuildPipeline
 
     private static void AddTargetSpecificFiles(
         List<(string EntryName, string FullPath)> files,
+        InstallManifest manifest,
         string stubRoot,
         string dotnetRid)
     {
         if (!dotnetRid.StartsWith("win-", StringComparison.OrdinalIgnoreCase))
+            return;
+        if (!(manifest.Build.Windows?.RegisterArp ?? true))
             return;
 
         var uninstallStubPath = ResolveUninstallStubPath(stubRoot, dotnetRid);

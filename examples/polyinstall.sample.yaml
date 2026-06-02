@@ -10,7 +10,7 @@ build:
     - windows-x64
   windows:
     install_scope: user
-    # When true, publish PolyInstall.Uninstall into the same stubs/<rid>/ folder before `polyinstall build` (README).
+    # When true (default), publish PolyInstall.Uninstall into the same stubs/<rid>/ folder before `polyinstall build` (README).
     register_arp: true
   # linux:
   #   package: appimage   # requires Linux host + mksquashfs (squashfs-tools)
