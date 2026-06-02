@@ -213,7 +213,7 @@ public partial class MainWindow : Window
             return new TextBlock { Text = $"EULA file not found: {full}" };
         return new ScrollViewer
         {
-            MaxHeight = 280,
+            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
             Content = new TextBlock
             {
                 Text = File.ReadAllText(full),
@@ -224,10 +224,24 @@ public partial class MainWindow : Window
 
     private Control BuildDestination(WizardStep step, IPolyInstallPal pal)
     {
-        var def = step.DefaultPath ?? Path.Combine(pal.ProgramFiles, InstallBootstrap.Manifest.Metadata.Name);
+        var def = step.DefaultPath ?? GetDefaultInstallPath(pal);
         def = InstallPathResolver.Expand(def, pal);
         _destinationBox = new TextBox { Text = def, PlaceholderText = "Install folder" };
         return new StackPanel { Spacing = 8, Children = { new TextBlock { Text = "Choose installation directory:" }, _destinationBox } };
+    }
+
+    private static string GetDefaultInstallPath(IPolyInstallPal pal)
+    {
+        var productName = InstallBootstrap.Manifest.Metadata.Name;
+        if (!OperatingSystem.IsWindows())
+            return Path.Combine(pal.ProgramFiles, productName);
+
+        if (IsMachineInstall(InstallBootstrap.Manifest))
+            return Path.Combine(pal.ProgramFiles, productName);
+
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var baseDirectory = string.IsNullOrWhiteSpace(localAppData) ? pal.UserHome : localAppData;
+        return Path.Combine(baseDirectory, productName);
     }
 
     private Control BuildProgress()
@@ -577,7 +591,7 @@ public partial class MainWindow : Window
     {
         var win = manifest.Build.Windows ?? new WindowsBuildOptions();
         var scope = string.IsNullOrWhiteSpace(win.InstallScope) ? "user" : win.InstallScope.Trim();
-        if (scope.Equals("machine", StringComparison.OrdinalIgnoreCase) && !IsWindowsAdministrator())
+        if (IsMachineInstall(manifest) && !IsWindowsAdministrator())
         {
             throw new InvalidOperationException(
                 "Per-machine installs require Administrator rights for Add/Remove Programs registration. Use install_scope: user or run the installer elevated.");
@@ -615,6 +629,12 @@ public partial class MainWindow : Window
 #pragma warning disable CA1416 // Guarded by OperatingSystem.IsWindows() at call site
         WindowsArpRegistration.Register(state, uninstallPath, estimatedKb);
 #pragma warning restore CA1416
+    }
+
+    private static bool IsMachineInstall(InstallManifest manifest)
+    {
+        var scope = manifest.Build.Windows?.InstallScope;
+        return string.Equals(scope?.Trim(), "machine", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsWindowsAdministrator()
