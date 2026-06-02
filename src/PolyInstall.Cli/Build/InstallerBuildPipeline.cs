@@ -11,9 +11,9 @@ namespace PolyInstall.Cli.Build;
 
 /// <summary>
 /// Builds self-extracting installers by appending manifest + compressed payload to a pre-published
-/// PolyInstall.Runtime stub binary. On Windows, also requires <c>PolyInstall.Uninstall.exe</c> next to the stub;
-/// the build pipeline adds it to the zip payload under <c>.polyinstall/tools/</c> so the installer can copy it to
-/// <c>Uninstall.exe</c> and register Add/Remove Programs.
+/// PolyInstall.Runtime stub binary. Windows installers with Add/Remove Programs registration enabled also embed
+/// <c>PolyInstall.Uninstall.exe</c> under <c>.polyinstall/tools/</c> so the installer can copy it to
+/// <c>Uninstall.exe</c>.
 /// </summary>
 public static class InstallerBuildPipeline
 {
