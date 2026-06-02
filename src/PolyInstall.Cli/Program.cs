@@ -79,32 +79,32 @@ try
     switch (verb)
     {
         case "validate":
-        {
-            var yaml = await File.ReadAllTextAsync(manifestPath);
-            var m = ManifestYaml.Parse(yaml);
-            m = EnvironmentSubstitution.ApplyToManifest(m);
-            var schemaPath = Path.Combine(AppContext.BaseDirectory, "schema", "v1.json");
-            if (!File.Exists(schemaPath))
             {
-                var dir = new DirectoryInfo(AppContext.BaseDirectory);
-                while (dir is not null)
+                var yaml = await File.ReadAllTextAsync(manifestPath);
+                var m = ManifestYaml.Parse(yaml);
+                m = EnvironmentSubstitution.ApplyToManifest(m);
+                var schemaPath = Path.Combine(AppContext.BaseDirectory, "schema", "v1.json");
+                if (!File.Exists(schemaPath))
                 {
-                    var c = Path.Combine(dir.FullName, "schema", "v1.json");
-                    if (File.Exists(c))
+                    var dir = new DirectoryInfo(AppContext.BaseDirectory);
+                    while (dir is not null)
                     {
-                        schemaPath = c;
-                        break;
+                        var c = Path.Combine(dir.FullName, "schema", "v1.json");
+                        if (File.Exists(c))
+                        {
+                            schemaPath = c;
+                            break;
+                        }
+                        dir = dir.Parent;
                     }
-                    dir = dir.Parent;
                 }
+                if (!File.Exists(schemaPath))
+                    throw new FileNotFoundException("Could not find schema/v1.json (looked next to CLI and parent directories).");
+                var json = JsonSerializer.Serialize(m, InstallManifest.JsonOptions);
+                ManifestJsonValidator.Validate(json, schemaPath);
+                Console.WriteLine("Manifest is valid.");
+                return 0;
             }
-            if (!File.Exists(schemaPath))
-                throw new FileNotFoundException("Could not find schema/v1.json (looked next to CLI and parent directories).");
-            var json = JsonSerializer.Serialize(m, InstallManifest.JsonOptions);
-            ManifestJsonValidator.Validate(json, schemaPath);
-            Console.WriteLine("Manifest is valid.");
-            return 0;
-        }
         case "build":
             BuildLog.Verbose = verbose;
             await InstallerBuildPipeline.RunAsync(manifestPath, basePath, stubsDir, default);
