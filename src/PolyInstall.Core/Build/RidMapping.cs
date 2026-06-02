@@ -18,6 +18,4 @@ public static class RidMapping
             return rid;
         throw new ArgumentException($"Unknown build target RID token: '{manifestToken}'.", nameof(manifestToken));
     }
-
-    public static IReadOnlyCollection<string> KnownTokens => ManifestToDotNetRid.Keys.ToList();
 }

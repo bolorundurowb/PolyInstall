@@ -21,7 +21,7 @@ public static class EnvironmentSubstitution
         return node.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }
 
-    public static void Walk(JsonNode? node, IReadOnlyDictionary<string, string> extra)
+    private static void Walk(JsonNode? node, IReadOnlyDictionary<string, string> extra)
     {
         switch (node)
         {

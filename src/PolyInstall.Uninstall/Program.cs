@@ -1,5 +1,3 @@
-using PolyInstall.Core.Install;
-
 namespace PolyInstall.Uninstall;
 
 internal static class Program
