@@ -1,5 +1,5 @@
 <Project>
-  <!-- Cobertura output when tests run with /p:CollectCoverage=true (CI and local); see OmniAssert-style workflows. -->
+  <!-- Cobertura output when tests run with /p:CollectCoverage=true (CI and local coverage workflows). -->
   <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
     <!-- Per-project folder so multiple test assemblies do not overwrite the same Cobertura file. -->
     <CoverletOutput>$(MSBuildThisFileDirectory)coverage/$(MSBuildProjectName)/</CoverletOutput>

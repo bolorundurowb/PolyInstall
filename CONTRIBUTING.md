@@ -54,7 +54,7 @@ Commit `schema/v1.json` updates alongside the related code changes.
 
 Quick smoke test loop:
 
-1. Publish a runtime stub for your target RID (and on **Windows**, publish **`PolyInstall.Uninstall`** into the same `stubs/<rid>/` folder so the CLI can embed it).
+1. Publish a runtime stub for your target RID (and on **Windows** with `register_arp: true`, publish **`PolyInstall.Uninstall`** into the same `stubs/<rid>/` folder so the CLI can embed it).
 2. Build an installer from `examples/polyinstall.sample.yaml`.
 3. Run the produced installer on a matching OS.
 
