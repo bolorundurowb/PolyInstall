@@ -17,15 +17,16 @@ internal static class Program
     {
         var exe = Environment.ProcessPath ?? throw new InvalidOperationException("Cannot resolve host executable path.");
         var (manifest, compressed) = InstallBundleReader.ReadFromSeekableFile(exe);
-        if (RelaunchElevatedForMachineInstall(exe, args, manifest))
+        var pal = new DefaultPolyInstallPal();
+        var existingInstall = InstalledProductLocator.Find(manifest, pal);
+        if (RelaunchElevatedForMachineInstall(exe, args, manifest, existingInstall))
             return;
 
         var raw = InstallBundleReader.DecompressPayload(manifest, compressed);
         var extract = Path.Combine(Path.GetTempPath(), "polyinstall-" + Guid.NewGuid().ToString("n"));
         Directory.CreateDirectory(extract);
         ZipPayloadExtractor.ExtractToDirectory(raw, extract);
-        var pal = new DefaultPolyInstallPal();
-        InstallBootstrap.Init(manifest, extract, pal);
+        InstallBootstrap.Init(manifest, extract, pal, existingInstall);
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
@@ -34,10 +35,20 @@ internal static class Program
             .UsePlatformDetect()
             .LogToTrace();
 
-    private static bool RelaunchElevatedForMachineInstall(string exe, string[] args, InstallManifest manifest)
+    private static bool RelaunchElevatedForMachineInstall(
+        string exe,
+        string[] args,
+        InstallManifest manifest,
+        ExistingInstallInfo? existingInstall)
     {
-        if (!OperatingSystem.IsWindows() || !IsMachineInstall(manifest) || IsWindowsAdministrator())
+        if (!WindowsElevation.ShouldRelaunchElevated(
+                manifest,
+                existingInstall,
+                OperatingSystem.IsWindows(),
+                OperatingSystem.IsWindows() && IsWindowsAdministrator()))
+        {
             return false;
+        }
 
         try
         {
@@ -55,12 +66,6 @@ internal static class Program
         }
 
         return true;
-    }
-
-    private static bool IsMachineInstall(InstallManifest manifest)
-    {
-        var scope = manifest.Build.Windows?.InstallScope;
-        return string.Equals(scope?.Trim(), "machine", StringComparison.OrdinalIgnoreCase);
     }
 
     [SupportedOSPlatform("windows")]
