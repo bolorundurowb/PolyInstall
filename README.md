@@ -50,7 +50,7 @@ layouts.
 | **`PolyInstall.Uninstall` (Windows)** | A small, trimmed **uninstall host** published beside the stub. When Windows ARP registration is enabled, the CLI embeds it in the payload as `.polyinstall/tools/PolyInstall.Uninstall.exe`; after install it is copied to **`Uninstall.exe`** at the install root for Add/Remove Programs and command-line uninstall. |
 | **`schema/v1.json`**             | JSON Schema generated from the same C# models as the runtime. Use it in your editor for completion and diagnostics (see [Manifest and schema](#manifest-and-schema)).                                     |
 
-**Platform outputs:** On **Windows**, the installer can register **Add/Remove Programs** and deploy a dedicated **`Uninstall.exe`** (the published `PolyInstall.Uninstall` host) that runs **`--uninstall`**. On **Linux**, the CLI can optionally emit an **AppImage** (requires `mksquashfs` on a Linux
+**Platform outputs:** On **Windows**, the installer can register **Add/Remove Programs** and deploy a dedicated **`Uninstall.exe`** (the published `PolyInstall.Uninstall` host) that runs **`--uninstall`**. Re-running a newer packaged installer for the same product detects the existing install, offers an update/repair flow, updates files in place, and refreshes stored install metadata. On **Linux**, the CLI can optionally emit an **AppImage** (requires `mksquashfs` on a Linux
 host). On **macOS**, the CLI can optionally emit a **DMG** via `hdiutil` (requires building on macOS).
 See [Windows uninstall and ARP](#windows-uninstall-and-arp), [Linux AppImage](#linux-appimage),
 and [macOS DMG](#macos-dmg).
@@ -187,7 +187,9 @@ The manifest is grouped into five sections. All are represented in JSON Schema; 
 | Field | Meaning |
 |--------|---------|
 | `install_scope` | `user` (default) or `machine`. Controls whether Add/Remove Programs entries go under **HKCU** or **HKLM**. |
-| `register_arp` | When `true` (default), after a successful install the installer writes **`.polyinstall/install-state.json`** and **`embedded-manifest.json`**, copies the bundled **`.polyinstall/tools/PolyInstall.Uninstall.exe`** to **`Uninstall.exe`** at the install root, and registers the product in Add/Remove Programs. |
+| `register_arp` | When `true` (default), after a successful install the installer copies the bundled **`.polyinstall/tools/PolyInstall.Uninstall.exe`** to **`Uninstall.exe`** at the install root and registers the product in Add/Remove Programs. |
+
+After every successful install or update, PolyInstall writes **`.polyinstall/install-state.json`** and **`.polyinstall/embedded-manifest.json`**. The state file records product identity, install location, version, and payload-owned files so future packaged installers for the same product can update in place and remove stale files that were installed by an earlier package.
 
 **Elevation:** `install_scope: machine` writes to **HKLM** and requires an **elevated** (Administrator) install. On Windows, the installer relaunches itself with a UAC prompt before showing the wizard when machine scope is configured; use `user` scope for per-user installs under HKCU.
 

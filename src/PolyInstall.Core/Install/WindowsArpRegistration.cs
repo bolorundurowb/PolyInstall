@@ -5,6 +5,9 @@ namespace PolyInstall.Core.Install;
 
 public static class WindowsArpRegistration
 {
+    public static string RegistryKeyRelativeForProductId(string productId) =>
+        $@"Software\Microsoft\Windows\CurrentVersion\Uninstall\{productId}";
+
     [SupportedOSPlatform("windows")]
     public static void Register(InstallStateDocument state, string uninstallExePath, long estimatedSizeKib)
     {
@@ -29,6 +32,36 @@ public static class WindowsArpRegistration
         if (estimatedSizeKib > int.MaxValue)
             estimatedSizeKib = int.MaxValue;
         key.SetValue("EstimatedSize", (int)estimatedSizeKib, RegistryValueKind.DWord);
+    }
+
+    [SupportedOSPlatform("windows")]
+    public static InstallStateDocument? TryRead(string productId, string installScope)
+    {
+        if (!OperatingSystem.IsWindows())
+            return null;
+
+        var relativeKey = RegistryKeyRelativeForProductId(productId);
+        var root = installScope.Equals("machine", StringComparison.OrdinalIgnoreCase)
+            ? Registry.LocalMachine
+            : Registry.CurrentUser;
+        using var key = root.OpenSubKey(relativeKey, writable: false);
+        if (key is null)
+            return null;
+
+        var installLocation = key.GetValue("InstallLocation") as string;
+        if (string.IsNullOrWhiteSpace(installLocation))
+            return null;
+
+        return new InstallStateDocument
+        {
+            ProductId = productId,
+            DisplayName = key.GetValue("DisplayName") as string ?? "",
+            DisplayVersion = key.GetValue("DisplayVersion") as string ?? "",
+            Publisher = key.GetValue("Publisher") as string,
+            InstallLocation = installLocation,
+            InstallScope = installScope,
+            RegistryUninstallKeyRelative = relativeKey,
+        };
     }
 
     [SupportedOSPlatform("windows")]
