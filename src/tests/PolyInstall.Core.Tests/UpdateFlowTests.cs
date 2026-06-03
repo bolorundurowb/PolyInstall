@@ -1,6 +1,5 @@
-using PolyInstall.Core.Install;
-using PolyInstall.Core.Manifest;
-using PolyInstall.Core.Pal;
+using PolyInstall.Install;
+using PolyInstall.Pal;
 
 namespace PolyInstall.Core.Tests;
 
@@ -9,11 +8,11 @@ public class UpdateFlowTests
     [Fact]
     public void TryReadFromInstallDirectory_WithMatchingState_ReturnsExistingInstall()
     {
-        var manifest = Manifest("SampleApp", "2.0.0");
-        var installRoot = NewTempDir();
+        var manifest = TestHelpers.Manifest("SampleApp", "2.0.0");
+        var installRoot = TestHelpers.NewTempDir();
         try
         {
-            InstallStateIo.WriteState(installRoot, StateFor(manifest, installRoot, "1.0.0"));
+            InstallStateIo.WriteState(installRoot, TestHelpers.StateFor(manifest, installRoot, "1.0.0"));
 
             var existing = InstalledProductLocator.TryReadFromInstallDirectory(manifest, installRoot);
 
@@ -23,33 +22,33 @@ public class UpdateFlowTests
         }
         finally
         {
-            TryDeleteDirectory(installRoot);
+            TestHelpers.TryDeleteDirectory(installRoot);
         }
     }
 
     [Fact]
     public void TryReadFromInstallDirectory_WithDifferentProduct_ReturnsNull()
     {
-        var manifest = Manifest("SampleApp", "2.0.0");
-        var otherManifest = Manifest("OtherApp", "1.0.0");
-        var installRoot = NewTempDir();
+        var manifest = TestHelpers.Manifest("SampleApp", "2.0.0");
+        var otherManifest = TestHelpers.Manifest("OtherApp", "1.0.0");
+        var installRoot = TestHelpers.NewTempDir();
         try
         {
-            InstallStateIo.WriteState(installRoot, StateFor(otherManifest, installRoot, "1.0.0"));
+            InstallStateIo.WriteState(installRoot, TestHelpers.StateFor(otherManifest, installRoot, "1.0.0"));
 
             InstalledProductLocator.TryReadFromInstallDirectory(manifest, installRoot).Should().BeNull();
         }
         finally
         {
-            TryDeleteDirectory(installRoot);
+            TestHelpers.TryDeleteDirectory(installRoot);
         }
     }
 
     [Fact]
     public void TryReadFromInstallDirectory_WithCorruptState_ReturnsNull()
     {
-        var manifest = Manifest("SampleApp", "2.0.0");
-        var installRoot = NewTempDir();
+        var manifest = TestHelpers.Manifest("SampleApp", "2.0.0");
+        var installRoot = TestHelpers.NewTempDir();
         try
         {
             Directory.CreateDirectory(InstallStatePaths.PolyDir(installRoot));
@@ -59,18 +58,18 @@ public class UpdateFlowTests
         }
         finally
         {
-            TryDeleteDirectory(installRoot);
+            TestHelpers.TryDeleteDirectory(installRoot);
         }
     }
 
     [Fact]
     public void Find_WithExplicitCandidateDirectory_ReturnsMatchingInstall()
     {
-        var manifest = Manifest("SampleApp", "2.0.0");
-        var installRoot = NewTempDir();
+        var manifest = TestHelpers.Manifest("SampleApp", "2.0.0");
+        var installRoot = TestHelpers.NewTempDir();
         try
         {
-            InstallStateIo.WriteState(installRoot, StateFor(manifest, installRoot, "1.0.0"));
+            InstallStateIo.WriteState(installRoot, TestHelpers.StateFor(manifest, installRoot, "1.0.0"));
 
             var existing = InstalledProductLocator.Find(manifest, new TestPal(installRoot), installRoot);
 
@@ -79,15 +78,15 @@ public class UpdateFlowTests
         }
         finally
         {
-            TryDeleteDirectory(installRoot);
+            TestHelpers.TryDeleteDirectory(installRoot);
         }
     }
 
     [Fact]
     public void InstallFinalizer_FinalizeInstall_WritesStateAndEmbeddedManifest_WhenArpDisabled()
     {
-        var manifest = Manifest("SampleApp", "2.0.0");
-        var installRoot = NewTempDir();
+        var manifest = TestHelpers.Manifest("SampleApp", "2.0.0");
+        var installRoot = TestHelpers.NewTempDir();
         try
         {
             var state = InstallFinalizer.FinalizeInstall(manifest, installRoot, ["app.txt"]);
@@ -100,14 +99,14 @@ public class UpdateFlowTests
         }
         finally
         {
-            TryDeleteDirectory(installRoot);
+            TestHelpers.TryDeleteDirectory(installRoot);
         }
     }
 
     [Fact]
     public void DeleteFilesMissingFromNewPayload_RemovesOnlyPreviouslyTrackedFiles()
     {
-        var installRoot = NewTempDir();
+        var installRoot = TestHelpers.NewTempDir();
         try
         {
             File.WriteAllText(Path.Combine(installRoot, "stale.txt"), "old");
@@ -126,14 +125,14 @@ public class UpdateFlowTests
         }
         finally
         {
-            TryDeleteDirectory(installRoot);
+            TestHelpers.TryDeleteDirectory(installRoot);
         }
     }
 
     [Fact]
     public void DeleteFilesMissingFromNewPayload_SkipsGeneratedArtifactsAndPathEscapes()
     {
-        var installRoot = NewTempDir();
+        var installRoot = TestHelpers.NewTempDir();
         var parentFile = Path.Combine(Directory.GetParent(installRoot)!.FullName, "outside-" + Guid.NewGuid().ToString("n") + ".txt");
         try
         {
@@ -160,17 +159,17 @@ public class UpdateFlowTests
         }
         finally
         {
-            TryDeleteDirectory(installRoot);
-            TryDeleteFile(parentFile);
+            TestHelpers.TryDeleteDirectory(installRoot);
+            TestHelpers.TryDeleteFile(parentFile);
         }
     }
 
     [Fact]
     public void InstallCoordinator_Run_WithExistingInventory_PrunesAndUpdatesState()
     {
-        var manifest = Manifest("SampleApp", "2.0.0");
-        var sourceRoot = NewTempDir();
-        var installRoot = NewTempDir();
+        var manifest = TestHelpers.Manifest("SampleApp", "2.0.0");
+        var sourceRoot = TestHelpers.NewTempDir();
+        var installRoot = TestHelpers.NewTempDir();
         try
         {
             File.WriteAllText(Path.Combine(sourceRoot, "app.txt"), "new");
@@ -178,7 +177,7 @@ public class UpdateFlowTests
             File.WriteAllText(Path.Combine(installRoot, "stale.txt"), "stale");
             File.WriteAllText(Path.Combine(installRoot, "user.txt"), "user");
 
-            var previousState = StateFor(manifest, installRoot, "1.0.0", ["app.txt", "stale.txt"]);
+            var previousState = TestHelpers.StateFor(manifest, installRoot, "1.0.0", ["app.txt", "stale.txt"]);
             InstallStateIo.WriteState(installRoot, previousState);
             var existing = InstalledProductLocator.TryReadFromInstallDirectory(manifest, installRoot);
 
@@ -202,23 +201,23 @@ public class UpdateFlowTests
         }
         finally
         {
-            TryDeleteDirectory(sourceRoot);
-            TryDeleteDirectory(installRoot);
+            TestHelpers.TryDeleteDirectory(sourceRoot);
+            TestHelpers.TryDeleteDirectory(installRoot);
         }
     }
 
     [Fact]
     public void InstallCoordinator_Run_WithLegacyExistingInstall_DoesNotPruneUnknownOldFiles()
     {
-        var manifest = Manifest("SampleApp", "2.0.0");
-        var sourceRoot = NewTempDir();
-        var installRoot = NewTempDir();
+        var manifest = TestHelpers.Manifest("SampleApp", "2.0.0");
+        var sourceRoot = TestHelpers.NewTempDir();
+        var installRoot = TestHelpers.NewTempDir();
         var progress = new List<string>();
         try
         {
             File.WriteAllText(Path.Combine(sourceRoot, "app.txt"), "new");
             File.WriteAllText(Path.Combine(installRoot, "stale.txt"), "legacy stale");
-            InstallStateIo.WriteState(installRoot, StateFor(manifest, installRoot, "1.0.0"));
+            InstallStateIo.WriteState(installRoot, TestHelpers.StateFor(manifest, installRoot, "1.0.0"));
             var existing = InstalledProductLocator.TryReadFromInstallDirectory(manifest, installRoot);
 
             var result = InstallCoordinator.Run(new InstallOperationOptions
@@ -237,21 +236,21 @@ public class UpdateFlowTests
         }
         finally
         {
-            TryDeleteDirectory(sourceRoot);
-            TryDeleteDirectory(installRoot);
+            TestHelpers.TryDeleteDirectory(sourceRoot);
+            TestHelpers.TryDeleteDirectory(installRoot);
         }
     }
 
     [Fact]
     public void InstallCoordinator_Run_WithSameVersionExistingInstall_UsesRepairMode()
     {
-        var manifest = Manifest("SampleApp", "2.0.0");
-        var sourceRoot = NewTempDir();
-        var installRoot = NewTempDir();
+        var manifest = TestHelpers.Manifest("SampleApp", "2.0.0");
+        var sourceRoot = TestHelpers.NewTempDir();
+        var installRoot = TestHelpers.NewTempDir();
         try
         {
             File.WriteAllText(Path.Combine(sourceRoot, "app.txt"), "repaired");
-            InstallStateIo.WriteState(installRoot, StateFor(manifest, installRoot, "2.0.0", ["app.txt"]));
+            InstallStateIo.WriteState(installRoot, TestHelpers.StateFor(manifest, installRoot, "2.0.0", ["app.txt"]));
             var existing = InstalledProductLocator.TryReadFromInstallDirectory(manifest, installRoot);
 
             var result = InstallCoordinator.Run(new InstallOperationOptions
@@ -268,16 +267,16 @@ public class UpdateFlowTests
         }
         finally
         {
-            TryDeleteDirectory(sourceRoot);
-            TryDeleteDirectory(installRoot);
+            TestHelpers.TryDeleteDirectory(sourceRoot);
+            TestHelpers.TryDeleteDirectory(installRoot);
         }
     }
 
     [Fact]
     public void InstallCoordinator_Run_WithFreshDestination_UsesInstallModeAndCreatesState()
     {
-        var manifest = Manifest("SampleApp", "2.0.0");
-        var sourceRoot = NewTempDir();
+        var manifest = TestHelpers.Manifest("SampleApp", "2.0.0");
+        var sourceRoot = TestHelpers.NewTempDir();
         var installRoot = Path.Combine(Path.GetTempPath(), "polyinstall-update-test-" + Guid.NewGuid().ToString("n"));
         try
         {
@@ -298,103 +297,8 @@ public class UpdateFlowTests
         }
         finally
         {
-            TryDeleteDirectory(sourceRoot);
-            TryDeleteDirectory(installRoot);
-        }
-    }
-
-    [Fact]
-    public void WindowsElevation_ShouldRelaunchElevated_WhenExistingInstallIsMachineScope()
-    {
-        var manifest = Manifest("SampleApp", "2.0.0", installScope: "user");
-        var existing = new ExistingInstallInfo { InstallScope = "machine" };
-
-        WindowsElevation.ShouldRelaunchElevated(
-            manifest,
-            existing,
-            isWindows: true,
-            isAdministrator: false).Should().BeTrue();
-    }
-
-    [Fact]
-    public void WindowsElevation_ShouldNotRelaunchElevated_WhenAlreadyAdministrator()
-    {
-        var manifest = Manifest("SampleApp", "2.0.0", installScope: "machine");
-
-        WindowsElevation.ShouldRelaunchElevated(
-            manifest,
-            existingInstall: null,
-            isWindows: true,
-            isAdministrator: true).Should().BeFalse();
-    }
-
-    private static InstallManifest Manifest(string name, string version, string installScope = "user") =>
-        new()
-        {
-            Metadata = new ManifestMetadata
-            {
-                Name = name,
-                Version = version,
-                Publisher = "Example",
-            },
-            Build = new BuildConfiguration
-            {
-                Windows = new WindowsBuildOptions
-                {
-                    InstallScope = installScope,
-                    RegisterArp = false,
-                },
-            },
-        };
-
-    private static InstallStateDocument StateFor(
-        InstallManifest manifest,
-        string installRoot,
-        string version,
-        List<string>? payloadFiles = null)
-    {
-        var productId = ProductIdHelper.StableProductGuidString(manifest.Metadata);
-        return new InstallStateDocument
-        {
-            ProductId = productId,
-            DisplayName = manifest.Metadata.Name,
-            DisplayVersion = version,
-            Publisher = manifest.Metadata.Publisher,
-            InstallLocation = installRoot,
-            InstallScope = InstallScopeHelper.GetInstallScope(manifest),
-            RegistryUninstallKeyRelative = WindowsArpRegistration.RegistryKeyRelativeForProductId(productId),
-            PayloadFiles = payloadFiles,
-        };
-    }
-
-    private static string NewTempDir()
-    {
-        var path = Path.Combine(Path.GetTempPath(), "polyinstall-update-test-" + Guid.NewGuid().ToString("n"));
-        Directory.CreateDirectory(path);
-        return path;
-    }
-
-    private static void TryDeleteDirectory(string path)
-    {
-        try
-        {
-            if (Directory.Exists(path))
-                Directory.Delete(path, recursive: true);
-        }
-        catch
-        {
-        }
-    }
-
-    private static void TryDeleteFile(string path)
-    {
-        try
-        {
-            if (File.Exists(path))
-                File.Delete(path);
-        }
-        catch
-        {
+            TestHelpers.TryDeleteDirectory(sourceRoot);
+            TestHelpers.TryDeleteDirectory(installRoot);
         }
     }
 

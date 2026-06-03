@@ -1,6 +1,6 @@
 using System.IO.Compression;
 
-namespace PolyInstall.Core.Payload;
+namespace PolyInstall.Payload;
 
 public enum PayloadCompression
 {

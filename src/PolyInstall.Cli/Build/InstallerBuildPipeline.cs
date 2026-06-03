@@ -1,11 +1,12 @@
 using System.Text;
 using System.Text.Json;
+using PolyInstall.Build;
 using PolyInstall.Cli.Validation;
-using PolyInstall.Core.Build;
-using PolyInstall.Core.Globbing;
-using PolyInstall.Core.Install;
-using PolyInstall.Core.Manifest;
-using PolyInstall.Core.Payload;
+using PolyInstall.Core.Build.Globbing;
+using PolyInstall.Core.Build.Manifest;
+using PolyInstall.Install;
+using PolyInstall.Manifest;
+using PolyInstall.Payload;
 
 namespace PolyInstall.Cli.Build;
 

@@ -2,7 +2,8 @@
 using System.Text.Json;
 using PolyInstall.Cli.Build;
 using PolyInstall.Cli.Validation;
-using PolyInstall.Core.Manifest;
+using PolyInstall.Core.Build.Manifest;
+using PolyInstall.Manifest;
 
 static void Usage()
 {

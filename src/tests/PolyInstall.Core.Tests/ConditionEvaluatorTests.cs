@@ -1,4 +1,4 @@
-using PolyInstall.Core.Conditions;
+using PolyInstall.Conditions;
 
 namespace PolyInstall.Core.Tests;
 
@@ -19,6 +19,20 @@ public class ConditionEvaluatorTests
         FluentActions.Invoking(() => ConditionEvaluator.Evaluate("custom.script()"))
             .Should().Throw<NotSupportedException>()
             .WithMessage("*Unknown require condition*");
+    }
+
+    [Theory]
+    [InlineData("os.isWindows", "windows")]
+    [InlineData("os.isLinux", "linux")]
+    public void Evaluate_WithCamelCaseOsPredicates_EvaluatesCorrectly(string require, string osFamily)
+    {
+        var expected = osFamily switch
+        {
+            "windows" => OperatingSystem.IsWindows(),
+            "linux" => OperatingSystem.IsLinux(),
+            _ => throw new ArgumentOutOfRangeException(nameof(osFamily), osFamily, null),
+        };
+        ConditionEvaluator.Evaluate(require).Should().Be(expected);
     }
 
     [Theory]

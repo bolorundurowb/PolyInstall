@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
-using PolyInstall.Core.Install;
+using PolyInstall.Install;
 
-namespace PolyInstall.Core.Manifest;
+namespace PolyInstall.Manifest;
 
 /// <summary>
 /// Source-generated JSON serialization for persisted install state and embedded manifest on disk

@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using System.Text;
 
-namespace PolyInstall.Core.Payload;
+namespace PolyInstall.Payload;
 
 /// <summary>
 /// Trailer appended after stub executable: <c>[original exe][manifest UTF-8][compressed payload][footer]</c>.

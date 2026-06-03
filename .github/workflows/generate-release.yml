@@ -1,6 +1,6 @@
-# Release workflow builds/tests the solution and publishes self-contained polyinstall CLI zips. Each zip bundles
-# PolyInstall.Runtime under stubs/<rid>/ for every release RID (win-x64, linux-x64, osx-arm64), plus
-# PolyInstall.Uninstall under stubs/win-x64/, so any platform's CLI can build installers for all targets.
+# Release workflow builds/tests the solution and publishes self-contained polyinstall CLI zips.
+# Each CLI zip bundles only the stub for its host RID (e.g. polyinstall-win-x64 contains stubs/win-x64).
+# Cross-platform stubs are published separately as stubs-{rid}.zip artifacts for users who need them.
 name: Generate Release
 
 on:
@@ -67,8 +67,6 @@ jobs:
         with:
           dotnet-version: |
             10.0.x
-      # squashfs-tools / mksquashfs are only needed when running polyinstall to build AppImages
-      # (manifest linux.package: appimage). dotnet restore/build/test does not invoke that path.
       - run: dotnet restore src/PolyInstall.slnx
       - run: dotnet build src/PolyInstall.slnx -c Release --no-restore
       - name: Test with coverage
@@ -106,9 +104,6 @@ jobs:
           dotnet-version: |
             10.0.x
 
-      # mksquashfs is only required on hosts that run polyinstall with AppImage packaging enabled,
-      # not for dotnet publish of the CLI itself (see AppImagePackager / InstallerBuildPipeline).
-
       - name: Publish CLI (${{ matrix.rid }})
         run: >
           dotnet publish src/PolyInstall.Cli/PolyInstall.Cli.csproj
@@ -120,35 +115,37 @@ jobs:
           -p:DebugType=embedded
           -o "./publish/${{ matrix.artifact }}"
 
-      - name: Publish runtime stubs (all release RIDs)
+      - name: Publish runtime stub for host RID
         shell: bash
         env:
           ARTIFACT: ${{ matrix.artifact }}
+          RID: ${{ matrix.rid }}
         run: |
           set -euo pipefail
           stubs_root="./publish/${ARTIFACT}/stubs"
-          for rid in win-x64 linux-x64 osx-arm64; do
-            echo "Publishing PolyInstall.Runtime for ${rid}..."
-            dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj \
-              -c Release \
-              -r "${rid}" \
-              --self-contained true \
-              -p:PublishSingleFile=true \
-              -p:IncludeNativeLibrariesForSelfExtract=true \
-              -o "${stubs_root}/${rid}"
-          done
+          echo "Publishing PolyInstall.Runtime for ${RID}..."
+          dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj \
+            -c Release \
+            -r "${RID}" \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:DebugType=none \
+            -o "${stubs_root}/${RID}"
 
-      - name: Publish Windows uninstall stub (into stubs/win-x64)
+      - name: Publish Windows uninstall stub (win-x64 only)
+        if: matrix.rid == 'win-x64'
         shell: bash
         env:
           ARTIFACT: ${{ matrix.artifact }}
         run: |
           set -euo pipefail
-          stubs_root="./publish/${ARTIFACT}/stubs"
+          stubs_root="./publish/${ARTIFACT}/stubs/win-x64"
           dotnet publish src/PolyInstall.Uninstall/PolyInstall.Uninstall.csproj \
             -c Release \
             -r win-x64 \
-            -o "${stubs_root}/win-x64"
+            -o "${stubs_root}" \
+            -p:DebugType=none
 
       - name: Zip artifact
         env:
@@ -157,14 +154,66 @@ jobs:
           cd publish
           zip -r "../${{ matrix.artifact }}-${TAG}.zip" "${{ matrix.artifact }}"
 
-      - name: Upload artifact
+      - name: Upload CLI artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifact }}-${{ needs.version-check.outputs.tag }}.zip
 
+  publish-stubs:
+    needs: [version-check, test]
+    if: needs.version-check.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rid: [win-x64, linux-x64, osx-arm64]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            10.0.x
+
+      - name: Publish runtime stub (${{ matrix.rid }})
+        run: |
+          set -euo pipefail
+          out="./stubs-output/${{ matrix.rid }}"
+          dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj \
+            -c Release \
+            -r ${{ matrix.rid }} \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:DebugType=none \
+            -o "${out}"
+
+      - name: Publish Windows uninstall stub (win-x64 only)
+        if: matrix.rid == 'win-x64'
+        run: |
+          set -euo pipefail
+          out="./stubs-output/win-x64"
+          dotnet publish src/PolyInstall.Uninstall/PolyInstall.Uninstall.csproj \
+            -c Release \
+            -r win-x64 \
+            -o "${out}" \
+            -p:DebugType=none
+
+      - name: Zip stub artifact
+        env:
+          TAG: ${{ needs.version-check.outputs.tag }}
+        run: |
+          cd stubs-output
+          zip -r "../stubs-${{ matrix.rid }}-${TAG}.zip" "${{ matrix.rid }}"
+
+      - name: Upload stub artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: stubs-${{ matrix.rid }}
+          path: stubs-${{ matrix.rid }}-${{ needs.version-check.outputs.tag }}.zip
+
   release:
-    needs: [version-check, publish]
+    needs: [version-check, publish, publish-stubs]
     if: needs.version-check.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -219,6 +268,7 @@ jobs:
           prerelease: ${{ needs.version-check.outputs.prerelease == 'true' }}
           body_path: notes.md
           draft: false
+          make_latest: true
           fail_on_unmatched_files: true
           files: release-zips/**/*.zip
         env:

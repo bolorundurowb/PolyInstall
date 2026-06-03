@@ -1,6 +1,6 @@
 using System.ComponentModel;
 
-namespace PolyInstall.Core.Manifest;
+namespace PolyInstall.Manifest;
 
 public sealed class TasksConfiguration
 {

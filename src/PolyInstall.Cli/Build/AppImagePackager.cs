@@ -1,6 +1,6 @@
 using System.Diagnostics;
-using PolyInstall.Core.Build;
-using PolyInstall.Core.Manifest;
+using PolyInstall.Build;
+using PolyInstall.Manifest;
 
 namespace PolyInstall.Cli.Build;
 

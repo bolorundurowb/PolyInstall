@@ -7,10 +7,10 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
-using PolyInstall.Core.Hosting;
-using PolyInstall.Core.Install;
-using PolyInstall.Core.Manifest;
-using PolyInstall.Core.Pal;
+using PolyInstall.Hosting;
+using PolyInstall.Install;
+using PolyInstall.Manifest;
+using PolyInstall.Pal;
 using SkiaSharp;
 using Svg.Skia;
 

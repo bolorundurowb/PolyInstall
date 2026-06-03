@@ -1,4 +1,4 @@
-namespace PolyInstall.Core.Install;
+namespace PolyInstall.Install;
 
 /// <summary>
 /// Relative paths under the install directory for PolyInstall metadata, embedded JSON, and the Windows uninstall layout

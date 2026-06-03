@@ -1,6 +1,6 @@
 using System.IO.Compression;
 
-namespace PolyInstall.Core.Install;
+namespace PolyInstall.Install;
 
 public static class ZipPayloadExtractor
 {

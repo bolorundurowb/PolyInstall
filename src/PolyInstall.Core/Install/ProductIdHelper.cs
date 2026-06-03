@@ -1,8 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
-using PolyInstall.Core.Manifest;
+using PolyInstall.Manifest;
 
-namespace PolyInstall.Core.Install;
+namespace PolyInstall.Install;
 
 /// <summary>
 /// Stable product GUID for ARP keys and install state, derived from manifest metadata.

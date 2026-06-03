@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Nodes;
 using NJsonSchema.Generation;
-using PolyInstall.Core.Manifest;
+using PolyInstall.Manifest;
 
 var repoRoot = FindRepoRoot();
 var outDir = Path.Combine(repoRoot, "schema");

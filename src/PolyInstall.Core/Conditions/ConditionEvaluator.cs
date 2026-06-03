@@ -1,4 +1,4 @@
-namespace PolyInstall.Core.Conditions;
+namespace PolyInstall.Conditions;
 
 /// <summary>
 /// Small registry for <c>require</c> strings on tasks (e.g. <c>os.isWindows</c>). Extend deliberately; no arbitrary scripting.

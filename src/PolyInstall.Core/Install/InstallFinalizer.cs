@@ -1,8 +1,8 @@
 using System.Runtime.Versioning;
 using System.Security.Principal;
-using PolyInstall.Core.Manifest;
+using PolyInstall.Manifest;
 
-namespace PolyInstall.Core.Install;
+namespace PolyInstall.Install;
 
 public static class InstallFinalizer
 {
