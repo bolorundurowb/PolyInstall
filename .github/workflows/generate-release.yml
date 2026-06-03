@@ -135,6 +135,7 @@ jobs:
               --self-contained true \
               -p:PublishSingleFile=true \
               -p:IncludeNativeLibrariesForSelfExtract=true \
+              -p:DebugType=none \
               -o "${stubs_root}/${rid}"
           done
 
@@ -148,7 +149,8 @@ jobs:
           dotnet publish src/PolyInstall.Uninstall/PolyInstall.Uninstall.csproj \
             -c Release \
             -r win-x64 \
-            -o "${stubs_root}/win-x64"
+            -o "${stubs_root}/win-x64" \
+            -p:DebugType=none
 
       - name: Zip artifact
         env:
