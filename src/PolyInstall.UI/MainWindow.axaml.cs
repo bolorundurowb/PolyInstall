@@ -6,6 +6,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using PolyInstall.Core.Hosting;
 using PolyInstall.Core.Install;
@@ -23,6 +24,7 @@ public partial class MainWindow : Window
     private int _stepIndex;
     private TextBox? _destinationBox;
     private TextBlock? _progressText;
+    private TextBlock? _progressLogText;
     private ProgressBar? _progressBar;
     private readonly List<WizardStep> _steps;
     private CancellationTokenSource? _installCts;
@@ -227,7 +229,84 @@ public partial class MainWindow : Window
         var def = step.DefaultPath ?? GetDefaultInstallPath(pal);
         def = InstallPathResolver.Expand(def, pal);
         _destinationBox = new TextBox { Text = def, PlaceholderText = "Install folder" };
-        return new StackPanel { Spacing = 8, Children = { new TextBlock { Text = "Choose installation directory:" }, _destinationBox } };
+        var browseButton = new Button { Content = "Browse...", MinWidth = 96 };
+        browseButton.Click += OnBrowseDestination;
+
+        var destinationRow = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,Auto"),
+            ColumnSpacing = 8,
+        };
+        Grid.SetColumn(_destinationBox, 0);
+        Grid.SetColumn(browseButton, 1);
+        destinationRow.Children.Add(_destinationBox);
+        destinationRow.Children.Add(browseButton);
+
+        return new StackPanel
+        {
+            Spacing = 8,
+            Children =
+            {
+                new TextBlock { Text = "Choose installation directory:" },
+                destinationRow,
+            },
+        };
+    }
+
+    private async void OnBrowseDestination(object? sender, RoutedEventArgs e)
+    {
+        if (_destinationBox is null)
+            return;
+
+        var currentDestination = (_destinationBox.Text ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(currentDestination))
+            currentDestination = GetDefaultInstallPath(InstallBootstrap.Pal);
+        else
+            currentDestination = InstallPathResolver.Expand(currentDestination, InstallBootstrap.Pal);
+
+        var options = new FolderPickerOpenOptions
+        {
+            Title = "Choose installation directory",
+            AllowMultiple = false,
+        };
+        var startDirectory = GetExistingDirectoryForPicker(currentDestination);
+        if (startDirectory is not null)
+            options.SuggestedStartLocation = await StorageProvider.TryGetFolderFromPathAsync(new Uri(startDirectory));
+
+        var folders = await StorageProvider.OpenFolderPickerAsync(options);
+        var selected = folders.FirstOrDefault();
+        if (selected is null)
+            return;
+
+        _destinationBox.Text = selected.Path.IsFile ? selected.Path.LocalPath : selected.Path.ToString();
+    }
+
+    private static string? GetExistingDirectoryForPicker(string path)
+    {
+        try
+        {
+            var candidate = Path.GetFullPath(path);
+            if (Directory.Exists(candidate))
+                return candidate;
+
+            candidate = Path.GetDirectoryName(candidate) ?? string.Empty;
+            while (!string.IsNullOrWhiteSpace(candidate))
+            {
+                if (Directory.Exists(candidate))
+                    return candidate;
+
+                var parent = Directory.GetParent(candidate);
+                if (parent is null)
+                    return null;
+                candidate = parent.FullName;
+            }
+        }
+        catch
+        {
+            return null;
+        }
+
+        return null;
     }
 
     private static string GetDefaultInstallPath(IPolyInstallPal pal)
@@ -246,8 +325,19 @@ public partial class MainWindow : Window
 
     private Control BuildProgress()
     {
-        _progressText = new TextBlock { Text = "Preparing…" };
+        _progressText = new TextBlock { Text = "Preparing…", TextWrapping = TextWrapping.Wrap };
         _progressBar = new ProgressBar { IsIndeterminate = true, Height = 8, HorizontalAlignment = HorizontalAlignment.Stretch };
+        _progressLogText = new TextBlock
+        {
+            TextWrapping = TextWrapping.NoWrap,
+        };
+        var progressLogViewer = new ScrollViewer
+        {
+            Height = 170,
+            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+            Content = _progressLogText,
+        };
         return new StackPanel
         {
             Spacing = 12,
@@ -255,8 +345,39 @@ public partial class MainWindow : Window
             {
                 _progressText,
                 _progressBar,
+                progressLogViewer,
             },
         };
+    }
+
+    private void QueueProgressEntry(string entry)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_progressText is not null)
+                _progressText.Text = entry;
+            AppendProgressEntry(entry);
+        });
+    }
+
+    private async Task AddProgressEntryAsync(string entry)
+    {
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            if (_progressText is not null)
+                _progressText.Text = entry;
+            AppendProgressEntry(entry);
+        });
+    }
+
+    private void AppendProgressEntry(string entry)
+    {
+        if (_progressLogText is null)
+            return;
+
+        _progressLogText.Text = string.IsNullOrEmpty(_progressLogText.Text)
+            ? entry
+            : _progressLogText.Text + Environment.NewLine + entry;
     }
 
     private async void OnNext(object? sender, RoutedEventArgs e)
@@ -296,18 +417,32 @@ public partial class MainWindow : Window
                 throw new InvalidOperationException("No install directory.");
             dest = InstallPathResolver.Expand(dest.Trim(), pal);
             _activeInstallDirectory = dest;
+            await AddProgressEntryAsync($"Prepare folder: {dest}");
             var existedBefore = Directory.Exists(dest);
             Directory.CreateDirectory(dest);
             _installTouchedDisk = true;
             _installCreatedInstallDirectory = !existedBefore;
+            await AddProgressEntryAsync(existedBefore ? $"Use existing folder: {dest}" : $"Create folder: {dest}");
 
             _installCts.Token.ThrowIfCancellationRequested();
+            await AddProgressEntryAsync("Run pre-install tasks");
             TaskEngine.RunPhase(manifest.Tasks?.PreInstall, pal);
+            await AddProgressEntryAsync("Pre-install tasks completed");
             _installCts.Token.ThrowIfCancellationRequested();
 
-            await Task.Run(() => DirectoryCopy.CopyRecursive(InstallBootstrap.ExtractRoot, dest, _installCts.Token), _installCts.Token);
+            await AddProgressEntryAsync("Copy files");
+            await Task.Run(
+                () => DirectoryCopy.CopyRecursive(
+                    InstallBootstrap.ExtractRoot,
+                    dest,
+                    _installCts.Token,
+                    relativePath => QueueProgressEntry($"Copy file: {relativePath}")),
+                _installCts.Token);
+            await AddProgressEntryAsync("Files copied");
             _installCts.Token.ThrowIfCancellationRequested();
+            await AddProgressEntryAsync("Run post-install tasks");
             TaskEngine.RunPhase(manifest.Tasks?.PostInstall, pal);
+            await AddProgressEntryAsync("Post-install tasks completed");
             _installCts.Token.ThrowIfCancellationRequested();
             if (OperatingSystem.IsWindows())
             {
@@ -315,7 +450,9 @@ public partial class MainWindow : Window
                 if (win.RegisterArp)
                 {
                     _installCts.Token.ThrowIfCancellationRequested();
+                    await AddProgressEntryAsync("Register Add/Remove Programs entry");
                     FinalizeWindowsInstall(manifest, dest);
+                    await AddProgressEntryAsync("Add/Remove Programs entry registered");
                 }
             }
 
@@ -323,6 +460,7 @@ public partial class MainWindow : Window
             {
                 if (_progressText is not null)
                     _progressText.Text = "Installation complete.";
+                AppendProgressEntry("Completed");
                 if (_progressBar is not null)
                 {
                     _progressBar.IsIndeterminate = false;
@@ -342,6 +480,7 @@ public partial class MainWindow : Window
             {
                 if (_progressText is not null)
                     _progressText.Text = "Error: " + ex.Message;
+                AppendProgressEntry("Error: " + ex.Message);
                 if (_progressBar is not null)
                     _progressBar.IsIndeterminate = false;
                 CancelButton.IsEnabled = false;
@@ -380,6 +519,7 @@ public partial class MainWindow : Window
 
         if (_progressText is not null)
             _progressText.Text = "Cancelling…";
+        AppendProgressEntry("Cancelling");
         if (_progressBar is not null)
             _progressBar.IsIndeterminate = true;
         CancelButton.IsEnabled = false;
@@ -390,6 +530,7 @@ public partial class MainWindow : Window
     {
         if (_progressText is not null)
             _progressText.Text = "Setup was cancelled.";
+        AppendProgressEntry("Setup was cancelled");
         if (_progressBar is not null)
             _progressBar.IsIndeterminate = false;
 
@@ -414,7 +555,9 @@ public partial class MainWindow : Window
 
         if (_progressText is not null)
             _progressText.Text = "Running cleanup…";
+        AppendProgressEntry("Run cleanup");
         await Task.Run(() => CleanupPartialInstall(_activeInstallDirectory!));
+        AppendProgressEntry("Cleanup completed");
 
         await ShowChoiceDialogAsync(
             "Cleanup complete",
