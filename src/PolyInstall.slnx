@@ -7,7 +7,9 @@
     <Project Path="PolyInstall.Uninstall/PolyInstall.Uninstall.csproj" />
     <Project Path="PolyInstall.SchemaGen/PolyInstall.SchemaGen.csproj" />
     <Project Path="PolyInstall.UI/PolyInstall.UI.csproj" />
-    <Project Path="tests/PolyInstall.Core.Tests/PolyInstall.Core.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
     <Project Path="tests/PolyInstall.Core.Build.Tests/PolyInstall.Core.Build.Tests.csproj" />
+    <Project Path="tests/PolyInstall.Core.Tests/PolyInstall.Core.Tests.csproj" />
   </Folder>
 </Solution>
