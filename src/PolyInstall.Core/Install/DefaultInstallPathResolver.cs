@@ -1,6 +1,6 @@
-using PolyInstall.Core.Manifest;
+using PolyInstall.Manifest;
 
-namespace PolyInstall.Core.Install;
+namespace PolyInstall.Install;
 
 public static class DefaultInstallPathResolver
 {

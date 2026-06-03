@@ -1,8 +1,8 @@
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
-using PolyInstall.Core.Manifest;
-using PolyInstall.Core.Payload;
+using PolyInstall.Manifest;
+using PolyInstall.Payload;
 
 namespace PolyInstall.Core.Tests;
 

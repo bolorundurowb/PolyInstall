@@ -4,7 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform;
 using Avalonia.Styling;
-using PolyInstall.Core.Hosting;
+using PolyInstall.Hosting;
 
 namespace PolyInstall.UI;
 

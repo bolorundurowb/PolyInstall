@@ -1,4 +1,4 @@
-namespace PolyInstall.Core.Install;
+namespace PolyInstall.Install;
 
 /// <summary>
 /// Persisted to <c>.polyinstall/install-state.json</c> under the install directory.

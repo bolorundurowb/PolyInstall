@@ -1,8 +1,8 @@
-using PolyInstall.Core.Hosting;
-using PolyInstall.Core.Manifest;
-using PolyInstall.Core.Pal;
+using PolyInstall.Hosting;
+using PolyInstall.Manifest;
+using PolyInstall.Pal;
 
-namespace PolyInstall.Core.Install;
+namespace PolyInstall.Install;
 
 public static class InstallCoordinator
 {

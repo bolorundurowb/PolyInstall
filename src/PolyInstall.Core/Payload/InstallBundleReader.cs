@@ -1,6 +1,7 @@
-using PolyInstall.Core.Manifest;
+using PolyInstall.Manifest;
+using InstallJsonContext = PolyInstall.Manifest.InstallJsonContext;
 
-namespace PolyInstall.Core.Payload;
+namespace PolyInstall.Payload;
 
 public static class InstallBundleReader
 {

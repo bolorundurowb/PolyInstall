@@ -1,5 +1,5 @@
 using System.Collections.ObjectModel;
-using PolyInstall.Core.Manifest;
+using PolyInstall.Manifest;
 
 namespace PolyInstall.Core.Tests;
 

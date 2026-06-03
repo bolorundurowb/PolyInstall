@@ -1,4 +1,4 @@
-namespace PolyInstall.Core.Install;
+namespace PolyInstall.Install;
 
 public static class PayloadFileInventory
 {

@@ -1,4 +1,4 @@
-namespace PolyInstall.Core.Build;
+namespace PolyInstall.Build;
 
 public static class RidMapping
 {

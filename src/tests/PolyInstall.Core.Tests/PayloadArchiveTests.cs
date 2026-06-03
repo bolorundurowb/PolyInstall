@@ -1,6 +1,6 @@
 using System.IO.Compression;
 using System.Text;
-using PolyInstall.Core.Payload;
+using PolyInstall.Payload;
 
 namespace PolyInstall.Core.Tests;
 

@@ -1,6 +1,6 @@
-using PolyInstall.Core.Install;
+using PolyInstall.Install;
 
-namespace PolyInstall.Core.Pal;
+namespace PolyInstall.Pal;
 
 public interface IPolyInstallPal : IInstallPathPal
 {

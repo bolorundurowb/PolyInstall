@@ -2,9 +2,9 @@ using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Text;
 using Microsoft.Win32;
-using PolyInstall.Core.Hosting;
+using PolyInstall.Hosting;
 
-namespace PolyInstall.Core.Pal;
+namespace PolyInstall.Pal;
 
 public sealed class DefaultPolyInstallPal : IPolyInstallPal
 {

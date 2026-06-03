@@ -1,8 +1,8 @@
-using PolyInstall.Core.Install;
-using PolyInstall.Core.Manifest;
-using PolyInstall.Core.Pal;
+using PolyInstall.Install;
+using PolyInstall.Manifest;
+using PolyInstall.Pal;
 
-namespace PolyInstall.Core.Hosting;
+namespace PolyInstall.Hosting;
 
 /// <summary>
 /// Populated by the runtime host before Avalonia starts; read by the UI layer.

@@ -1,7 +1,8 @@
 using System.Text.Json;
-using PolyInstall.Core.Manifest;
+using PolyInstall.Manifest;
+using InstallJsonContext = PolyInstall.Manifest.InstallJsonContext;
 
-namespace PolyInstall.Core.Install;
+namespace PolyInstall.Install;
 
 public static class InstallStateIo
 {

@@ -1,4 +1,4 @@
-namespace PolyInstall.Core.Manifest;
+namespace PolyInstall.Manifest;
 
 public sealed class UiConfiguration
 {

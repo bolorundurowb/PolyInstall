@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace PolyInstall.Core.Manifest;
+namespace PolyInstall.Manifest;
 
 public sealed class InstallManifest
 {

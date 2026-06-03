@@ -1,6 +1,6 @@
 using Microsoft.Extensions.FileSystemGlobbing;
 
-namespace PolyInstall.Core.Globbing;
+namespace PolyInstall.Core.Build.Globbing;
 
 public sealed record GlobbedFile(string RelativePath, string FullPath);
 

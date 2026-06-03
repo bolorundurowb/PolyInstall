@@ -1,6 +1,6 @@
-using PolyInstall.Core.Hosting;
+using PolyInstall.Hosting;
 
-namespace PolyInstall.Core.Install;
+namespace PolyInstall.Install;
 
 /// <summary>
 /// Maps manifest placeholders to OS paths via a small PAL surface.

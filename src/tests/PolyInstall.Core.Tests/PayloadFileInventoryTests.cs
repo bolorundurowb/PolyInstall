@@ -1,4 +1,4 @@
-using PolyInstall.Core.Install;
+using PolyInstall.Install;
 
 namespace PolyInstall.Core.Tests;
 

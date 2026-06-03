@@ -1,7 +1,8 @@
+using PolyInstall.Manifest;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
-namespace PolyInstall.Core.Manifest;
+namespace PolyInstall.Core.Build.Manifest;
 
 public static class ManifestYaml
 {

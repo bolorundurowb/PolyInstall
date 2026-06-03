@@ -1,9 +1,9 @@
 using System.Text.Json;
-using PolyInstall.Core.Conditions;
-using PolyInstall.Core.Manifest;
-using PolyInstall.Core.Pal;
+using PolyInstall.Conditions;
+using PolyInstall.Manifest;
+using PolyInstall.Pal;
 
-namespace PolyInstall.Core.Install;
+namespace PolyInstall.Install;
 
 public static class TaskEngine
 {

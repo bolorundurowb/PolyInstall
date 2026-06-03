@@ -1,4 +1,4 @@
-using PolyInstall.Core.Globbing;
+using PolyInstall.Core.Build.Globbing;
 
 namespace PolyInstall.Core.Build.Tests;
 

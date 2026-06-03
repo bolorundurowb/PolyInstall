@@ -3,7 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
-namespace PolyInstall.Core.Manifest;
+namespace PolyInstall.Manifest;
 
 /// <summary>
 /// Substitutes <c>${VAR}</c> and <c>${VAR:-default}</c> in all string values of a JSON document (CLI build-time only).

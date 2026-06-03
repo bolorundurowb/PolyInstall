@@ -3,12 +3,14 @@ using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Security.Principal;
 using Avalonia;
-using PolyInstall.Core.Hosting;
-using PolyInstall.Core.Install;
-using PolyInstall.Core.Manifest;
-using PolyInstall.Core.Pal;
-using PolyInstall.Core.Payload;
+using PolyInstall.Hosting;
+using PolyInstall.Install;
+using PolyInstall.Manifest;
+using PolyInstall.Pal;
+using PolyInstall.Payload;
 using PolyInstall.UI;
+
+namespace PolyInstall.Runtime;
 
 internal static class Program
 {

@@ -1,7 +1,7 @@
 using System.Runtime.Versioning;
 using Microsoft.Win32;
 
-namespace PolyInstall.Core.Install;
+namespace PolyInstall.Install;
 
 public static class WindowsArpRegistration
 {
