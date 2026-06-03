@@ -8,6 +8,13 @@ public static class InstalledProductLocator
     {
         var productId = ProductIdHelper.StableProductGuidString(manifest.Metadata);
 
+        foreach (var candidate in NonEmpty(candidateInstallDirectories))
+        {
+            var fromState = TryReadFromInstallDirectory(manifest, candidate);
+            if (fromState is not null)
+                return fromState;
+        }
+
         if (OperatingSystem.IsWindows())
         {
 #pragma warning disable CA1416 // Guarded by OperatingSystem.IsWindows()
@@ -17,12 +24,10 @@ public static class InstalledProductLocator
                 return arp;
         }
 
-        foreach (var candidate in CandidateDirectories(manifest, pal, candidateInstallDirectories))
-        {
-            var fromState = TryReadFromInstallDirectory(manifest, candidate);
-            if (fromState is not null)
-                return fromState;
-        }
+        var defaultPath = InstallPathResolver.Expand(DefaultInstallPathResolver.GetDefaultInstallPath(manifest, pal), pal);
+        var fromDefaultPath = TryReadFromInstallDirectory(manifest, defaultPath);
+        if (fromDefaultPath is not null)
+            return fromDefaultPath;
 
         return null;
     }
@@ -51,18 +56,13 @@ public static class InstalledProductLocator
         return FromState(state, ExistingInstallSource.InstallState);
     }
 
-    private static IEnumerable<string> CandidateDirectories(
-        InstallManifest manifest,
-        IInstallPathPal pal,
-        IEnumerable<string> explicitCandidates)
+    private static IEnumerable<string> NonEmpty(IEnumerable<string> candidates)
     {
-        foreach (var candidate in explicitCandidates)
+        foreach (var candidate in candidates)
         {
             if (!string.IsNullOrWhiteSpace(candidate))
                 yield return candidate;
         }
-
-        yield return InstallPathResolver.Expand(DefaultInstallPathResolver.GetDefaultInstallPath(manifest, pal), pal);
     }
 
     private static ExistingInstallInfo FromState(InstallStateDocument state, ExistingInstallSource source) =>
