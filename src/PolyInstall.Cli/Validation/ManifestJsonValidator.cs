@@ -25,18 +25,14 @@ public static class ManifestJsonValidator
     private static IEnumerable<string> CollectErrors(EvaluationResults result)
     {
         if (result.Errors is not null)
-        {
             foreach (var error in result.Errors)
                 yield return $"{error.Key}: {error.Value}";
-        }
 
         if (result.Details is null)
             yield break;
 
         foreach (var detail in result.Details)
-        {
             foreach (var error in CollectErrors(detail))
                 yield return error;
-        }
     }
 }
