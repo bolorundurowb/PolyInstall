@@ -221,6 +221,7 @@ jobs:
           prerelease: ${{ needs.version-check.outputs.prerelease == 'true' }}
           body_path: notes.md
           draft: false
+          make_latest: true
           fail_on_unmatched_files: true
           files: release-zips/**/*.zip
         env:
