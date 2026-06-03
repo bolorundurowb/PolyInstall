@@ -22,6 +22,20 @@ public class ConditionEvaluatorTests
     }
 
     [Theory]
+    [InlineData("os.isWindows", "windows")]
+    [InlineData("os.isLinux", "linux")]
+    public void Evaluate_WithCamelCaseOsPredicates_EvaluatesCorrectly(string require, string osFamily)
+    {
+        var expected = osFamily switch
+        {
+            "windows" => OperatingSystem.IsWindows(),
+            "linux" => OperatingSystem.IsLinux(),
+            _ => throw new ArgumentOutOfRangeException(nameof(osFamily), osFamily, null),
+        };
+        ConditionEvaluator.Evaluate(require).Should().Be(expected);
+    }
+
+    [Theory]
     [InlineData("os.is_windows", "windows")]
     [InlineData("OS.ISWINDOWS", "windows")]
     [InlineData("os.is_linux", "linux")]

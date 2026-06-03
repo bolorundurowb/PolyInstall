@@ -8,5 +8,6 @@
     <Project Path="PolyInstall.SchemaGen/PolyInstall.SchemaGen.csproj" />
     <Project Path="PolyInstall.UI/PolyInstall.UI.csproj" />
     <Project Path="tests/PolyInstall.Core.Tests/PolyInstall.Core.Tests.csproj" />
+    <Project Path="tests/PolyInstall.Core.Build.Tests/PolyInstall.Core.Build.Tests.csproj" />
   </Folder>
 </Solution>

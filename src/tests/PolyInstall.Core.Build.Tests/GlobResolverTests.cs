@@ -1,6 +1,6 @@
 using PolyInstall.Core.Globbing;
 
-namespace PolyInstall.Core.Tests;
+namespace PolyInstall.Core.Build.Tests;
 
 public class GlobResolverTests
 {
@@ -20,6 +20,19 @@ public class GlobResolverTests
     private static void DeleteTree(string root)
     {
         try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
+    [Fact]
+    public void Collect_WithNestedTextFiles_ReturnsRelativePaths()
+    {
+        var root = MakeTempTree("a.txt", "sub/b.txt");
+        try
+        {
+            var results = GlobResolver.Collect(root, ".", ["**/*.txt"], null);
+            results.Should().HaveCount(2);
+            results.Select(f => f.RelativePath).Should().BeEquivalentTo("a.txt", "sub/b.txt");
+        }
+        finally { DeleteTree(root); }
     }
 
     [Fact]

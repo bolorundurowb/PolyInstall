@@ -3,8 +3,25 @@ using PolyInstall.Core.Manifest;
 
 namespace PolyInstall.Core.Tests;
 
-public class EnvironmentSubstitutionMoreTests
+public class EnvironmentSubstitutionTests
 {
+    [Fact]
+    public void ApplyToJson_WithVarSyntax_ReplacesEnvironmentAndDefaults()
+    {
+        var json = """{"a":"x${MISSING:-d}y","b":{"c":"${FOO}"}}""";
+        Environment.SetEnvironmentVariable("FOO", "bar");
+        try
+        {
+            var s = EnvironmentSubstitution.ApplyToJson(json);
+            s.Should().Contain("\"a\": \"xdy\"");
+            s.Should().Contain("\"c\": \"bar\"");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("FOO", null);
+        }
+    }
+
     [Fact]
     public void Substitute_WhenVariableUnsetAndNoDefault_PreservesPlaceholder()
     {
