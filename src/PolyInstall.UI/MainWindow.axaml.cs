@@ -1,4 +1,3 @@
-using System.Security.Principal;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -32,6 +31,7 @@ public partial class MainWindow : Window
     private bool _installTouchedDisk;
     private bool _installCreatedInstallDirectory;
     private string? _activeInstallDirectory;
+    private InstallMode _activeInstallMode = InstallMode.Install;
 
     public MainWindow()
     {
@@ -186,7 +186,7 @@ public partial class MainWindow : Window
         {
             "welcome" => new TextBlock
             {
-                Text = $"Welcome to {InstallBootstrap.Manifest.Metadata.Name} {InstallBootstrap.Manifest.Metadata.Version}.",
+                Text = BuildWelcomeText(),
                 TextWrapping = TextWrapping.Wrap,
             },
             "eula" => BuildEula(step),
@@ -194,12 +194,35 @@ public partial class MainWindow : Window
             "progress" => BuildProgress(),
             "finish" => new TextBlock
             {
-                Text = InstallBootstrap.InstallDirectory is null
-                    ? "Installation was not run."
-                    : $"Installed to:\n{InstallBootstrap.InstallDirectory}",
+                Text = BuildFinishText(),
                 TextWrapping = TextWrapping.Wrap,
             },
             _ => new TextBlock { Text = $"Unknown step type: {step.Type}" },
+        };
+    }
+
+    private static string BuildWelcomeText()
+    {
+        var manifest = InstallBootstrap.Manifest;
+        var existing = InstallBootstrap.ExistingInstall;
+        if (existing is null)
+            return $"Welcome to {manifest.Metadata.Name} {manifest.Metadata.Version}.";
+
+        return InstallBootstrap.SelectedInstallMode == InstallMode.Repair
+            ? $"{manifest.Metadata.Name} {manifest.Metadata.Version} is already installed. Setup will repair the existing installation at:\n{existing.InstallLocation}"
+            : $"Update {manifest.Metadata.Name} from {existing.DisplayVersion} to {manifest.Metadata.Version}.\nExisting installation:\n{existing.InstallLocation}";
+    }
+
+    private static string BuildFinishText()
+    {
+        if (InstallBootstrap.InstallDirectory is null)
+            return "Installation was not run.";
+
+        return InstallBootstrap.SelectedInstallMode switch
+        {
+            InstallMode.Update => $"Updated to:\n{InstallBootstrap.InstallDirectory}",
+            InstallMode.Repair => $"Repaired installation at:\n{InstallBootstrap.InstallDirectory}",
+            _ => $"Installed to:\n{InstallBootstrap.InstallDirectory}",
         };
     }
 
@@ -226,10 +249,16 @@ public partial class MainWindow : Window
 
     private Control BuildDestination(WizardStep step, IPolyInstallPal pal)
     {
-        var def = step.DefaultPath ?? GetDefaultInstallPath(pal);
+        var knownExisting = InstallBootstrap.ExistingInstall;
+        var def = knownExisting?.InstallLocation ?? step.DefaultPath ?? GetDefaultInstallPath(pal);
         def = InstallPathResolver.Expand(def, pal);
-        _destinationBox = new TextBox { Text = def, PlaceholderText = "Install folder" };
-        var browseButton = new Button { Content = "Browse...", MinWidth = 96 };
+        _destinationBox = new TextBox
+        {
+            Text = def,
+            PlaceholderText = "Install folder",
+            IsReadOnly = knownExisting is not null,
+        };
+        var browseButton = new Button { Content = "Browse...", MinWidth = 96, IsEnabled = knownExisting is null };
         browseButton.Click += OnBrowseDestination;
 
         var destinationRow = new Grid
@@ -247,7 +276,13 @@ public partial class MainWindow : Window
             Spacing = 8,
             Children =
             {
-                new TextBlock { Text = "Choose installation directory:" },
+                new TextBlock
+                {
+                    Text = knownExisting is null
+                        ? "Choose installation directory:"
+                        : "An existing installation was found. Updates will be applied in place:",
+                    TextWrapping = TextWrapping.Wrap,
+                },
                 destinationRow,
             },
         };
@@ -310,18 +345,7 @@ public partial class MainWindow : Window
     }
 
     private static string GetDefaultInstallPath(IPolyInstallPal pal)
-    {
-        var productName = InstallBootstrap.Manifest.Metadata.Name;
-        if (!OperatingSystem.IsWindows())
-            return Path.Combine(pal.ProgramFiles, productName);
-
-        if (IsMachineInstall(InstallBootstrap.Manifest))
-            return Path.Combine(pal.ProgramFiles, productName);
-
-        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var baseDirectory = string.IsNullOrWhiteSpace(localAppData) ? pal.UserHome : localAppData;
-        return Path.Combine(baseDirectory, productName);
-    }
+        => DefaultInstallPathResolver.GetDefaultInstallPath(InstallBootstrap.Manifest, pal);
 
     private Control BuildProgress()
     {
@@ -384,7 +408,11 @@ public partial class MainWindow : Window
     {
         var step = _steps[_stepIndex];
         if (step.Type.Equals("destination", StringComparison.OrdinalIgnoreCase) && _destinationBox is { } destBox)
-            InstallBootstrap.InstallDirectory = (destBox.Text ?? string.Empty).Trim();
+        {
+            var destination = (destBox.Text ?? string.Empty).Trim();
+            InstallBootstrap.InstallDirectory = destination;
+            DetectExistingInstallAtSelectedDestination(destination);
+        }
 
         if (_stepIndex >= _steps.Count - 1)
         {
@@ -398,6 +426,21 @@ public partial class MainWindow : Window
             await RunInstallAsync();
     }
 
+    private static void DetectExistingInstallAtSelectedDestination(string destination)
+    {
+        if (InstallBootstrap.ExistingInstall is not null || string.IsNullOrWhiteSpace(destination))
+            return;
+
+        var expanded = InstallPathResolver.Expand(destination, InstallBootstrap.Pal);
+        var existing = InstalledProductLocator.TryReadFromInstallDirectory(InstallBootstrap.Manifest, expanded);
+        if (existing is null)
+            return;
+
+        InstallBootstrap.ExistingInstall = existing;
+        InstallBootstrap.SelectedInstallMode = InstallCoordinator.ResolveMode(InstallBootstrap.Manifest, existing);
+        InstallBootstrap.InstallDirectory = existing.InstallLocation;
+    }
+
     private async Task RunInstallAsync()
     {
         _installCts = new CancellationTokenSource();
@@ -405,6 +448,7 @@ public partial class MainWindow : Window
         _installTouchedDisk = false;
         _installCreatedInstallDirectory = false;
         _activeInstallDirectory = null;
+        _activeInstallMode = InstallBootstrap.SelectedInstallMode;
         BackButton.IsEnabled = false;
         NextButton.IsEnabled = false;
 
@@ -415,51 +459,38 @@ public partial class MainWindow : Window
             var dest = InstallBootstrap.InstallDirectory;
             if (string.IsNullOrWhiteSpace(dest))
                 throw new InvalidOperationException("No install directory.");
-            dest = InstallPathResolver.Expand(dest.Trim(), pal);
-            _activeInstallDirectory = dest;
-            await AddProgressEntryAsync($"Prepare folder: {dest}");
-            var existedBefore = Directory.Exists(dest);
-            Directory.CreateDirectory(dest);
-            _installTouchedDisk = true;
-            _installCreatedInstallDirectory = !existedBefore;
-            await AddProgressEntryAsync(existedBefore ? $"Use existing folder: {dest}" : $"Create folder: {dest}");
-
-            _installCts.Token.ThrowIfCancellationRequested();
-            await AddProgressEntryAsync("Run pre-install tasks");
-            TaskEngine.RunPhase(manifest.Tasks?.PreInstall, pal);
-            await AddProgressEntryAsync("Pre-install tasks completed");
-            _installCts.Token.ThrowIfCancellationRequested();
-
-            await AddProgressEntryAsync("Copy files");
-            await Task.Run(
-                () => DirectoryCopy.CopyRecursive(
-                    InstallBootstrap.ExtractRoot,
-                    dest,
-                    _installCts.Token,
-                    relativePath => QueueProgressEntry($"Copy file: {relativePath}")),
-                _installCts.Token);
-            await AddProgressEntryAsync("Files copied");
-            _installCts.Token.ThrowIfCancellationRequested();
-            await AddProgressEntryAsync("Run post-install tasks");
-            TaskEngine.RunPhase(manifest.Tasks?.PostInstall, pal);
-            await AddProgressEntryAsync("Post-install tasks completed");
-            _installCts.Token.ThrowIfCancellationRequested();
-            if (OperatingSystem.IsWindows())
-            {
-                var win = manifest.Build.Windows ?? new WindowsBuildOptions();
-                if (win.RegisterArp)
+            var result = await Task.Run(
+                () => InstallCoordinator.Run(new InstallOperationOptions
                 {
-                    _installCts.Token.ThrowIfCancellationRequested();
-                    await AddProgressEntryAsync("Register Add/Remove Programs entry");
-                    FinalizeWindowsInstall(manifest, dest);
-                    await AddProgressEntryAsync("Add/Remove Programs entry registered");
-                }
-            }
+                    Manifest = manifest,
+                    ExtractRoot = InstallBootstrap.ExtractRoot,
+                    Destination = dest,
+                    Pal = pal,
+                    ExistingInstall = InstallBootstrap.ExistingInstall,
+                    CancellationToken = _installCts.Token,
+                    Progress = QueueProgressEntry,
+                    OnInstallDirectoryPrepared = info =>
+                    {
+                        _installTouchedDisk = true;
+                        _installCreatedInstallDirectory = info.CreatedInstallDirectory;
+                        _activeInstallDirectory = info.InstallDirectory;
+                        _activeInstallMode = info.Mode;
+                    },
+                }),
+                _installCts.Token);
+
+            InstallBootstrap.InstallDirectory = result.InstallDirectory;
+            InstallBootstrap.SelectedInstallMode = result.Mode;
 
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 if (_progressText is not null)
-                    _progressText.Text = "Installation complete.";
+                    _progressText.Text = result.Mode switch
+                    {
+                        InstallMode.Update => "Update complete.",
+                        InstallMode.Repair => "Repair complete.",
+                        _ => "Installation complete.",
+                    };
                 AppendProgressEntry("Completed");
                 if (_progressBar is not null)
                 {
@@ -536,6 +567,17 @@ public partial class MainWindow : Window
 
         if (!_installTouchedDisk || string.IsNullOrWhiteSpace(_activeInstallDirectory))
         {
+            Close();
+            return;
+        }
+
+        if (_activeInstallMode != InstallMode.Install)
+        {
+            await ShowChoiceDialogAsync(
+                "Setup cancelled",
+                "Setup was cancelled. The existing installation was left in place. Run this installer again to repair or complete the update.",
+                defaultChoice: "Close",
+                "Close");
             Close();
             return;
         }
@@ -725,67 +767,4 @@ public partial class MainWindow : Window
         return selected;
     }
 
-    /// <summary>
-    /// Persists manifest and install state under <c>.polyinstall</c>, copies the bundled
-    /// <see cref="InstallStatePaths.UninstallPayloadFileName"/> to <see cref="InstallStatePaths.UninstallExeFileName"/>,
-    /// and registers Add/Remove Programs when <c>register_arp</c> is enabled.
-    /// </summary>
-    private static void FinalizeWindowsInstall(InstallManifest manifest, string dest)
-    {
-        var win = manifest.Build.Windows ?? new WindowsBuildOptions();
-        var scope = string.IsNullOrWhiteSpace(win.InstallScope) ? "user" : win.InstallScope.Trim();
-        if (IsMachineInstall(manifest) && !IsWindowsAdministrator())
-        {
-            throw new InvalidOperationException(
-                "Per-machine installs require Administrator rights for Add/Remove Programs registration. Use install_scope: user or run the installer elevated.");
-        }
-
-        InstallStateIo.WriteEmbeddedManifest(dest, manifest);
-
-        var guidStr = ProductIdHelper.StableProductGuidString(manifest.Metadata);
-        var relativeKey = $@"Software\Microsoft\Windows\CurrentVersion\Uninstall\{guidStr}";
-
-        var state = new InstallStateDocument
-        {
-            ProductId = guidStr,
-            DisplayName = manifest.Metadata.Name,
-            DisplayVersion = manifest.Metadata.Version,
-            Publisher = manifest.Metadata.Publisher,
-            InstallLocation = dest,
-            InstallScope = scope,
-            RegistryUninstallKeyRelative = relativeKey,
-        };
-
-        InstallStateIo.WriteState(dest, state);
-
-        var bundledUninstallPath = InstallStatePaths.UninstallPayloadPath(dest);
-        if (!File.Exists(bundledUninstallPath))
-        {
-            throw new InvalidOperationException(
-                $"Bundled uninstaller not found at '{bundledUninstallPath}'. Publish PolyInstall.Uninstall into stubs for this target before building installers.");
-        }
-
-        var uninstallPath = InstallStatePaths.UninstallExePath(dest);
-        File.Copy(bundledUninstallPath, uninstallPath, overwrite: true);
-
-        var estimatedKb = InstallDirectoryEstimator.EstimateKibRecursive(dest);
-#pragma warning disable CA1416 // Guarded by OperatingSystem.IsWindows() at call site
-        WindowsArpRegistration.Register(state, uninstallPath, estimatedKb);
-#pragma warning restore CA1416
-    }
-
-    private static bool IsMachineInstall(InstallManifest manifest)
-    {
-        var scope = manifest.Build.Windows?.InstallScope;
-        return string.Equals(scope?.Trim(), "machine", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool IsWindowsAdministrator()
-    {
-        if (!OperatingSystem.IsWindows())
-            return false;
-        using var wi = WindowsIdentity.GetCurrent();
-        var wp = new WindowsPrincipal(wi);
-        return wp.IsInRole(WindowsBuiltInRole.Administrator);
-    }
 }
