@@ -1,4 +1,3 @@
-using System.Text.Json;
 using PolyInstall.Core.Manifest;
 
 namespace PolyInstall.Core.Payload;
@@ -23,7 +22,7 @@ public static class InstallBundleReader
                 $"Payload is too large to load into memory ({payloadLen:N0} bytes). Maximum supported size is {Array.MaxLength:N0} bytes.");
         var payload = new byte[payloadLen];
         stream.ReadExactly(payload);
-        var manifest = JsonSerializer.Deserialize<InstallManifest>(json, InstallManifest.JsonOptions)
+        var manifest = System.Text.Json.JsonSerializer.Deserialize(json, InstallJsonContext.Default.InstallManifest)
                        ?? throw new InvalidOperationException("Invalid embedded manifest JSON.");
         return (manifest, payload);
     }
