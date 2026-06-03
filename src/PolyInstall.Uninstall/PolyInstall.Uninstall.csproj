@@ -5,7 +5,10 @@
     <!-- Win32 PE icon for shell and ARP DisplayIcon (path,0). Installer stub keeps assets/polyinstall-icon.ico. -->
     <ApplicationIcon>..\..\assets\polyinstall-uninstall-icon.ico</ApplicationIcon>
     <Description>Minimal uninstall host for PolyInstall.</Description>
-    <PublishTrimmed>true</PublishTrimmed>
+    <!-- Native AOT produces a ~3 MB binary; fall back to trimmed single-file (~12 MB) when AOT is not available
+         (e.g. cross-compiling from Linux). Set -p:PublishAot=true on Windows for the smallest output. -->
+    <PublishAot Condition="'$(PublishAot)' == ''">false</PublishAot>
+    <PublishTrimmed Condition="'$(PublishAot)' != 'true'">true</PublishTrimmed>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
     <InvariantGlobalization>true</InvariantGlobalization>
@@ -20,4 +23,11 @@
   <ItemGroup>
     <ProjectReference Include="..\PolyInstall.Core\PolyInstall.Core.csproj" />
   </ItemGroup>
+  <!-- Remove managed PDB sidecar files from publish output -->
+  <Target Name="RemoveManagedPdbs" AfterTargets="Publish">
+    <ItemGroup>
+      <ManagedPdbFiles Include="$(PublishDir)*.pdb" />
+    </ItemGroup>
+    <Delete Files="@(ManagedPdbFiles)" />
+  </Target>
 </Project>

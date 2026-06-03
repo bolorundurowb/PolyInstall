@@ -4,6 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\PolyInstall.Core\PolyInstall.Core.csproj" />
+    <ProjectReference Include="..\..\PolyInstall.Core.Build\PolyInstall.Core.Build.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Update="coverlet.msbuild" Version="10.0.1">
