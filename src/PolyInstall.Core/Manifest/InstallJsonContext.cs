@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using PolyInstall.Install;
 
@@ -13,6 +14,7 @@ namespace PolyInstall.Manifest;
     WriteIndented = true)]
 [JsonSerializable(typeof(InstallManifest))]
 [JsonSerializable(typeof(InstallStateDocument))]
+[JsonSerializable(typeof(JsonElement))]
 internal sealed partial class InstallJsonContext : JsonSerializerContext
 {
 }
