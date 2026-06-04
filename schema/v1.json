@@ -120,7 +120,8 @@
       "additionalProperties": false,
       "properties": {
         "install_scope": {
-          "type": "string"
+          "type": "string",
+          "enum": ["user", "machine"]
         },
         "register_arp": {
           "type": "boolean"
@@ -297,7 +298,8 @@
         },
         "action": {
           "type": "string",
-          "description": "The action to perform. One of: create_shortcut, write_registry (Windows only), create_desktop_entry (Linux/macOS only), set_permissions (Unix only)."
+          "enum": ["create_shortcut", "write_registry", "create_desktop_entry", "set_permissions"],
+          "description": "The action to perform. One of: create_shortcut, write_registry (Windows only), create_desktop_entry (Linux/macOS only), set_permissions (Unix only). For create_shortcut use parameters: target_path, name, location (start_menu or desktop), optional subfolder, optional description, optional icon_path."
         },
         "parameters": {
           "type": [
