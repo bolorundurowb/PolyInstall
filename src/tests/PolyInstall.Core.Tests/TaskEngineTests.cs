@@ -1,3 +1,4 @@
+using PolyInstall.Hosting;
 using PolyInstall.Install;
 using PolyInstall.Manifest;
 using PolyInstall.Pal;
@@ -32,7 +33,8 @@ public class TaskEngineTests
         pal.ShortcutCalls.Should().ContainSingle();
         var c = pal.ShortcutCalls[0];
         c.Target.Should().Be($"C:{s}app{s}app.exe");
-        c.Shortcut.Should().EndWith($"app.lnk");
+        var expectedName = OperatingSystem.IsWindows() ? "app.lnk" : "app";
+        c.Shortcut.Should().EndWith(expectedName);
         c.Description.Should().Be("App");
         c.Icon.Should().Be($"C:{s}app{s}app.ico");
     }
@@ -75,7 +77,7 @@ public class TaskEngineTests
     [Fact]
     public void RunPhase_WhenRegistryUnsupported_ThrowsPlatformNotSupportedException()
     {
-        var pal = new RecordingPal { RegistryBacking = null };
+        var pal = new NoRegistryPal();
         var tasks = new[]
         {
             new InstallTask
@@ -131,7 +133,8 @@ public class TaskEngineTests
         pal.ShortcutCalls.Should().ContainSingle();
         var c = pal.ShortcutCalls[0];
         c.Target.Should().Be($"C:{s}Install{s}Open Exam Suite{s}Simulator{s}app.exe");
-        c.Shortcut.Should().EndWith($"Sim.lnk");
+        var expectedName = OperatingSystem.IsWindows() ? "Sim.lnk" : "Sim";
+        c.Shortcut.Should().EndWith(expectedName);
     }
 
     [Fact]
@@ -157,13 +160,181 @@ public class TaskEngineTests
 
         pal.ShortcutCalls.Should().ContainSingle();
         var c = pal.ShortcutCalls[0];
-        c.Shortcut.Should().EndWith($"MyVendor{Path.DirectorySeparatorChar}MyApp.lnk");
+        var expectedName = OperatingSystem.IsWindows() ? "MyApp.lnk" : "MyApp";
+        c.Shortcut.Should().EndWith($"MyVendor{Path.DirectorySeparatorChar}{expectedName}");
+    }
+
+    [Fact]
+    public void RunPhase_WhenCreateShortcutNameAlreadyHasLnk_DoesNotDoubleAppend()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "create_shortcut",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["target_path"] = "app.exe",
+                    ["name"] = "app.lnk",
+                    ["location"] = "desktop",
+                },
+            },
+        };
+
+        TaskEngine.RunPhase(tasks, pal);
+
+        pal.ShortcutCalls.Should().ContainSingle();
+        var c = pal.ShortcutCalls[0];
+        c.Shortcut.Should().EndWith("app.lnk");
+        c.Shortcut.Should().NotEndWith("app.lnk.lnk");
+    }
+
+    [Fact]
+    public void RunPhase_WhenWriteRegistryTask_RunsRegistryPal()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "write_registry",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["key_path"] = @"HKCU\Software\Test",
+                    ["value_name"] = "x",
+                    ["value"] = "1",
+                    ["value_kind"] = "string",
+                },
+            },
+        };
+
+        TaskEngine.RunPhase(tasks, pal);
+
+        pal.RegistryCalls.Should().ContainSingle();
+        var r = pal.RegistryCalls[0];
+        r.KeyPath.Should().Be(@"HKCU\Software\Test");
+        r.ValueName.Should().Be("x");
+        r.Value.Should().Be("1");
+        r.ValueKind.Should().Be("string");
+    }
+
+    [Fact]
+    public void RunPhase_WhenCreateDesktopEntry_RunsDesktopEntryPal()
+    {
+        var s = Path.DirectorySeparatorChar;
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "create_desktop_entry",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["file_name"] = "app.desktop",
+                    ["name"] = "App",
+                    ["exec"] = "/usr/bin/app",
+                    ["icon"] = "/usr/share/icons/app.png",
+                    ["comment"] = "My app",
+                },
+            },
+        };
+
+        TaskEngine.RunPhase(tasks, pal);
+
+        pal.DesktopEntryCalls.Should().ContainSingle();
+        var d = pal.DesktopEntryCalls[0];
+        d.FileName.Should().Be("app.desktop");
+        d.Name.Should().Be("App");
+        d.Exec.Should().Be($"{s}usr{s}bin{s}app");
+        d.Icon.Should().Be($"{s}usr{s}share{s}icons{s}app.png");
+        d.Comment.Should().Be("My app");
+    }
+
+    [Fact]
+    public void RunPhase_WhenSetPermissions_RunsFilePermissionsPal()
+    {
+        var s = Path.DirectorySeparatorChar;
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "set_permissions",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["path"] = "/usr/bin/app",
+                    ["mode"] = 755,
+                },
+            },
+        };
+
+        TaskEngine.RunPhase(tasks, pal);
+
+        pal.PermissionCalls.Should().ContainSingle();
+        var p = pal.PermissionCalls[0];
+        p.Path.Should().Be($"{s}usr{s}bin{s}app");
+        p.Mode.Should().Be(755);
+    }
+
+    [Fact]
+    public void RunPhase_WhenJsonElementParameters_Works()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "create_shortcut",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["target_path"] = "app.exe",
+                    ["name"] = "app",
+                    ["location"] = "desktop",
+                },
+            },
+        };
+
+        TaskEngine.RunPhase(tasks, pal);
+
+        pal.ShortcutCalls.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void RunPhase_WhenMachineScopeStartMenu_BuildsCommonProgramsPath()
+    {
+        var manifest = new InstallManifest
+        {
+            Build = new BuildConfiguration
+            {
+                Windows = new WindowsBuildOptions { InstallScope = "machine" },
+            },
+        };
+        var pal = new RecordingPal();
+        InstallBootstrap.Init(manifest, Path.GetTempPath(), pal);
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "create_shortcut",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["target_path"] = "app.exe",
+                    ["name"] = "MyApp",
+                    ["location"] = "start_menu",
+                },
+            },
+        };
+
+        TaskEngine.RunPhase(tasks, pal);
+
+        pal.ShortcutCalls.Should().ContainSingle();
+        var expectedName = OperatingSystem.IsWindows() ? "MyApp.lnk" : "MyApp";
+        pal.ShortcutCalls[0].Shortcut.Should().EndWith(expectedName);
     }
 
     private sealed class RecordingPal : IPolyInstallPal
     {
-        public IRegistryPal? RegistryBacking { get; init; } = new RecordingRegistryPal();
-
         public string AppDirBacking { get; init; } = "";
         public string ProgramFilesBacking { get; init; } = "";
         public string UserHomeBacking { get; init; } = "";
@@ -175,15 +346,21 @@ public class TaskEngineTests
         public string Desktop => DesktopBacking;
 
         public IShortcutPal Shortcuts { get; }
-        public IRegistryPal? Registry => RegistryBacking;
-        public IDesktopEntryPal? DesktopEntries => null;
-        public IFilePermissionsPal? FilePermissions => null;
+        public IRegistryPal? Registry { get; }
+        public IDesktopEntryPal? DesktopEntries { get; }
+        public IFilePermissionsPal? FilePermissions { get; }
 
         public List<(string Target, string Shortcut, string? Description, string? Icon)> ShortcutCalls { get; } = [];
+        public List<(string KeyPath, string? ValueName, string Value, string ValueKind)> RegistryCalls { get; } = [];
+        public List<(string FileName, string Name, string Exec, string? Icon, string? Comment)> DesktopEntryCalls { get; } = [];
+        public List<(string Path, int Mode)> PermissionCalls { get; } = [];
 
         public RecordingPal()
         {
             Shortcuts = new RecordingShortcutPal(this);
+            Registry = new RecordingRegistryPal(this);
+            DesktopEntries = new RecordingDesktopEntryPal(this);
+            FilePermissions = new RecordingFilePermissionsPal(this);
         }
 
         private sealed class RecordingShortcutPal(RecordingPal owner) : IShortcutPal
@@ -194,11 +371,47 @@ public class TaskEngineTests
             }
         }
 
-        private sealed class RecordingRegistryPal : IRegistryPal
+        private sealed class RecordingRegistryPal(RecordingPal owner) : IRegistryPal
         {
             public void SetValue(string keyPath, string? valueName, string value, string valueKind)
             {
+                owner.RegistryCalls.Add((keyPath, valueName, value, valueKind));
             }
+        }
+
+        private sealed class RecordingDesktopEntryPal(RecordingPal owner) : IDesktopEntryPal
+        {
+            public void CreateDesktopEntry(string fileName, string name, string exec, string? icon, string? comment)
+            {
+                owner.DesktopEntryCalls.Add((fileName, name, exec, icon, comment));
+            }
+        }
+
+        private sealed class RecordingFilePermissionsPal(RecordingPal owner) : IFilePermissionsPal
+        {
+            public void SetUnixFileMode(string path, int mode)
+            {
+                owner.PermissionCalls.Add((path, mode));
+            }
+        }
+    }
+
+    private sealed class NoRegistryPal : IPolyInstallPal
+    {
+        public string AppDir => "";
+        public string ProgramFiles => "";
+        public string UserHome => "";
+        public string Desktop => "";
+        public IShortcutPal Shortcuts { get; } = new NullShortcutPal();
+        public IRegistryPal? Registry => null;
+        public IDesktopEntryPal? DesktopEntries => null;
+        public IFilePermissionsPal? FilePermissions => null;
+    }
+
+    private sealed class NullShortcutPal : IShortcutPal
+    {
+        public void CreateFileShortcut(string targetPath, string shortcutPath, string? description, string? iconPath)
+        {
         }
     }
 }

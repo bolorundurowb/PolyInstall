@@ -1,4 +1,6 @@
+using System.Text.Json;
 using PolyInstall.Install;
+using PolyInstall.Manifest;
 
 namespace PolyInstall.Core.Tests;
 
@@ -30,6 +32,96 @@ public class InstallStateIoTests
             var read = InstallStateIo.ReadState(installRoot);
             read.DisplayName.Should().Be("Test");
             read.InstallScope.Should().Be("user");
+        }
+        finally
+        {
+            try { Directory.Delete(installRoot, true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void WriteEmbeddedManifest_WithJsonElementParameters_RoundTrips()
+    {
+        var installRoot = Path.Combine(Path.GetTempPath(), "polyinstall-manifest-" + Guid.NewGuid().ToString("n"));
+        Directory.CreateDirectory(installRoot);
+        try
+        {
+            var manifest = new InstallManifest
+            {
+                Metadata = new ManifestMetadata { Name = "Test", Version = "1.0.0" },
+                Build = new BuildConfiguration { Targets = ["windows-x64"] },
+                Tasks = new TasksConfiguration
+                {
+                    PostInstall =
+                    [
+                        new InstallTask
+                        {
+                            Action = "create_shortcut",
+                            Parameters = new Dictionary<string, object?>
+                            {
+                                ["target_path"] = "app.exe",
+                                ["name"] = "app",
+                                ["location"] = "desktop",
+                            },
+                        },
+                    ],
+                },
+            };
+
+            InstallStateIo.WriteEmbeddedManifest(installRoot, manifest);
+            var read = InstallStateIo.ReadEmbeddedManifest(installRoot);
+
+            read.Metadata.Name.Should().Be("Test");
+            read.Tasks.Should().NotBeNull();
+            read.Tasks!.PostInstall.Should().ContainSingle();
+            var task = read.Tasks.PostInstall[0];
+            task.Action.Should().Be("create_shortcut");
+            task.Parameters.Should().NotBeNull();
+            task.Parameters!.Should().ContainKey("target_path");
+        }
+        finally
+        {
+            try { Directory.Delete(installRoot, true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void WriteEmbeddedManifest_WithJsonElementParameters_SerializesCorrectly()
+    {
+        var installRoot = Path.Combine(Path.GetTempPath(), "polyinstall-manifest-" + Guid.NewGuid().ToString("n"));
+        Directory.CreateDirectory(installRoot);
+        try
+        {
+            var manifest = new InstallManifest
+            {
+                Metadata = new ManifestMetadata { Name = "Test", Version = "1.0.0" },
+                Build = new BuildConfiguration { Targets = ["windows-x64"] },
+                Tasks = new TasksConfiguration
+                {
+                    PostInstall =
+                    [
+                        new InstallTask
+                        {
+                            Action = "create_shortcut",
+                            Parameters = new Dictionary<string, object?>
+                            {
+                                ["target_path"] = "app.exe",
+                                ["name"] = "app",
+                                ["location"] = "desktop",
+                            },
+                        },
+                    ],
+                },
+            };
+
+            InstallStateIo.WriteEmbeddedManifest(installRoot, manifest);
+            var path = InstallStatePaths.EmbeddedManifestPath(installRoot);
+            var json = File.ReadAllText(path);
+
+            json.Should().Contain("\"action\": \"create_shortcut\"");
+            json.Should().Contain("\"target_path\"");
+            json.Should().Contain("\"name\"");
+            json.Should().Contain("\"location\"");
         }
         finally
         {
