@@ -19,7 +19,8 @@ public class TaskEngineTests
                 Parameters = new Dictionary<string, object?>
                 {
                     ["target_path"] = @"C:\app\app.exe",
-                    ["shortcut_path"] = @"C:\Public\app.lnk",
+                    ["name"] = "app",
+                    ["location"] = "desktop",
                     ["description"] = "App",
                     ["icon_path"] = @"C:\app\app.ico",
                 },
@@ -31,7 +32,7 @@ public class TaskEngineTests
         pal.ShortcutCalls.Should().ContainSingle();
         var c = pal.ShortcutCalls[0];
         c.Target.Should().Be($"C:{s}app{s}app.exe");
-        c.Shortcut.Should().Be($"C:{s}Public{s}app.lnk");
+        c.Shortcut.Should().EndWith($"app.lnk");
         c.Description.Should().Be("App");
         c.Icon.Should().Be($"C:{s}app{s}app.ico");
     }
@@ -50,7 +51,8 @@ public class TaskEngineTests
                 Parameters = new Dictionary<string, object?>
                 {
                     ["target_path"] = "a",
-                    ["shortcut_path"] = "b",
+                    ["name"] = "b",
+                    ["location"] = "desktop",
                 },
             },
         };
@@ -118,7 +120,8 @@ public class TaskEngineTests
                 Parameters = new Dictionary<string, object?>
                 {
                     ["target_path"] = @"{AppDir}\Simulator\app.exe",
-                    ["shortcut_path"] = @"{Desktop}\Sim.lnk",
+                    ["name"] = "Sim",
+                    ["location"] = "desktop",
                 },
             },
         };
@@ -128,7 +131,33 @@ public class TaskEngineTests
         pal.ShortcutCalls.Should().ContainSingle();
         var c = pal.ShortcutCalls[0];
         c.Target.Should().Be($"C:{s}Install{s}Open Exam Suite{s}Simulator{s}app.exe");
-        c.Shortcut.Should().Be($"C:{s}Users{s}Test{s}Desktop{s}Sim.lnk");
+        c.Shortcut.Should().EndWith($"Sim.lnk");
+    }
+
+    [Fact]
+    public void RunPhase_WhenCreateShortcutStartMenu_BuildsStartMenuPath()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "create_shortcut",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["target_path"] = @"C:\app\app.exe",
+                    ["name"] = "MyApp",
+                    ["location"] = "start_menu",
+                    ["subfolder"] = "MyVendor",
+                },
+            },
+        };
+
+        TaskEngine.RunPhase(tasks, pal);
+
+        pal.ShortcutCalls.Should().ContainSingle();
+        var c = pal.ShortcutCalls[0];
+        c.Shortcut.Should().EndWith($"MyVendor{Path.DirectorySeparatorChar}MyApp.lnk");
     }
 
     private sealed class RecordingPal : IPolyInstallPal
