@@ -1,16 +1,26 @@
+using PolyInstall.Build;
 using PolyInstall.Manifest;
 
 namespace PolyInstall.Core.Build.Validation;
 
 /// <summary>
 /// Semantic validation of an <see cref="InstallManifest"/> that goes beyond JSON Schema checks.
-/// Catches cross-field issues such as machine-wide registry writes for user-scope installs.
+/// Catches cross-field issues such as machine-wide registry writes for user-scope installs,
+/// missing destination steps, and OS/task mismatches.
 /// </summary>
 public static class ManifestSemanticValidator
 {
+    private static readonly HashSet<string> KnownTargetTokens = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "windows-x64", "windows-arm64", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64",
+    };
+
     public static void Validate(InstallManifest manifest)
     {
         var errors = new List<string>();
+        ValidateBuild(manifest, errors);
+        ValidateFiles(manifest, errors);
+        ValidateWizardSteps(manifest, errors);
         ValidateTasks(manifest, errors);
 
         if (errors.Count == 0)
@@ -21,9 +31,86 @@ public static class ManifestSemanticValidator
             $"Manifest semantic validation failed:{Environment.NewLine}{msg}");
     }
 
+    private static void ValidateBuild(InstallManifest manifest, List<string> errors)
+    {
+        if (manifest.Build.Targets.Count == 0)
+            errors.Add("build.targets must contain at least one target.");
+
+        foreach (var target in manifest.Build.Targets)
+        {
+            if (!KnownTargetTokens.Contains(target))
+                errors.Add($"build.targets contains unknown token '{target}'. Supported: {string.Join(", ", KnownTargetTokens)}.");
+        }
+
+        var compression = manifest.Build.Compression.ToLowerInvariant();
+        if (compression != "brotli" && compression != "gzip")
+            errors.Add($"build.compression must be 'brotli' or 'gzip', got '{manifest.Build.Compression}'.");
+    }
+
+    private static void ValidateFiles(InstallManifest manifest, List<string> errors)
+    {
+        if (manifest.Files.Count == 0)
+        {
+            errors.Add("files must contain at least one entry.");
+            return;
+        }
+
+        for (int i = 0; i < manifest.Files.Count; i++)
+        {
+            var entry = manifest.Files[i];
+            if (Path.IsPathRooted(entry.SourceDir))
+            {
+                errors.Add($"files[{i}].source_dir must be a relative path, got absolute path '{entry.SourceDir}'.");
+                continue;
+            }
+
+            if (entry.SourceDir.Contains("..", StringComparison.Ordinal))
+            {
+                errors.Add($"files[{i}].source_dir must not contain '..' directory traversal, got '{entry.SourceDir}'.");
+            }
+
+            if (entry.Include.Count == 0)
+            {
+                errors.Add($"files[{i}].include must contain at least one glob pattern.");
+            }
+        }
+    }
+
+    private static void ValidateWizardSteps(InstallManifest manifest, List<string> errors)
+    {
+        var steps = manifest.Ui.WizardSteps;
+        if (steps.Count == 0)
+            return; // UI uses default steps
+
+        var hasProgress = false;
+        var hasDestination = false;
+        var progressIndex = -1;
+        var destinationIndex = -1;
+
+        for (int i = 0; i < steps.Count; i++)
+        {
+            var type = steps[i].Type.Trim().ToLowerInvariant();
+            if (type == "progress")
+            {
+                hasProgress = true;
+                progressIndex = i;
+            }
+            else if (type == "destination")
+            {
+                hasDestination = true;
+                destinationIndex = i;
+            }
+        }
+
+        if (hasProgress && !hasDestination)
+            errors.Add("ui.wizard_steps contains a 'progress' step but no 'destination' step. A 'destination' step is required before 'progress' so the user can choose an install directory.");
+        else if (hasProgress && hasDestination && destinationIndex > progressIndex)
+            errors.Add("ui.wizard_steps has 'destination' after 'progress'. The 'destination' step must come before the 'progress' step.");
+    }
+
     private static void ValidateTasks(InstallManifest manifest, List<string> errors)
     {
-        var scope = (manifest.Build?.Windows?.InstallScope ?? "user").ToLowerInvariant();
+        var scope = (manifest.Build.Windows?.InstallScope ?? "user").ToLowerInvariant();
         var isUserScope = scope == "user";
 
         var allTasks = new List<(InstallTask Task, string Phase)>();
@@ -94,6 +181,12 @@ public static class ManifestSemanticValidator
 
     private static void ValidateWriteRegistry(InstallTask task, string prefix, bool isUserScope, List<string> errors)
     {
+        if (!HasOsPredicate(task, "windows"))
+        {
+            errors.Add(
+                $"{prefix}: write_registry is Windows-only. Add require: 'os.isWindows' (or similar) to avoid runtime errors on other platforms.");
+        }
+
         var keyPath = GetParamString(task, "key_path");
         if (string.IsNullOrEmpty(keyPath))
         {
@@ -138,6 +231,12 @@ public static class ManifestSemanticValidator
 
     private static void ValidateCreateDesktopEntry(InstallTask task, string prefix, List<string> errors)
     {
+        if (!HasOsPredicate(task, "linux") && !HasOsPredicate(task, "macos") && !HasOsPredicate(task, "unix"))
+        {
+            errors.Add(
+                $"{prefix}: create_desktop_entry is Linux/macOS-only. Add require: 'os.isLinux' or 'os.isUnix' to avoid runtime errors on other platforms.");
+        }
+
         if (string.IsNullOrEmpty(GetParamString(task, "file_name")))
             errors.Add($"{prefix}: create_desktop_entry requires parameter 'file_name'.");
         if (string.IsNullOrEmpty(GetParamString(task, "name")))
@@ -148,6 +247,12 @@ public static class ManifestSemanticValidator
 
     private static void ValidateSetPermissions(InstallTask task, string prefix, List<string> errors)
     {
+        if (!HasOsPredicate(task, "linux") && !HasOsPredicate(task, "macos") && !HasOsPredicate(task, "unix"))
+        {
+            errors.Add(
+                $"{prefix}: set_permissions is Unix-only. Add require: 'os.isLinux' or 'os.isUnix' to avoid runtime errors on other platforms.");
+        }
+
         if (string.IsNullOrEmpty(GetParamString(task, "path")))
             errors.Add($"{prefix}: set_permissions requires parameter 'path'.");
         if (GetParamString(task, "mode") is null)
@@ -162,6 +267,16 @@ public static class ManifestSemanticValidator
 
         var r = req.Trim().ToLowerInvariant();
         return r.Contains("windows") || r.Contains("win");
+    }
+
+    private static bool HasOsPredicate(InstallTask task, string osKeyword)
+    {
+        var req = task.Require;
+        if (string.IsNullOrWhiteSpace(req))
+            return false;
+
+        var r = req.Trim().ToLowerInvariant();
+        return r.Contains(osKeyword);
     }
 
     private static string? GetParamString(InstallTask task, string key)

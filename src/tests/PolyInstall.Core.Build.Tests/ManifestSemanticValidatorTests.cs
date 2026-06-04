@@ -44,6 +44,7 @@ public class ManifestSemanticValidatorTests
                 new InstallTask
                 {
                     Action = "write_registry",
+                    Require = "os.isWindows",
                     Parameters = new Dictionary<string, object?>
                     {
                         ["key_path"] = @"HKCU\Software\MyApp",
@@ -69,6 +70,7 @@ public class ManifestSemanticValidatorTests
                 new InstallTask
                 {
                     Action = "write_registry",
+                    Require = "os.isWindows",
                     Parameters = new Dictionary<string, object?>
                     {
                         ["key_path"] = @"HKCR\.myext",
@@ -93,6 +95,7 @@ public class ManifestSemanticValidatorTests
                 new InstallTask
                 {
                     Action = "write_registry",
+                    Require = "os.isWindows",
                     Parameters = new Dictionary<string, object?>
                     {
                         ["key_path"] = "SoftwareMyApp",
@@ -104,6 +107,31 @@ public class ManifestSemanticValidatorTests
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
         ex.Message.Should().Contain("ROOT\\SubKey");
+    }
+
+    [Fact]
+    public void Validate_RegistryWithoutOsPredicate_Throws()
+    {
+        var manifest = CreateBaseManifest("machine");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall =
+            [
+                new InstallTask
+                {
+                    Action = "write_registry",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        ["key_path"] = @"HKCU\Software\MyApp",
+                        ["value"] = "test",
+                    },
+                },
+            ],
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("Windows-only");
+        ex.Message.Should().Contain("require");
     }
 
     [Fact]
@@ -309,6 +337,167 @@ public class ManifestSemanticValidatorTests
         ManifestSemanticValidator.Validate(manifest);
     }
 
+    [Fact]
+    public void Validate_EmptyFiles_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Files = [];
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("files must contain at least one entry");
+    }
+
+    [Fact]
+    public void Validate_EmptyTargets_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Build.Targets = [];
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("build.targets must contain at least one target");
+    }
+
+    [Fact]
+    public void Validate_UnknownTargetToken_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Build.Targets = ["win64"];
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("unknown token 'win64'");
+    }
+
+    [Fact]
+    public void Validate_InvalidCompression_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Build.Compression = "zip";
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("build.compression must be 'brotli' or 'gzip'");
+    }
+
+    [Fact]
+    public void Validate_FilesAbsoluteSourceDir_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Files =
+        [
+            new FilesEntry { SourceDir = @"C:\Windows", Include = ["*.txt"] },
+        ];
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("files[0].source_dir must be a relative path");
+    }
+
+    [Fact]
+    public void Validate_FilesSourceDirWithTraversal_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Files =
+        [
+            new FilesEntry { SourceDir = "../..", Include = ["*.txt"] },
+        ];
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("files[0].source_dir must not contain '..'");
+    }
+
+    [Fact]
+    public void Validate_WizardProgressWithoutDestination_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Ui.WizardSteps =
+        [
+            new WizardStep { Type = "welcome" },
+            new WizardStep { Type = "progress" },
+            new WizardStep { Type = "finish" },
+        ];
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("'progress' step but no 'destination' step");
+    }
+
+    [Fact]
+    public void Validate_WizardDestinationAfterProgress_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Ui.WizardSteps =
+        [
+            new WizardStep { Type = "welcome" },
+            new WizardStep { Type = "progress" },
+            new WizardStep { Type = "destination" },
+            new WizardStep { Type = "finish" },
+        ];
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("'destination' after 'progress'");
+    }
+
+    [Fact]
+    public void Validate_WizardDestinationBeforeProgress_Passes()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Ui.WizardSteps =
+        [
+            new WizardStep { Type = "welcome" },
+            new WizardStep { Type = "destination" },
+            new WizardStep { Type = "progress" },
+            new WizardStep { Type = "finish" },
+        ];
+
+        ManifestSemanticValidator.Validate(manifest);
+    }
+
+    [Fact]
+    public void Validate_DesktopEntryWithoutOsPredicate_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall =
+            [
+                new InstallTask
+                {
+                    Action = "create_desktop_entry",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        ["file_name"] = "app.desktop",
+                        ["name"] = "App",
+                        ["exec"] = "app",
+                    },
+                },
+            ],
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("Linux/macOS-only");
+    }
+
+    [Fact]
+    public void Validate_SetPermissionsWithoutOsPredicate_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall =
+            [
+                new InstallTask
+                {
+                    Action = "set_permissions",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        ["path"] = "app",
+                        ["mode"] = 755,
+                    },
+                },
+            ],
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("Unix-only");
+    }
+
     private static InstallManifest CreateBaseManifest(string installScope)
     {
         return new InstallManifest
@@ -319,6 +508,8 @@ public class ManifestSemanticValidatorTests
                 Targets = ["windows-x64"],
                 Windows = new WindowsBuildOptions { InstallScope = installScope },
             },
+            Ui = new UiConfiguration { WizardSteps = [] },
+            Files = [new FilesEntry { SourceDir = ".", Include = ["*.txt"] }],
         };
     }
 }
