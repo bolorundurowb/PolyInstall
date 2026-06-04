@@ -43,8 +43,8 @@ public static class TaskEngine
                 if (pal.Registry is null)
                     throw new PlatformNotSupportedException("Registry tasks are not supported on this platform.");
                 pal.Registry.SetValue(
-                    Expand(GetString(p, "key_path"), pal),
-                    ExpandOptional(GetOptionalString(p, "value_name"), pal),
+                    GetString(p, "key_path"),
+                    GetOptionalString(p, "value_name"),
                     Expand(GetString(p, "value"), pal),
                     GetString(p, "value_kind"));
                 break;
