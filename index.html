@@ -178,6 +178,7 @@
       align-items: center;
       color: var(--plum);
       display: inline-flex;
+      flex-wrap: wrap;
       font-size: 0.78rem;
       font-weight: 800;
       gap: 0.5rem;
@@ -199,6 +200,7 @@
       letter-spacing: -0.045em;
       line-height: 1.05;
       margin: 0;
+      overflow-wrap: break-word;
     }
 
     h1 {
@@ -354,7 +356,9 @@
       align-items: start;
       display: grid;
       gap: 2rem;
-      grid-template-columns: 260px minmax(0, 1fr);
+      grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+      max-width: 100%;
+      min-width: 0;
     }
 
     .toc {
@@ -391,6 +395,9 @@
     main {
       display: grid;
       gap: 1.3rem;
+      max-width: 100%;
+      min-width: 0;
+      width: 100%;
     }
 
     .section {
@@ -398,6 +405,9 @@
       border: 1px solid rgba(216, 212, 200, 0.86);
       border-radius: var(--radius-lg);
       box-shadow: 0 10px 42px rgba(14, 17, 22, 0.08);
+      max-width: 100%;
+      min-width: 0;
+      overflow-wrap: anywhere;
       padding: clamp(1.4rem, 4vw, 2.4rem);
       scroll-margin-top: 6.5rem;
     }
@@ -426,6 +436,8 @@
       background: rgba(245, 243, 238, 0.62);
       border: 1px solid var(--rule);
       border-radius: var(--radius-md);
+      min-width: 0;
+      overflow-wrap: anywhere;
       padding: 1.1rem;
     }
 
@@ -439,6 +451,8 @@
       border: 1px solid rgba(108, 4, 80, 0.18);
       border-radius: var(--radius-md);
       margin: 1.2rem 0;
+      min-width: 0;
+      overflow-wrap: anywhere;
       padding: 1rem 1.1rem;
     }
 
@@ -459,6 +473,8 @@
       background: rgba(245, 243, 238, 0.62);
       border: 1px solid var(--rule);
       border-radius: var(--radius-md);
+      min-width: 0;
+      overflow-wrap: anywhere;
       padding: 1.1rem 1.1rem 1.1rem 4rem;
       position: relative;
     }
@@ -491,14 +507,20 @@
 
     table {
       border-collapse: collapse;
+      display: block;
       margin-top: 1rem;
-      overflow: hidden;
+      max-width: 100%;
+      min-width: 0;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
       width: 100%;
     }
 
     th,
     td {
       border-bottom: 1px solid var(--rule);
+      max-width: min(34rem, 65vw);
+      overflow-wrap: anywhere;
       padding: 0.82rem;
       text-align: left;
       vertical-align: top;
@@ -519,6 +541,8 @@
 
     .feature-item {
       border-left: 4px solid var(--plum);
+      min-width: 0;
+      overflow-wrap: anywhere;
       padding-left: 1rem;
     }
 
@@ -537,6 +561,8 @@
       background: rgba(245, 243, 238, 0.62);
       border: 1px solid var(--rule);
       border-radius: var(--radius-md);
+      min-width: 0;
+      overflow-wrap: anywhere;
       padding: 1rem 1.1rem;
     }
 
@@ -1288,8 +1314,9 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
           <h2>Manifest options in detail</h2>
           <p class="section-intro">
             PolyInstall manifests are YAML documents that validate against the published schema at
-            <code>https://bolorundurowb.github.io/PolyInstall/schema/v1.json</code>. Keys use snake_case and unknown
-            properties are rejected, so this section explains the intended purpose of each supported option.
+            <code>https://bolorundurowb.github.io/PolyInstall/schema/v1.json</code>. Think of a manifest as the recipe
+            for your installer: it names the product, chooses where output files go, describes the installer screens,
+            selects the files to copy, and optionally runs setup tasks.
           </p>
 
           <div class="callout">
@@ -1298,84 +1325,134 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
             <pre><code class="language-yaml"># yaml-language-server: $schema=https://bolorundurowb.github.io/PolyInstall/schema/v1.json</code></pre>
           </div>
 
-          <h3>Root object</h3>
+          <div class="grid three">
+            <div class="card">
+              <h3>Start small</h3>
+              <p>
+                For a first installer, set <a href="#schema-metadata"><code>metadata</code></a>,
+                <a href="#schema-build"><code>build</code></a>, <a href="#schema-ui"><code>ui</code></a>, and
+                <a href="#schema-files"><code>files</code></a>. Leave <a href="#schema-tasks"><code>tasks</code></a>
+                empty until you need shortcuts, registry values, desktop entries, or permissions.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Keys are strict</h3>
+              <p>
+                Manifest keys use snake_case. Unknown properties are rejected, which is helpful for catching typos such
+                as <code>outputDir</code> instead of <code>output_dir</code>.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Paths are relative</h3>
+              <p>
+                Most file paths are resolved from <code>--base</code> or from the extracted payload. If a file is not
+                found, check the command's <code>--base</code> value before changing the manifest.
+              </p>
+            </div>
+          </div>
+
+          <h3 id="schema-root" style="margin-top: 1.6rem;">Root object</h3>
+          <p>
+            The root object has five top-level sections. Use these links when you see a field in a sample manifest and
+            want to understand what it controls.
+          </p>
           <table>
             <thead>
               <tr>
                 <th>Option</th>
                 <th>Type</th>
-                <th>Purpose</th>
+                <th>What it holds</th>
+                <th>Beginner guidance</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td><code>metadata</code></td>
+                <td><a href="#schema-metadata"><code>metadata</code></a></td>
                 <td>object</td>
                 <td>Product identity used by output naming, UI labels, registry metadata, and user-facing installer text.</td>
+                <td>Always set <code>name</code> and <code>version</code>. Add <code>id</code> once you need stable updates/uninstall identity.</td>
               </tr>
               <tr>
-                <td><code>build</code></td>
+                <td><a href="#schema-build"><code>build</code></a></td>
                 <td>object</td>
                 <td>Controls output location, compression, target platforms, stubs, and platform-specific packaging.</td>
+                <td>Start with one target, then add more targets after the first installer works.</td>
               </tr>
               <tr>
-                <td><code>ui</code></td>
+                <td><a href="#schema-ui"><code>ui</code></a></td>
                 <td>object</td>
                 <td>Configures the wizard theme, branding assets, and ordered installer pages.</td>
+                <td>Include <code>welcome</code>, <code>destination</code>, <code>progress</code>, and <code>finish</code> for a normal install wizard.</td>
               </tr>
               <tr>
-                <td><code>files</code></td>
+                <td><a href="#schema-files"><code>files</code></a></td>
                 <td>array</td>
                 <td>Defines one or more payload file groups using source directories and glob patterns.</td>
+                <td>This is what actually gets copied to the user's install folder. Start with <code>"**/*"</code>.</td>
               </tr>
               <tr>
-                <td><code>tasks</code></td>
+                <td><a href="#schema-tasks"><code>tasks</code></a></td>
                 <td>object or null</td>
                 <td>Optional lifecycle actions that run before or after install and uninstall phases.</td>
+                <td>Use only when copying files is not enough, for example creating a desktop shortcut.</td>
               </tr>
             </tbody>
           </table>
 
-          <h3 style="margin-top: 1.6rem;">metadata</h3>
+          <h3 id="schema-metadata" style="margin-top: 1.6rem;">metadata</h3>
+          <p>
+            <code>metadata</code> describes the product you are packaging. These values appear in generated filenames,
+            installer text, and platform integration such as Windows Add/Remove Programs.
+          </p>
           <table>
             <thead>
               <tr>
                 <th>Option</th>
                 <th>Type</th>
-                <th>Purpose</th>
+                <th>What to put here</th>
+                <th>Example</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td><code>metadata.name</code></td>
                 <td>string</td>
-                <td>Display name for the product. It is also used when PolyInstall derives output filenames.</td>
+                <td>The human-readable product name. PolyInstall also uses it when deriving output filenames.</td>
+                <td><code>Contoso Studio</code></td>
               </tr>
               <tr>
                 <td><code>metadata.version</code></td>
                 <td>string</td>
-                <td>Product version shown in metadata and packaging surfaces. Semantic versioning is recommended.</td>
+                <td>The version you are shipping. Semantic versions are easiest to reason about during updates.</td>
+                <td><code>1.2.0</code></td>
               </tr>
               <tr>
                 <td><code>metadata.id</code></td>
                 <td>string or null</td>
-                <td>Stable product identifier. Use a reverse-DNS value, GUID, or another ID that will not change between releases.</td>
+                <td>A stable identifier that should not change between releases of the same product.</td>
+                <td><code>com.contoso.studio</code></td>
               </tr>
               <tr>
                 <td><code>metadata.publisher</code></td>
                 <td>string or null</td>
-                <td>Publisher or organisation name shown in UI and platform metadata where supported.</td>
+                <td>The company, person, or project that publishes the app.</td>
+                <td><code>Contoso Ltd</code></td>
               </tr>
             </tbody>
           </table>
 
-          <h3 style="margin-top: 1.6rem;">build</h3>
+          <h3 id="schema-build" style="margin-top: 1.6rem;">build</h3>
+          <p>
+            <code>build</code> controls what PolyInstall creates. This is where you choose output folders, compression,
+            target operating systems, and optional native packaging formats.
+          </p>
           <table>
             <thead>
               <tr>
                 <th>Option</th>
                 <th>Type</th>
-                <th>Purpose</th>
+                <th>What it does</th>
+                <th>How to choose</th>
               </tr>
             </thead>
             <tbody>
@@ -1383,41 +1460,49 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
                 <td><code>build.output_dir</code></td>
                 <td>string</td>
                 <td>Directory where generated installers are written, resolved relative to <code>--base</code>.</td>
+                <td>Use <code>dist</code> unless your release pipeline expects another folder.</td>
               </tr>
               <tr>
                 <td><code>build.compression</code></td>
                 <td>string</td>
-                <td>Payload compression format. Use <code>brotli</code> for the default compact output or <code>gzip</code> when required.</td>
+                <td>Compression format for the zip payload appended to the installer stub.</td>
+                <td>Use <code>brotli</code> for smaller output. Use <code>gzip</code> only if you need that format for compatibility.</td>
               </tr>
               <tr>
                 <td><code>build.targets</code></td>
                 <td>array of strings</td>
                 <td>Installer targets to produce, such as <code>windows-x64</code>, <code>linux-x64</code>, or <code>osx-arm64</code>.</td>
+                <td>Start with the OS you can test locally. Add more once the manifest works.</td>
               </tr>
               <tr>
                 <td><code>build.installer_target</code></td>
                 <td>string or null</td>
                 <td>Optional target hint used by the runtime when it needs one specific installer target context.</td>
+                <td>Most users can leave this empty; the CLI sets target context while building each output.</td>
               </tr>
               <tr>
                 <td><code>build.stub_path</code></td>
                 <td>string or null</td>
                 <td>Advanced override for locating runtime stubs. Supports <code>{rid}</code> when you manage custom stub folders.</td>
+                <td>Leave empty when using release zips and their <code>stubs/</code> layout.</td>
               </tr>
               <tr>
                 <td><code>build.windows</code></td>
                 <td>object or null</td>
                 <td>Windows-specific install and Add/Remove Programs options.</td>
+                <td>Use it when building Windows installers, especially if you want ARP registration.</td>
               </tr>
               <tr>
                 <td><code>build.linux</code></td>
                 <td>object or null</td>
                 <td>Linux-specific packaging options.</td>
+                <td>Use it when you want an AppImage in addition to the raw Linux installer.</td>
               </tr>
               <tr>
                 <td><code>build.macos</code></td>
                 <td>object or null</td>
                 <td>macOS-specific packaging options.</td>
+                <td>Use it when you want a DMG in addition to the raw macOS installer.</td>
               </tr>
             </tbody>
           </table>
@@ -1425,92 +1510,138 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
           <div class="grid three" style="margin-top: 1rem;">
             <div class="card">
               <h3>Windows options</h3>
-              <p><code>install_scope</code> accepts <code>user</code> or <code>machine</code>. User scope writes per-user registration; machine scope writes to HKLM and requires elevation.</p>
-              <p><code>register_arp</code> controls whether Windows Add/Remove Programs registration and the dedicated uninstaller are installed.</p>
+              <p>
+                <code>install_scope: user</code> installs per user and writes registration under HKCU. Use it for most
+                desktop apps because it avoids administrator prompts.
+              </p>
+              <p>
+                <code>install_scope: machine</code> writes under HKLM and requires elevation. Use it only when the app
+                must be available to every user on the machine.
+              </p>
+              <p>
+                <code>register_arp: true</code> adds the app to Add/Remove Programs and installs the dedicated
+                <code>Uninstall.exe</code>.
+              </p>
             </div>
             <div class="card">
               <h3>Linux options</h3>
-              <p><code>package</code> accepts <code>none</code> or <code>appimage</code>. AppImage output requires a Linux host with <code>mksquashfs</code>.</p>
+              <p>
+                <code>package: none</code> creates the raw Linux installer binary. <code>package: appimage</code> also
+                wraps it as an AppImage for a more familiar Linux distribution format.
+              </p>
+              <p>AppImage output must run on Linux with <code>mksquashfs</code> installed.</p>
             </div>
             <div class="card">
               <h3>macOS options</h3>
-              <p><code>package</code> accepts <code>none</code> or <code>dmg</code>. DMG output requires macOS because the build invokes <code>hdiutil</code>.</p>
+              <p>
+                <code>package: none</code> creates the raw macOS installer binary. <code>package: dmg</code> also creates
+                a compressed DMG beside it.
+              </p>
+              <p>DMG output must run on macOS because PolyInstall invokes <code>hdiutil</code>.</p>
             </div>
           </div>
 
-          <h3 style="margin-top: 1.6rem;">ui</h3>
+          <h3 id="schema-ui" style="margin-top: 1.6rem;">ui</h3>
+          <p>
+            <code>ui</code> controls the install wizard the user sees. It is about presentation and flow, not which files
+            are packaged. File selection happens in <a href="#schema-files"><code>files</code></a>.
+          </p>
           <table>
             <thead>
               <tr>
                 <th>Option</th>
                 <th>Type</th>
-                <th>Purpose</th>
+                <th>What it does</th>
+                <th>Beginner guidance</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td><code>ui.theme</code></td>
                 <td>string</td>
-                <td>Wizard theme. Use <code>light</code>, <code>dark</code>, or <code>system</code>.</td>
+                <td>Controls the visual theme of the installer wizard.</td>
+                <td><code>system</code> follows the user's OS preference. <code>light</code> and <code>dark</code> force one mode.</td>
               </tr>
               <tr>
                 <td><code>ui.logo_path</code></td>
                 <td>string or null</td>
-                <td>Optional path to an SVG or raster logo inside the extracted payload.</td>
+                <td>Optional path to an SVG or raster logo shown in the wizard header.</td>
+                <td>The logo file must be included in your payload through <a href="#schema-files"><code>files</code></a>.</td>
               </tr>
               <tr>
                 <td><code>ui.assets</code></td>
                 <td>array or null</td>
                 <td>Optional named assets with <code>id</code> and <code>path</code>, resolved from the extracted payload.</td>
+                <td>Useful for packaging icons and branding. AppImage packaging can use the first PNG asset as the application icon.</td>
               </tr>
               <tr>
                 <td><code>ui.wizard_steps</code></td>
                 <td>array</td>
-                <td>Ordered pages shown by the installer wizard. Include a <code>progress</code> step when files should be copied during the wizard.</td>
+                <td>Ordered pages shown by the installer wizard.</td>
+                <td>Include a <code>progress</code> step. Without it, the normal file-copy phase is not part of the wizard flow.</td>
               </tr>
             </tbody>
           </table>
 
-          <h3 style="margin-top: 1.6rem;">wizard_steps entries</h3>
+          <h3 id="schema-wizard-steps" style="margin-top: 1.6rem;">wizard_steps entries</h3>
+          <p>
+            Each wizard step is one screen. The order in the manifest is the order the user sees.
+          </p>
           <table>
             <thead>
               <tr>
-                <th>Option</th>
-                <th>Type</th>
-                <th>Purpose</th>
+                <th>Step type</th>
+                <th>What the user sees</th>
+                <th>Important fields</th>
+                <th>When to use it</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td><code>type</code></td>
-                <td>string</td>
-                <td>Step kind. Common values are <code>welcome</code>, <code>eula</code>, <code>destination</code>, <code>progress</code>, and <code>finish</code>.</td>
-              </tr>
-              <tr>
+                <td><code>welcome</code></td>
+                <td>An opening screen that introduces the installer.</td>
                 <td><code>title</code></td>
-                <td>string or null</td>
-                <td>Heading shown for that wizard step.</td>
+                <td>Use as the first step for a friendly start.</td>
               </tr>
               <tr>
-                <td><code>source</code></td>
-                <td>string or null</td>
-                <td>Content source for steps that read a file, such as an <code>eula</code> licence page.</td>
+                <td><code>eula</code></td>
+                <td>A licence or terms screen loaded from a text file.</td>
+                <td><code>title</code>, <code>source</code></td>
+                <td>Use when users must read or accept licence text before install.</td>
               </tr>
               <tr>
-                <td><code>default_path</code></td>
-                <td>string or null</td>
-                <td>Initial destination path for <code>destination</code> steps. Supports placeholders such as <code>{UserHome}</code>.</td>
+                <td><code>destination</code></td>
+                <td>A folder picker for the install location.</td>
+                <td><code>title</code>, <code>default_path</code></td>
+                <td>Use when the user should choose where the app is installed.</td>
+              </tr>
+              <tr>
+                <td><code>progress</code></td>
+                <td>A progress screen while tasks run and files are copied.</td>
+                <td><code>title</code></td>
+                <td>Use in most installers. This is the normal place where installation work happens.</td>
+              </tr>
+              <tr>
+                <td><code>finish</code></td>
+                <td>A final confirmation screen.</td>
+                <td><code>title</code></td>
+                <td>Use as the last step to show that installation completed.</td>
               </tr>
             </tbody>
           </table>
 
-          <h3 style="margin-top: 1.6rem;">files entries</h3>
+          <h3 id="schema-files" style="margin-top: 1.6rem;">files entries</h3>
+          <p>
+            <code>files</code> tells PolyInstall what to place inside the installer. Each entry starts at one source
+            directory, includes matching files, and then removes anything matched by <code>exclude</code>.
+          </p>
           <table>
             <thead>
               <tr>
                 <th>Option</th>
                 <th>Type</th>
-                <th>Purpose</th>
+                <th>What it does</th>
+                <th>Example</th>
               </tr>
             </thead>
             <tbody>
@@ -1518,60 +1649,77 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
                 <td><code>source_dir</code></td>
                 <td>string</td>
                 <td>Root directory to scan, resolved relative to <code>--base</code>.</td>
+                <td><code>app</code> or <code>publish/win-x64</code></td>
               </tr>
               <tr>
                 <td><code>include</code></td>
                 <td>array of strings</td>
-                <td>Glob patterns to include in the payload. Use <code>"**/*"</code> to include everything under <code>source_dir</code>.</td>
+                <td>Glob patterns to include in the payload.</td>
+                <td><code>"**/*"</code> includes everything under <code>source_dir</code>.</td>
               </tr>
               <tr>
                 <td><code>exclude</code></td>
                 <td>array or null</td>
-                <td>Optional glob patterns removed from the included set, useful for debug symbols, maps, caches, or temporary files.</td>
+                <td>Optional glob patterns removed from the included set.</td>
+                <td>Use <code>"**/*.pdb"</code>, <code>"**/*.map"</code>, or <code>"**/tmp/**"</code> to skip files you do not want to ship.</td>
               </tr>
             </tbody>
           </table>
 
-          <h3 style="margin-top: 1.6rem;">tasks</h3>
+          <div class="callout">
+            <strong>File path mental model</strong>
+            If you run <code>polyinstall build manifest.yaml --base ./release-input</code> and set
+            <code>source_dir: app</code>, PolyInstall scans <code>./release-input/app</code>. Files are stored in the
+            payload relative to that source directory.
+          </div>
+
+          <h3 id="schema-tasks" style="margin-top: 1.6rem;">tasks</h3>
           <p>
             Lifecycle task arrays are optional. Install tasks run around file copy. Uninstall tasks run while installed
             files are still present, so they can stop services, remove shortcuts, or clean configuration before the
-            install tree is deleted.
+            install tree is deleted. A complete novice can ignore <code>tasks</code> until the installer needs to change
+            the system outside the install folder.
           </p>
           <table>
             <thead>
               <tr>
                 <th>Option</th>
                 <th>When it runs</th>
+                <th>Common use</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td><code>tasks.pre_install</code></td>
                 <td>After the user confirms the destination and before files are copied.</td>
+                <td>Check prerequisites or prepare a folder before files are installed.</td>
               </tr>
               <tr>
                 <td><code>tasks.post_install</code></td>
                 <td>After files have been copied to the install directory.</td>
+                <td>Create shortcuts, write registry values, create desktop entries, or set permissions.</td>
               </tr>
               <tr>
                 <td><code>tasks.pre_uninstall</code></td>
                 <td>At the start of uninstall, before registration and files are removed.</td>
+                <td>Stop services or close helper processes while installed files still exist.</td>
               </tr>
               <tr>
                 <td><code>tasks.post_uninstall</code></td>
                 <td>After <code>pre_uninstall</code>, but still before files and Add/Remove Programs entries are removed.</td>
+                <td>Run cleanup that must happen after earlier uninstall tasks but before the install tree is deleted.</td>
               </tr>
             </tbody>
           </table>
 
-          <h3 style="margin-top: 1.6rem;">InstallTask entries</h3>
+          <h3 id="schema-install-task" style="margin-top: 1.6rem;">InstallTask entries</h3>
           <table>
             <thead>
               <tr>
                 <th>Option</th>
                 <th>Type</th>
-                <th>Purpose</th>
+                <th>What it does</th>
+                <th>Beginner guidance</th>
               </tr>
             </thead>
             <tbody>
@@ -1579,47 +1727,67 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
                 <td><code>require</code></td>
                 <td>string or null</td>
                 <td>Optional OS predicate. Supported values include <code>os.isWindows</code>, <code>os.isLinux</code>, <code>os.isOSX</code>, <code>os.isMacOS</code>, and <code>os.isUnix</code>.</td>
+                <td>Use it for platform-specific tasks. Omit it when a task should run on every OS.</td>
               </tr>
               <tr>
                 <td><code>action</code></td>
                 <td>string</td>
                 <td>Task action to run. Supported actions are <code>create_shortcut</code>, <code>write_registry</code>, <code>create_desktop_entry</code>, and <code>set_permissions</code>.</td>
+                <td>Choose the action first, then fill <code>parameters</code> with the keys that action expects.</td>
               </tr>
               <tr>
                 <td><code>parameters</code></td>
                 <td>object or null</td>
                 <td>Action-specific key/value map. String values can use path placeholders such as <code>{AppDir}</code>, <code>{Desktop}</code>, and <code>{ProgramFiles}</code>.</td>
+                <td>Parameter names are snake_case. The required keys depend on the selected <code>action</code>.</td>
               </tr>
             </tbody>
           </table>
 
-          <h3 style="margin-top: 1.6rem;">Task action parameters</h3>
+          <h3 id="schema-task-actions" style="margin-top: 1.6rem;">Task action parameters</h3>
           <table>
             <thead>
               <tr>
                 <th>Action</th>
+                <th>Platforms</th>
                 <th>Typical parameters</th>
+                <th>What it is for</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td><code>create_shortcut</code></td>
+                <td>Windows, Linux, macOS</td>
                 <td><code>target_path</code>, <code>shortcut_path</code>, optional <code>description</code>, optional <code>icon_path</code>.</td>
+                <td>Create a user-facing launcher, such as a desktop shortcut.</td>
               </tr>
               <tr>
                 <td><code>write_registry</code></td>
-                <td><code>key_path</code>, <code>value_name</code>, <code>value</code>, and <code>value_kind</code>. Windows only.</td>
+                <td>Windows only</td>
+                <td><code>key_path</code>, <code>value_name</code>, <code>value</code>, and <code>value_kind</code>.</td>
+                <td>Write app metadata or settings to the Windows Registry.</td>
               </tr>
               <tr>
                 <td><code>create_desktop_entry</code></td>
-                <td><code>file_name</code>, <code>name</code>, <code>exec</code>, optional <code>icon</code>, optional <code>comment</code>. Linux and macOS.</td>
+                <td>Linux, macOS</td>
+                <td><code>file_name</code>, <code>name</code>, <code>exec</code>, optional <code>icon</code>, optional <code>comment</code>.</td>
+                <td>Create a Freedesktop-style app launcher entry.</td>
               </tr>
               <tr>
                 <td><code>set_permissions</code></td>
-                <td><code>path</code> and <code>mode</code>. Unix platforms only.</td>
+                <td>Unix platforms</td>
+                <td><code>path</code> and <code>mode</code>.</td>
+                <td>Make a copied file executable or adjust Unix permissions after install.</td>
               </tr>
             </tbody>
           </table>
+
+          <div class="callout">
+            <strong>Placeholders you will use often</strong>
+            <code>{AppDir}</code> means the chosen install directory, <code>{ProgramFiles}</code> means the OS program
+            files location, <code>{UserHome}</code> means the current user's home folder, and <code>{Desktop}</code>
+            means the current user's desktop folder.
+          </div>
         </section>
 
         <section class="section" id="faq">
