@@ -63,12 +63,15 @@
           "type": "string"
         },
         "compression": {
-          "type": "string"
+          "type": "string",
+          "enum": ["brotli", "gzip"]
         },
         "targets": {
           "type": "array",
+          "minItems": 1,
           "items": {
-            "type": "string"
+            "type": "string",
+            "enum": ["windows-x64", "windows-arm64", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64"]
           }
         },
         "installer_target": {
@@ -120,7 +123,8 @@
       "additionalProperties": false,
       "properties": {
         "install_scope": {
-          "type": "string"
+          "type": "string",
+          "enum": ["user", "machine"]
         },
         "register_arp": {
           "type": "boolean"
@@ -150,7 +154,8 @@
       "additionalProperties": false,
       "properties": {
         "theme": {
-          "type": "string"
+          "type": "string",
+          "enum": ["light", "dark", "system"]
         },
         "logo_path": {
           "type": [
@@ -192,7 +197,8 @@
       "additionalProperties": false,
       "properties": {
         "type": {
-          "type": "string"
+          "type": "string",
+          "enum": ["welcome", "eula", "destination", "progress", "finish"]
         },
         "title": {
           "type": [
@@ -297,7 +303,8 @@
         },
         "action": {
           "type": "string",
-          "description": "The action to perform. One of: create_shortcut, write_registry (Windows only), create_desktop_entry (Linux/macOS only), set_permissions (Unix only)."
+          "enum": ["create_shortcut", "write_registry", "create_desktop_entry", "set_permissions"],
+          "description": "The action to perform. One of: create_shortcut, write_registry (Windows only), create_desktop_entry (Linux/macOS only), set_permissions (Unix only). For create_shortcut use parameters: target_path, name, location (start_menu or desktop), optional subfolder, optional description, optional icon_path."
         },
         "parameters": {
           "type": [

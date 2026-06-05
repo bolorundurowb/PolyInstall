@@ -4,6 +4,7 @@ using PolyInstall.Build;
 using PolyInstall.Cli.Validation;
 using PolyInstall.Core.Build.Globbing;
 using PolyInstall.Core.Build.Manifest;
+using PolyInstall.Core.Build.Validation;
 using PolyInstall.Install;
 using PolyInstall.Manifest;
 using PolyInstall.Payload;
@@ -44,7 +45,11 @@ public static class InstallerBuildPipeline
         BuildLog.Info($"Validating manifest against schema ({schemaPath})…");
         var json = JsonSerializer.Serialize(manifest, InstallManifest.JsonOptions);
         ManifestJsonValidator.Validate(json, schemaPath);
-        BuildLog.Info("Manifest validation passed.");
+        BuildLog.Info("Manifest schema validation passed.");
+
+        BuildLog.Info("Running manifest semantic validation…");
+        ManifestSemanticValidator.Validate(manifest);
+        BuildLog.Info("Manifest semantic validation passed.");
 
         BuildLog.Info("Collecting files from manifest entries…");
         var baseFiles = new List<(string EntryName, string FullPath)>();
