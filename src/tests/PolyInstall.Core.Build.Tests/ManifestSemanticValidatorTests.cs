@@ -434,6 +434,62 @@ public class ManifestSemanticValidatorTests
     }
 
     [Fact]
+    public void Validate_WindowsSigningWithMultipleIdentitySources_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Build.Signing = new SigningBuildOptions
+        {
+            Windows = new WindowsSigningOptions
+            {
+                CertificatePath = "certs/app.pfx",
+                CertificateThumbprint = "abcdef",
+            },
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("must specify only one signing identity source");
+    }
+
+    [Fact]
+    public void Validate_WindowsSigningWithoutWindowsTarget_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Build.Targets = ["osx-arm64"];
+        manifest.Build.Signing = new SigningBuildOptions
+        {
+            Windows = new WindowsSigningOptions
+            {
+                CertificateSubject = "Example Corp",
+            },
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("build.signing.windows is configured");
+        ex.Message.Should().Contain("does not contain a Windows target");
+    }
+
+    [Fact]
+    public void Validate_WindowsSigningWithInvalidStoreLocationAndDigest_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Build.Signing = new SigningBuildOptions
+        {
+            Windows = new WindowsSigningOptions
+            {
+                CertificateThumbprint = "abcdef",
+                StoreLocation = "machine",
+                FileDigestAlgorithm = "md5",
+                TimestampDigestAlgorithm = "md5",
+            },
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("store_location must be 'current_user' or 'local_machine'");
+        ex.Message.Should().Contain("file_digest_algorithm");
+        ex.Message.Should().Contain("timestamp_digest_algorithm");
+    }
+
+    [Fact]
     public void Validate_LinuxSigningWhenConfigured_Throws()
     {
         var manifest = CreateBaseManifest("user");
@@ -477,6 +533,41 @@ public class ManifestSemanticValidatorTests
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
         ex.Message.Should().Contain("build.signing.macos.identity is required");
+    }
+
+    [Fact]
+    public void Validate_MacOsSigningWithoutMacOsTarget_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Build.Signing = new SigningBuildOptions
+        {
+            Macos = new MacOsSigningOptions
+            {
+                Identity = "Developer ID Application: Example",
+            },
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("build.signing.macos is configured");
+        ex.Message.Should().Contain("does not contain a macOS target");
+    }
+
+    [Fact]
+    public void Validate_MacOsNotarizationWithoutDmgPackage_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Build.Targets = ["osx-arm64"];
+        manifest.Build.Signing = new SigningBuildOptions
+        {
+            Macos = new MacOsSigningOptions
+            {
+                Identity = "Developer ID Application: Example",
+                NotarizationProfile = "polyinstall-notary",
+            },
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("notarization_profile requires build.macos.package: dmg");
     }
 
     [Fact]
