@@ -45,6 +45,88 @@ public static class ManifestSemanticValidator
         var compression = manifest.Build.Compression.ToLowerInvariant();
         if (compression != "brotli" && compression != "gzip")
             errors.Add($"build.compression must be 'brotli' or 'gzip', got '{manifest.Build.Compression}'.");
+
+        ValidateSigning(manifest, errors);
+    }
+
+    private static void ValidateSigning(InstallManifest manifest, List<string> errors)
+    {
+        var signing = manifest.Build.Signing;
+        if (signing is null)
+            return;
+
+        if (signing.Linux is not null)
+        {
+            errors.Add(
+                "build.signing.linux is not supported. Linux outputs are unsigned by default; use an external detached-signature workflow if needed.");
+        }
+
+        if (signing.Windows is not null)
+            ValidateWindowsSigning(manifest, signing.Windows, errors);
+
+        if (signing.Macos is not null)
+            ValidateMacOsSigning(manifest, signing.Macos, errors);
+    }
+
+    private static void ValidateWindowsSigning(
+        InstallManifest manifest,
+        WindowsSigningOptions options,
+        List<string> errors)
+    {
+        if (!HasTargetPrefix(manifest, "windows-"))
+            errors.Add("build.signing.windows is configured, but build.targets does not contain a Windows target.");
+
+        if (!string.IsNullOrWhiteSpace(options.CertificatePassword))
+        {
+            errors.Add(
+                "build.signing.windows.certificate_password stores a plaintext secret. Use certificate_password_env instead.");
+        }
+
+        var identitySources = CountNonEmpty(
+            options.CertificatePath,
+            options.CertificateThumbprint,
+            options.CertificateSubject);
+        if (identitySources == 0)
+        {
+            errors.Add(
+                "build.signing.windows requires one signing identity source: certificate_path, certificate_thumbprint, or certificate_subject.");
+        }
+        else if (identitySources > 1)
+        {
+            errors.Add(
+                "build.signing.windows must specify only one signing identity source: certificate_path, certificate_thumbprint, or certificate_subject.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(options.StoreLocation)
+            && !IsOneOf(options.StoreLocation, "current_user", "local_machine"))
+        {
+            errors.Add(
+                $"build.signing.windows.store_location must be 'current_user' or 'local_machine', got '{options.StoreLocation}'.");
+        }
+
+        if (!IsDigestAlgorithm(options.FileDigestAlgorithm))
+            errors.Add("build.signing.windows.file_digest_algorithm must be 'sha1', 'sha256', 'sha384', or 'sha512'.");
+
+        if (!IsDigestAlgorithm(options.TimestampDigestAlgorithm))
+            errors.Add("build.signing.windows.timestamp_digest_algorithm must be 'sha1', 'sha256', 'sha384', or 'sha512'.");
+    }
+
+    private static void ValidateMacOsSigning(
+        InstallManifest manifest,
+        MacOsSigningOptions options,
+        List<string> errors)
+    {
+        if (!HasTargetPrefix(manifest, "osx-"))
+            errors.Add("build.signing.macos is configured, but build.targets does not contain a macOS target.");
+
+        if (string.IsNullOrWhiteSpace(options.Identity))
+            errors.Add("build.signing.macos.identity is required when macOS signing is configured.");
+
+        if (!string.IsNullOrWhiteSpace(options.NotarizationProfile)
+            && !string.Equals(manifest.Build.Macos?.Package, "dmg", StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add("build.signing.macos.notarization_profile requires build.macos.package: dmg.");
+        }
     }
 
     private static void ValidateFiles(InstallManifest manifest, List<string> errors)
@@ -296,6 +378,26 @@ public static class ManifestSemanticValidator
 
         var r = req.Trim().ToLowerInvariant();
         return r.Contains(osKeyword);
+    }
+
+    private static bool HasTargetPrefix(InstallManifest manifest, string prefix)
+    {
+        return manifest.Build.Targets.Any(t => t.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static int CountNonEmpty(params string?[] values)
+    {
+        return values.Count(v => !string.IsNullOrWhiteSpace(v));
+    }
+
+    private static bool IsOneOf(string value, params string[] allowed)
+    {
+        return allowed.Contains(value, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static bool IsDigestAlgorithm(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) || IsOneOf(value, "sha1", "sha256", "sha384", "sha512");
     }
 
     private static string? GetParamString(InstallTask task, string key)
