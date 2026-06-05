@@ -4,7 +4,7 @@ namespace PolyInstall.Cli.Build;
 
 public static class DmgPackager
 {
-    public static void Create(string bundleMachOPath, string outputDmgPath, string volumeLabel)
+    public static string Create(string bundleMachOPath, string outputDmgPath, string volumeLabel)
     {
         if (!OperatingSystem.IsMacOS())
         {
@@ -50,6 +50,7 @@ public static class DmgPackager
             }
 
             BuildLog.Info($"Built DMG {outputDmgPath} ({BuildLog.FormatBytes(new FileInfo(outputDmgPath).Length)})");
+            return outputDmgPath;
         }
         finally
         {

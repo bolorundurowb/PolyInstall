@@ -96,44 +96,73 @@ public static class InstallerBuildPipeline
 
             var isWinTarget = rid.StartsWith("win-", StringComparison.OrdinalIgnoreCase);
             var ext = isWinTarget ? ".exe" : "";
+            var sanitizedProductName = SanitizeProductName(manifest.Metadata.Name);
             var outName = ResolveOutputName(manifest, target, ext);
             var outPath = Path.Combine(outDir, outName);
             var manifestJson = JsonSerializer.Serialize(manifest, InstallManifest.JsonOptions);
             var targetFiles = new List<(string EntryName, string FullPath)>(baseFiles);
-            AddTargetSpecificFiles(targetFiles, manifest, stubRoot, rid);
-            BuildLog.Info($"Packing {targetFiles.Count} file(s) into zip payload…");
-            var compressed = await Task.Run(() => PayloadArchive.PackAndCompress(targetFiles, compression, ct), ct);
-            BuildLog.Info($"Compressed payload: {BuildLog.FormatBytes(compressed.LongLength)}");
-
-            BuildLog.Info($"Writing installer: {outPath}");
-            await using (var stubFs = File.OpenRead(stubPath))
-            await using (var outFs = File.Create(outPath))
+            var temporaryPaths = new List<string>();
+            try
             {
-                await stubFs.CopyToAsync(outFs, ct);
-                var mBytes = Encoding.UTF8.GetBytes(manifestJson);
-                await outFs.WriteAsync(mBytes, ct);
-                await outFs.WriteAsync(compressed, ct);
-                InstallPayloadTrailer.WriteFooter(outFs, mBytes.Length, compressed.LongLength);
+                await AddTargetSpecificFilesAsync(targetFiles, manifest, stubRoot, rid, temporaryPaths, ct);
+                BuildLog.Info($"Packing {targetFiles.Count} file(s) into zip payload…");
+                var compressed = await Task.Run(() => PayloadArchive.PackAndCompress(targetFiles, compression, ct), ct);
+                BuildLog.Info($"Compressed payload: {BuildLog.FormatBytes(compressed.LongLength)}");
+
+                BuildLog.Info($"Writing installer: {outPath}");
+                await using (var stubFs = File.OpenRead(stubPath))
+                await using (var outFs = File.Create(outPath))
+                {
+                    await stubFs.CopyToAsync(outFs, ct);
+                    var mBytes = Encoding.UTF8.GetBytes(manifestJson);
+                    await outFs.WriteAsync(mBytes, ct);
+                    await outFs.WriteAsync(compressed, ct);
+                    InstallPayloadTrailer.WriteFooter(outFs, mBytes.Length, compressed.LongLength);
+                }
+
+                var totalSize = new FileInfo(outPath).Length;
+                BuildLog.Info($"Built {outPath} ({BuildLog.FormatBytes(totalSize)})");
+
+                if (isWinTarget && manifest.Build.Signing?.Windows is { } windowsSigning)
+                {
+                    BuildLog.Info("Signing Windows installer…");
+                    await InstallerSigner.SignWindowsAsync(outPath, windowsSigning, ct);
+                    BuildLog.Info("Signed Windows installer.");
+                }
+
+                if (target.StartsWith("osx-", StringComparison.OrdinalIgnoreCase)
+                    && manifest.Build.Signing?.Macos is { } macOsSigning)
+                {
+                    BuildLog.Info("Signing macOS installer executable…");
+                    await InstallerSigner.SignMacOsExecutableAsync(outPath, macOsSigning, ct);
+                    BuildLog.Info("Signed macOS installer executable.");
+                }
+
+                if (target.StartsWith("linux-", StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(manifest.Build.Linux?.Package, "appimage", StringComparison.OrdinalIgnoreCase))
+                {
+                    BuildLog.Info("Packaging AppImage…");
+                    await AppImagePackager.CreateAsync(outPath, manifest, target, sanitizedProductName, outDir, baseDirectory, ct);
+                }
+
+                if (target.StartsWith("osx-", StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(manifest.Build.Macos?.Package, "dmg", StringComparison.OrdinalIgnoreCase))
+                {
+                    var dmgOut = Path.Combine(outDir, $"{sanitizedProductName}-{target}.dmg");
+                    BuildLog.Info($"Packaging DMG: {dmgOut}");
+                    var dmgPath = DmgPackager.Create(outPath, dmgOut, manifest.Metadata.Name);
+                    if (manifest.Build.Signing?.Macos is { } macOsDmgSigning)
+                    {
+                        BuildLog.Info("Signing macOS DMG…");
+                        await InstallerSigner.SignMacOsDmgAsync(dmgPath, macOsDmgSigning, ct);
+                        BuildLog.Info("Signed macOS DMG.");
+                    }
+                }
             }
-
-            var totalSize = new FileInfo(outPath).Length;
-            BuildLog.Info($"Built {outPath} ({BuildLog.FormatBytes(totalSize)})");
-
-            if (target.StartsWith("linux-", StringComparison.OrdinalIgnoreCase)
-                && string.Equals(manifest.Build.Linux?.Package, "appimage", StringComparison.OrdinalIgnoreCase))
+            finally
             {
-                BuildLog.Info("Packaging AppImage…");
-                var sanitizedProductName = SanitizeProductName(manifest.Metadata.Name);
-                await AppImagePackager.CreateAsync(outPath, manifest, target, sanitizedProductName, outDir, baseDirectory, ct);
-            }
-
-            if (target.StartsWith("osx-", StringComparison.OrdinalIgnoreCase)
-                && string.Equals(manifest.Build.Macos?.Package, "dmg", StringComparison.OrdinalIgnoreCase))
-            {
-                var sanitizedProductName = SanitizeProductName(manifest.Metadata.Name);
-                var dmgOut = Path.Combine(outDir, $"{sanitizedProductName}-{target}.dmg");
-                BuildLog.Info($"Packaging DMG: {dmgOut}");
-                DmgPackager.Create(outPath, dmgOut, manifest.Metadata.Name);
+                foreach (var path in temporaryPaths)
+                    TryDelete(path);
             }
         }
 
@@ -174,11 +203,13 @@ public static class InstallerBuildPipeline
         return Path.GetFullPath(Path.Combine(stubRoot, dotnetRid, $"PolyInstall.Runtime{ext}"));
     }
 
-    private static void AddTargetSpecificFiles(
+    private static async Task AddTargetSpecificFilesAsync(
         List<(string EntryName, string FullPath)> files,
         InstallManifest manifest,
         string stubRoot,
-        string dotnetRid)
+        string dotnetRid,
+        List<string> temporaryPaths,
+        CancellationToken ct)
     {
         if (!dotnetRid.StartsWith("win-", StringComparison.OrdinalIgnoreCase))
             return;
@@ -192,19 +223,47 @@ public static class InstallerBuildPipeline
                 $"Uninstall stub binary not found for RID {dotnetRid}: {uninstallStubPath}. Publish PolyInstall.Uninstall for this RID into stubs/{dotnetRid}/.");
         }
 
+        var payloadSourcePath = uninstallStubPath;
+        if (manifest.Build.Signing?.Windows is { } signing)
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "polyinstall-sign-" + Guid.NewGuid().ToString("n"));
+            Directory.CreateDirectory(tempDir);
+            temporaryPaths.Add(tempDir);
+            payloadSourcePath = Path.Combine(tempDir, Path.GetFileName(uninstallStubPath));
+            File.Copy(uninstallStubPath, payloadSourcePath, overwrite: true);
+            BuildLog.Info("Signing Windows uninstall stub before embedding…");
+            await InstallerSigner.SignWindowsAsync(payloadSourcePath, signing, ct);
+            BuildLog.Info("Signed Windows uninstall stub.");
+        }
+
         var payloadEntry = $"{InstallStatePaths.PolyDirName}/{InstallStatePaths.ToolsDirName}/{InstallStatePaths.UninstallPayloadFileName}";
         if (files.Any(f => string.Equals(f.EntryName, payloadEntry, StringComparison.OrdinalIgnoreCase)))
             throw new InvalidOperationException($"Payload already contains reserved path '{payloadEntry}'.");
 
-        files.Add((payloadEntry, uninstallStubPath));
+        files.Add((payloadEntry, payloadSourcePath));
         BuildLog.Info($"Added Windows uninstall stub to payload: {payloadEntry}");
-        BuildLog.VerboseLine($"  Source: {uninstallStubPath}");
+        BuildLog.VerboseLine($"  Source: {payloadSourcePath}");
     }
 
     private static string ResolveUninstallStubPath(string stubRoot, string dotnetRid)
     {
         const string uninstallExe = "PolyInstall.Uninstall.exe";
         return Path.GetFullPath(Path.Combine(stubRoot, dotnetRid, uninstallExe));
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path))
+                Directory.Delete(path, recursive: true);
+            else if (File.Exists(path))
+                File.Delete(path);
+        }
+        catch
+        {
+            // best-effort cleanup
+        }
     }
 
     private static string FindRepoSchema()
