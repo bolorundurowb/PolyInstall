@@ -93,6 +93,16 @@
             "string"
           ]
         },
+        "signing": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/SigningBuildOptions"
+            }
+          ]
+        },
         "windows": {
           "oneOf": [
             {
@@ -122,6 +132,160 @@
               "$ref": "#/definitions/MacOsBuildOptions"
             }
           ]
+        }
+      }
+    },
+    "SigningBuildOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "windows": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/WindowsSigningOptions"
+            }
+          ]
+        },
+        "linux": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/LinuxSigningOptions"
+            }
+          ]
+        },
+        "macos": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/MacOsSigningOptions"
+            }
+          ]
+        }
+      }
+    },
+    "WindowsSigningOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tool_path": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "certificate_path": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "certificate_thumbprint": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "certificate_subject": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "store_name": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "store_location": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "certificate_password_env": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "certificate_password": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "timestamp_url": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "file_digest_algorithm": {
+          "type": "string"
+        },
+        "timestamp_digest_algorithm": {
+          "type": "string"
+        }
+      }
+    },
+    "LinuxSigningOptions": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "MacOsSigningOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "codesign_path": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "xcrun_path": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "identity": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "keychain": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "timestamp": {
+          "type": "boolean"
+        },
+        "options": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "notarization_profile": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "staple": {
+          "type": "boolean"
         }
       }
     },
