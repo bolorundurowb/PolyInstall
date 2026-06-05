@@ -1,5 +1,6 @@
 using System.Text.Json;
 using PolyInstall.Conditions;
+using PolyInstall.Hosting;
 using PolyInstall.Manifest;
 using PolyInstall.Pal;
 
@@ -27,9 +28,14 @@ public static class TaskEngine
         switch (action)
         {
             case "create_shortcut":
+                var shortcutPath = BuildShortcutPath(
+                    pal,
+                    GetString(p, "location"),
+                    GetOptionalString(p, "subfolder"),
+                    GetString(p, "name"));
                 pal.Shortcuts.CreateFileShortcut(
                     Expand(GetString(p, "target_path"), pal),
-                    Expand(GetString(p, "shortcut_path"), pal),
+                    shortcutPath,
                     ExpandOptional(GetOptionalString(p, "description"), pal),
                     ExpandOptional(GetOptionalString(p, "icon_path"), pal));
                 break;
@@ -37,8 +43,8 @@ public static class TaskEngine
                 if (pal.Registry is null)
                     throw new PlatformNotSupportedException("Registry tasks are not supported on this platform.");
                 pal.Registry.SetValue(
-                    Expand(GetString(p, "key_path"), pal),
-                    ExpandOptional(GetOptionalString(p, "value_name"), pal),
+                    GetString(p, "key_path"),
+                    GetOptionalString(p, "value_name"),
                     Expand(GetString(p, "value"), pal),
                     GetString(p, "value_kind"));
                 break;
@@ -60,6 +66,58 @@ public static class TaskEngine
             default:
                 throw new NotSupportedException($"Unknown task action: '{task.Action}'.");
         }
+    }
+
+    private static string BuildShortcutPath(IPolyInstallPal pal, string location, string? subfolder, string name)
+    {
+        var isMachineScope = InstallBootstrap.Manifest?.Build?.Windows?.InstallScope
+            ?.Equals("machine", StringComparison.OrdinalIgnoreCase) ?? false;
+
+        string baseDir;
+        if (OperatingSystem.IsWindows())
+        {
+            baseDir = location.ToLowerInvariant() switch
+            {
+                "start_menu" => isMachineScope
+                    ? Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms)
+                    : Environment.GetFolderPath(Environment.SpecialFolder.Programs),
+                "desktop" => isMachineScope
+                    ? Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory)
+                    : Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+                _ => throw new NotSupportedException($"Unsupported shortcut location: '{location}'."),
+            };
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            baseDir = location.ToLowerInvariant() switch
+            {
+                "start_menu" => Path.Combine(pal.UserHome, ".local", "share", "applications"),
+                "desktop" => pal.Desktop,
+                _ => throw new NotSupportedException($"Unsupported shortcut location: '{location}'."),
+            };
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            baseDir = location.ToLowerInvariant() switch
+            {
+                "start_menu" => Path.Combine(pal.UserHome, "Applications"),
+                "desktop" => pal.Desktop,
+                _ => throw new NotSupportedException($"Unsupported shortcut location: '{location}'."),
+            };
+        }
+        else
+        {
+            throw new PlatformNotSupportedException("Shortcuts are not supported on this OS.");
+        }
+
+        var dir = !string.IsNullOrEmpty(subfolder)
+            ? Path.Combine(baseDir, subfolder)
+            : baseDir;
+
+        if (OperatingSystem.IsWindows() && !name.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
+            name += ".lnk";
+
+        return Path.Combine(dir, name);
     }
 
     /// <summary>
