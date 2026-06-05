@@ -41,6 +41,7 @@ public class InstallBundleReaderTests
             bundle.Write(manifestBytes);
             bundle.Write(compressed);
             InstallPayloadTrailer.WriteFooter(bundle, manifestBytes.Length, compressed.Length);
+            bundle.Write(Encoding.UTF8.GetBytes("signature-like-bytes"));
             bundle.Position = 0;
 
             var (readManifest, readCompressed) = InstallBundleReader.ReadFromStream(bundle);

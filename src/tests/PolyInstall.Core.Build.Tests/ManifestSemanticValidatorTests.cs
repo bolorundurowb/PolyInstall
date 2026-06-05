@@ -378,6 +378,108 @@ public class ManifestSemanticValidatorTests
     }
 
     [Fact]
+    public void Validate_OmittedSigning_Passes()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Build.Signing.Should().BeNull();
+
+        ManifestSemanticValidator.Validate(manifest);
+    }
+
+    [Fact]
+    public void Validate_WindowsSigningWithCertificatePath_Passes()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Build.Signing = new SigningBuildOptions
+        {
+            Windows = new WindowsSigningOptions
+            {
+                CertificatePath = "certs/app.pfx",
+                CertificatePasswordEnv = "WINDOWS_CERT_PASSWORD",
+            },
+        };
+
+        ManifestSemanticValidator.Validate(manifest);
+    }
+
+    [Fact]
+    public void Validate_WindowsSigningWithoutIdentity_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Build.Signing = new SigningBuildOptions
+        {
+            Windows = new WindowsSigningOptions(),
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("build.signing.windows requires one signing identity source");
+    }
+
+    [Fact]
+    public void Validate_WindowsSigningWithPlaintextPassword_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Build.Signing = new SigningBuildOptions
+        {
+            Windows = new WindowsSigningOptions
+            {
+                CertificatePath = "certs/app.pfx",
+                CertificatePassword = "secret",
+            },
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("plaintext secret");
+        ex.Message.Should().Contain("certificate_password_env");
+    }
+
+    [Fact]
+    public void Validate_LinuxSigningWhenConfigured_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Build.Targets = ["linux-x64"];
+        manifest.Build.Signing = new SigningBuildOptions
+        {
+            Linux = new LinuxSigningOptions(),
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("build.signing.linux is not supported");
+    }
+
+    [Fact]
+    public void Validate_MacOsSigningWithIdentityAndDmgNotarization_Passes()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Build.Targets = ["osx-arm64"];
+        manifest.Build.Macos = new MacOsBuildOptions { Package = "dmg" };
+        manifest.Build.Signing = new SigningBuildOptions
+        {
+            Macos = new MacOsSigningOptions
+            {
+                Identity = "Developer ID Application: Example",
+                NotarizationProfile = "polyinstall-notary",
+            },
+        };
+
+        ManifestSemanticValidator.Validate(manifest);
+    }
+
+    [Fact]
+    public void Validate_MacOsSigningWithoutIdentity_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Build.Targets = ["osx-arm64"];
+        manifest.Build.Signing = new SigningBuildOptions
+        {
+            Macos = new MacOsSigningOptions(),
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("build.signing.macos.identity is required");
+    }
+
+    [Fact]
     public void Validate_FilesAbsoluteSourceDir_Throws()
     {
         var manifest = CreateBaseManifest("user");

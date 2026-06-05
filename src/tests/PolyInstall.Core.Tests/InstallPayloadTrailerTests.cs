@@ -38,6 +38,33 @@ public class InstallPayloadTrailerTests
     }
 
     [Fact]
+    public void ReadFooter_WhenSignatureBytesFollowFooter_FindsBundleFooter()
+    {
+        using var ms = new MemoryStream();
+        var stub = Encoding.UTF8.GetBytes("stub-exe-prefix");
+        ms.Write(stub);
+        var manifestJson = """{"metadata":{"name":"T","version":"1"},"build":{"output_dir":"o","compression":"gzip","targets":["linux-x64"]},"ui":{"theme":"dark","wizard_steps":[]},"files":[]}""";
+        var manifestBytes = Encoding.UTF8.GetBytes(manifestJson);
+        var innerZip = CreateMinimalZip("hello.txt", "hi");
+        ms.Write(manifestBytes);
+        ms.Write(innerZip);
+        InstallPayloadTrailer.WriteFooter(ms, manifestBytes.Length, innerZip.Length);
+        var footerStart = ms.Length - InstallPayloadTrailer.FooterSize;
+        ms.Write(Encoding.UTF8.GetBytes("signature-bytes-after-footer"));
+        ms.Position = 0;
+
+        var (manifestLen, payloadLen, actualFooterStart) = InstallPayloadTrailer.ReadFooterWithOffset(ms);
+
+        manifestLen.Should().Be(manifestBytes.Length);
+        payloadLen.Should().Be(innerZip.Length);
+        actualFooterStart.Should().Be(footerStart);
+        var (manifestStart, payloadStart) =
+            InstallPayloadTrailer.GetBlobOffsetsFromFooter(actualFooterStart, manifestLen, payloadLen);
+        manifestStart.Should().Be(stub.Length);
+        payloadStart.Should().Be(stub.Length + manifestLen);
+    }
+
+    [Fact]
     public void GetBlobOffsets_WithInvalidLengths_ThrowsInvalidOperationException()
     {
         FluentActions.Invoking(() => InstallPayloadTrailer.GetBlobOffsets(10, 100, 100))
