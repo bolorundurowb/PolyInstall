@@ -730,7 +730,7 @@
 
     <section class="hero" id="top">
       <div>
-        <span class="eyebrow">Current prerelease: v1.0.0-beta.0</span>
+        <span class="eyebrow">Current prerelease: v1.0.0-beta.1</span>
         <h1>Build native-feeling installers from one YAML manifest.</h1>
         <p class="hero-copy">
           PolyInstall is a cross-platform installer builder for teams that want predictable packaging without maintaining
@@ -764,7 +764,7 @@ polyinstall validate manifest.yaml</code></pre>
 
     <section class="stats-grid" aria-label="Project highlights">
       <div class="stat">
-        <strong>1.0.0-beta.0</strong>
+        <strong>1.0.0-beta.1</strong>
         <span>Current prerelease version from the source tree.</span>
       </div>
       <div class="stat">
@@ -806,7 +806,7 @@ polyinstall validate manifest.yaml</code></pre>
 
           <div class="callout">
             <strong>Current project state</strong>
-            The repository is in a <code>1.0.0-beta.0</code> prerelease state, targets <code>net10.0</code>, uses
+            The repository is in a <code>1.0.0-beta.1</code> prerelease state, targets <code>net10.0</code>, uses
             Avalonia <code>12.0.4</code> for the installer UI, and runs CI restore/build/test with coverage on GitHub
             Actions. The release pipeline publishes self-contained CLI zips for <code>win-x64</code>,
             <code>linux-x64</code>, and <code>osx-arm64</code>; each CLI zip carries its host stub, while separate
@@ -965,8 +965,8 @@ polyinstall validate .\manifest.yaml</code></pre>
             <article class="step">
               <h3>Validate before building</h3>
               <p>
-                Validation catches schema errors, unknown keys, and many manifest issues before the build step packages
-                files.
+                Validation catches JSON Schema issues before packaging. The full <code>build</code> command also runs
+                semantic checks such as relative file paths, wizard ordering, task compatibility, and signing settings.
               </p>
               <pre><code class="language-bash">polyinstall validate manifest.yaml --base ./release-input
 polyinstall build manifest.yaml --base ./release-input</code></pre>
@@ -1075,7 +1075,8 @@ dist/HelloPoly-windows-x64.exe</code></pre>
           <h2>Use the full manifest surface</h2>
           <p class="section-intro">
             PolyInstall supports multi-target builds, platform-specific packaging, wizard customisation, lifecycle
-            tasks, glob filtering, environment variable substitution, and install-state tracking.
+            tasks, glob filtering, custom output names, optional signing, environment variable substitution, and
+            install-state tracking.
           </p>
 
           <div class="feature-list">
@@ -1097,7 +1098,7 @@ dist/HelloPoly-windows-x64.exe</code></pre>
               <h3>Lifecycle tasks</h3>
               <p>
                 Run pre-install, post-install, pre-uninstall, and post-uninstall actions such as shortcuts, registry
-                writes, desktop entries, and permission changes.
+                writes, desktop entries, permission changes, and PATH updates.
               </p>
             </div>
             <div class="feature-item">
@@ -1123,6 +1124,7 @@ metadata:
 
 build:
   output_dir: dist
+  output_name: "{name}-{version}-{target}"
   compression: brotli
   targets:
     - windows-x64
@@ -1135,6 +1137,15 @@ build:
     package: appimage
   macos:
     package: dmg
+  signing:
+    windows:
+      certificate_path: "${WINDOWS_CERT_PATH}"
+      certificate_password_env: WINDOWS_CERT_PASSWORD
+      timestamp_url: "http://timestamp.digicert.com"
+    macos:
+      identity: "Developer ID Application: Contoso Ltd"
+      keychain: "${MACOS_KEYCHAIN_PATH}"
+      notarization_profile: "polyinstall-notary"
 
 ui:
   theme: system
@@ -1180,9 +1191,15 @@ tasks:
       action: create_shortcut
       parameters:
         target_path: "{AppDir}\\ContosoStudio.exe"
-        shortcut_path: "{Desktop}\\Contoso Studio.lnk"
+        name: "Contoso Studio"
+        location: desktop
         description: "Launch Contoso Studio"
         icon_path: "{AppDir}\\branding\\contoso.ico"
+    - require: os.isWindows
+      action: add_to_path
+      parameters:
+        path: "{AppDir}"
+        scope: user
     - require: os.isLinux
       action: create_desktop_entry
       parameters:
@@ -1274,6 +1291,93 @@ tasks:
             </div>
           </div>
 
+          <h3 style="margin-top: 1.6rem;">Optional installer signing</h3>
+          <p>
+            Signing is opt-in. If <code>build.signing</code> is omitted, PolyInstall produces unsigned installers.
+            If you configure a platform signing block, the build validates that the required identity reference is present
+            and signs only the matching platform artifacts. Do not put plaintext private keys or account passwords in YAML.
+          </p>
+          <div class="grid two" style="margin-top: 1rem;">
+            <div class="card">
+              <h3>Windows signing</h3>
+              <p>
+                Windows uses <code>signtool</code> from <code>PATH</code> or <code>tool_path</code>. Configure exactly one
+                identity source: <code>certificate_path</code>, <code>certificate_thumbprint</code>, or
+                <code>certificate_subject</code>. Certificate passwords must come from
+                <code>certificate_password_env</code>.
+              </p>
+            </div>
+            <div class="card">
+              <h3>macOS signing and notarisation</h3>
+              <p>
+                macOS uses <code>codesign</code> with an <code>identity</code>. DMG builds can also use an Apple
+                notarytool keychain profile through <code>notarization_profile</code>; PolyInstall submits and staples
+                when that profile is configured. Linux signing is not built in.
+              </p>
+            </div>
+          </div>
+          <pre><code class="language-yaml">build:
+  signing:
+    windows:
+      certificate_thumbprint: "0123456789abcdef..."
+      store_name: My
+      store_location: current_user
+      timestamp_url: "http://timestamp.digicert.com"
+    macos:
+      identity: "Developer ID Application: Example Corp"
+      keychain: "${MACOS_KEYCHAIN_PATH}"
+      notarization_profile: "polyinstall-notary"</code></pre>
+
+          <h3 style="margin-top: 1.6rem;">What can be used together?</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>Allowed with</th>
+                <th>Not allowed or ignored</th>
+                <th>Validation note</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>build.signing.windows</code></td>
+                <td><code>windows-*</code> targets, ARP registration, PFX files, or Windows certificate store references.</td>
+                <td>Linux/macOS-only target lists.</td>
+                <td>Requires exactly one identity source and rejects plaintext <code>certificate_password</code>.</td>
+              </tr>
+              <tr>
+                <td><code>build.signing.macos</code></td>
+                <td><code>osx-*</code> targets and optional <code>build.macos.package: dmg</code>.</td>
+                <td>Windows/Linux-only target lists.</td>
+                <td><code>identity</code> is required. <code>notarization_profile</code> requires <code>package: dmg</code>.</td>
+              </tr>
+              <tr>
+                <td><code>build.signing.linux</code></td>
+                <td>External signing workflows after PolyInstall finishes.</td>
+                <td>Manifest-based Linux executable signing.</td>
+                <td>Rejected by semantic validation because Linux has no single platform signing equivalent here.</td>
+              </tr>
+              <tr>
+                <td><code>build.linux.package: appimage</code></td>
+                <td><code>linux-x64</code> or <code>linux-arm64</code> targets on a Linux build host.</td>
+                <td>Windows/macOS hosts for AppImage creation.</td>
+                <td>Requires <code>mksquashfs</code>; raw Linux installer output is still created first.</td>
+              </tr>
+              <tr>
+                <td><code>build.macos.package: dmg</code></td>
+                <td><code>osx-x64</code> or <code>osx-arm64</code> targets on macOS.</td>
+                <td>Windows/Linux hosts for DMG creation.</td>
+                <td>Requires <code>hdiutil</code>. DMG signing/notarisation happens after packaging.</td>
+              </tr>
+              <tr>
+                <td><code>add_to_path</code> task</td>
+                <td><code>scope: user</code> with any install scope; <code>scope: machine</code> with machine installs.</td>
+                <td><code>scope: machine</code> in a user-scope Windows install.</td>
+                <td>Machine PATH changes require <code>build.windows.install_scope: machine</code>.</td>
+              </tr>
+            </tbody>
+          </table>
+
           <h3 style="margin-top: 1.6rem;">Environment variable substitution</h3>
           <p>
             During <code>build</code> and <code>validate</code>, string values support <code>${VAR}</code> and
@@ -1336,10 +1440,10 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
               </p>
             </div>
             <div class="card">
-              <h3>Keys are strict</h3>
+              <h3>Use schema keys</h3>
               <p>
-                Manifest keys use snake_case. Unknown properties are rejected, which is helpful for catching typos such
-                as <code>outputDir</code> instead of <code>output_dir</code>.
+                Manifest keys use snake_case. Let your editor load the published schema so typos such as
+                <code>outputDir</code> instead of <code>output_dir</code> are visible while you write the manifest.
               </p>
             </div>
             <div class="card">
@@ -1349,6 +1453,15 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
                 found, check the command's <code>--base</code> value before changing the manifest.
               </p>
             </div>
+          </div>
+
+          <div class="callout">
+            <strong>Validation model</strong>
+            The published schema catches field names, basic shapes, and allowed enums in YAML-aware editors. The
+            <code>validate</code> command checks the manifest after YAML parsing and environment substitution. The
+            <code>build</code> command also runs semantic validation: target names, compression, relative file source
+            directories, non-empty includes, destination-before-progress wizard order, task/platform compatibility,
+            machine-scope PATH rules, and signing combinations.
           </div>
 
           <h3 id="schema-root" style="margin-top: 1.6rem;">Root object</h3>
@@ -1463,6 +1576,12 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
                 <td>Use <code>dist</code> unless your release pipeline expects another folder.</td>
               </tr>
               <tr>
+                <td><code>build.output_name</code></td>
+                <td>string or null</td>
+                <td>Optional output filename template. Supports <code>{name}</code>, <code>{version}</code>, and <code>{target}</code>.</td>
+                <td>Use it when your release pipeline needs predictable names such as <code>{name}-{version}-{target}</code>.</td>
+              </tr>
+              <tr>
                 <td><code>build.compression</code></td>
                 <td>string</td>
                 <td>Compression format for the zip payload appended to the installer stub.</td>
@@ -1504,6 +1623,12 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
                 <td>macOS-specific packaging options.</td>
                 <td>Use it when you want a DMG in addition to the raw macOS installer.</td>
               </tr>
+              <tr>
+                <td><code>build.signing</code></td>
+                <td>object or null</td>
+                <td>Optional Windows and macOS signing configuration.</td>
+                <td>Leave empty for unsigned installers. Configure only the platform blocks you intend to sign.</td>
+              </tr>
             </tbody>
           </table>
 
@@ -1540,6 +1665,39 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
               <p>DMG output must run on macOS because PolyInstall invokes <code>hdiutil</code>.</p>
             </div>
           </div>
+
+          <h3 id="schema-signing" style="margin-top: 1.6rem;">build.signing</h3>
+          <p>
+            <code>build.signing</code> is optional. It is validated only when present, so unsigned installers require no
+            signing configuration. Platform signing blocks should reference existing certificate stores, files, keychains,
+            or CI secrets rather than storing credentials in the manifest.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Block</th>
+                <th>Important fields</th>
+                <th>Allowed values and combinations</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>build.signing.windows</code></td>
+                <td><code>tool_path</code>, one of <code>certificate_path</code>, <code>certificate_thumbprint</code>, or <code>certificate_subject</code>, optional <code>store_name</code>, <code>store_location</code>, <code>certificate_password_env</code>, <code>timestamp_url</code>, digest algorithms.</td>
+                <td>Use with <code>windows-*</code> targets. <code>store_location</code> is <code>current_user</code> or <code>local_machine</code>. Digest algorithms are <code>sha1</code>, <code>sha256</code>, <code>sha384</code>, or <code>sha512</code>.</td>
+              </tr>
+              <tr>
+                <td><code>build.signing.macos</code></td>
+                <td><code>identity</code>, optional <code>codesign_path</code>, <code>xcrun_path</code>, <code>keychain</code>, <code>timestamp</code>, <code>options</code>, <code>notarization_profile</code>, <code>staple</code>.</td>
+                <td>Use with <code>osx-*</code> targets. Notarisation requires <code>build.macos.package: dmg</code> because the DMG is what gets submitted and stapled.</td>
+              </tr>
+              <tr>
+                <td><code>build.signing.linux</code></td>
+                <td>No supported fields.</td>
+                <td>Do not configure this block. Use external detached signing or checksums after the build if your Linux release process requires them.</td>
+              </tr>
+            </tbody>
+          </table>
 
           <h3 id="schema-ui" style="margin-top: 1.6rem;">ui</h3>
           <p>
@@ -1732,7 +1890,7 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
               <tr>
                 <td><code>action</code></td>
                 <td>string</td>
-                <td>Task action to run. Supported actions are <code>create_shortcut</code>, <code>write_registry</code>, <code>create_desktop_entry</code>, and <code>set_permissions</code>.</td>
+                <td>Task action to run. Supported actions are <code>create_shortcut</code>, <code>write_registry</code>, <code>create_desktop_entry</code>, <code>set_permissions</code>, and <code>add_to_path</code>.</td>
                 <td>Choose the action first, then fill <code>parameters</code> with the keys that action expects.</td>
               </tr>
               <tr>
@@ -1758,7 +1916,7 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
               <tr>
                 <td><code>create_shortcut</code></td>
                 <td>Windows, Linux, macOS</td>
-                <td><code>target_path</code>, <code>shortcut_path</code>, optional <code>description</code>, optional <code>icon_path</code>.</td>
+                <td><code>target_path</code>, <code>name</code>, <code>location</code> (<code>desktop</code> or <code>start_menu</code>), optional <code>subfolder</code>, <code>description</code>, optional <code>icon_path</code>.</td>
                 <td>Create a user-facing launcher, such as a desktop shortcut.</td>
               </tr>
               <tr>
@@ -1778,6 +1936,12 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
                 <td>Unix platforms</td>
                 <td><code>path</code> and <code>mode</code>.</td>
                 <td>Make a copied file executable or adjust Unix permissions after install.</td>
+              </tr>
+              <tr>
+                <td><code>add_to_path</code></td>
+                <td>Windows, Linux, macOS</td>
+                <td>Optional <code>path</code> (defaults to install directory), optional <code>scope</code> (<code>user</code> or <code>machine</code>).</td>
+                <td>Add an installed CLI or tool directory to PATH. Machine scope requires <code>build.windows.install_scope: machine</code>.</td>
               </tr>
             </tbody>
           </table>
@@ -1813,6 +1977,9 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
               <p>
                 Use <code>polyinstall validate manifest.yaml</code> and check that keys use snake_case. Add the
                 <code>yaml-language-server</code> schema comment so your editor catches issues before the CLI runs.
+                If <code>polyinstall build</code> fails after schema validation passes, read the semantic validation
+                message: it usually points to incompatible task/platform settings, file path rules, wizard ordering, or
+                signing configuration.
               </p>
             </details>
 
@@ -1837,7 +2004,28 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
               <summary>Windows shortcuts or registry tasks fail.</summary>
               <p>
                 Check paths after placeholder expansion, confirm the install has sufficient permissions, and remember
-                that <code>install_scope: machine</code> writes to HKLM and requires elevation.
+                that <code>install_scope: machine</code> writes to HKLM and requires elevation. For shortcuts, use the
+                current parameters <code>target_path</code>, <code>name</code>, and <code>location</code>; older
+                <code>shortcut_path</code> examples are no longer accepted.
+              </p>
+            </details>
+
+            <details>
+              <summary>Signing is configured but the build fails.</summary>
+              <p>
+                Signing runs only when <code>build.signing.windows</code> or <code>build.signing.macos</code> is present.
+                Windows needs <code>signtool</code> and exactly one identity source. macOS needs <code>codesign</code>
+                and an <code>identity</code>. Notarisation requires a DMG package and a notarytool keychain profile.
+                Linux signing is not supported in the manifest.
+              </p>
+            </details>
+
+            <details>
+              <summary>Can I combine machine install scope with PATH changes?</summary>
+              <p>
+                Yes, but only deliberately. <code>add_to_path</code> defaults to <code>scope: user</code>. If you set
+                <code>scope: machine</code>, also set <code>build.windows.install_scope: machine</code> and expect the
+                Windows installer to require elevation.
               </p>
             </details>
 
@@ -1897,7 +2085,7 @@ dotnet test src/PolyInstall.slnx -c Release --no-build --verbosity normal</code>
       <p>
         PolyInstall documentation page styled from the embedded logo palette:
         ink <code>#0e1116</code>, plum <code>#6C0450</code>, paper <code>#f5f3ee</code>, and rule <code>#d8d4c8</code>.
-        Last reviewed against source version <code>1.0.0-beta.0</code>.
+        Last reviewed against source version <code>1.0.0-beta.1</code>.
       </p>
     </footer>
   </div>
