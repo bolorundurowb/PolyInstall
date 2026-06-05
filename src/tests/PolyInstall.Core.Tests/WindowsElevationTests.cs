@@ -18,7 +18,7 @@ public class WindowsElevationTests
     }
 
     [Fact]
-    public void ShouldNotRelaunchElevated_WhenAlreadyAdministrator_ReturnsFalse()
+    public void ShouldRelaunchElevated_WhenAlreadyAdministrator_ReturnsFalse()
     {
         var manifest = TestHelpers.Manifest("SampleApp", "2.0.0", installScope: "machine");
 
