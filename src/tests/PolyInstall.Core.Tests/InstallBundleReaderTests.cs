@@ -9,7 +9,7 @@ namespace PolyInstall.Core.Tests;
 public class InstallBundleReaderTests
 {
     [Fact]
-    public void FromStream_DecompressesPayloadZip()
+    public void ReadFromStream_DecompressesPayloadZip()
     {
         var root = Path.Combine(Path.GetTempPath(), "polyinstall-bundle-" + Guid.NewGuid().ToString("n"));
         Directory.CreateDirectory(root);
