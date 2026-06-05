@@ -8,6 +8,8 @@ namespace PolyInstall.Pal;
 
 public sealed class DefaultPolyInstallPal : IPolyInstallPal
 {
+    private readonly PathPal _pathPal;
+
     public DefaultPolyInstallPal()
     {
         UserHome = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -21,6 +23,8 @@ public sealed class DefaultPolyInstallPal : IPolyInstallPal
         Registry = OperatingSystem.IsWindows() ? new WindowsRegistryPal() : null;
         DesktopEntries = OperatingSystem.IsLinux() || OperatingSystem.IsMacOS() ? new UnixDesktopEntryPal() : null;
         FilePermissions = OperatingSystem.IsLinux() || OperatingSystem.IsMacOS() ? new UnixFilePermissionsPal() : null;
+        _pathPal = new PathPal();
+        Path = _pathPal;
     }
 
     public string AppDir => InstallBootstrap.InstallDirectory ?? InstallBootstrap.ExtractRoot;
@@ -31,6 +35,7 @@ public sealed class DefaultPolyInstallPal : IPolyInstallPal
     public IRegistryPal? Registry { get; }
     public IDesktopEntryPal? DesktopEntries { get; }
     public IFilePermissionsPal? FilePermissions { get; }
+    public IPathPal? Path { get; }
 }
 
 internal sealed class DefaultShortcutPal : IShortcutPal
@@ -186,5 +191,179 @@ internal sealed class UnixFilePermissionsPal : IFilePermissionsPal
         p?.WaitForExit();
         if (p?.ExitCode != 0)
             throw new InvalidOperationException($"chmod failed for {path}.");
+    }
+}
+
+internal sealed class PathPal : IPathPal
+{
+    private readonly List<(string Path, string Scope)> _addedPaths = [];
+
+    public void AddToPath(string path, string scope)
+    {
+        if (OperatingSystem.IsWindows())
+            WindowsPathPal.AddToPath(path, scope);
+        else
+            UnixPathPal.AddToPath(path, scope);
+
+        _addedPaths.Add((path, scope));
+    }
+
+    public void RemoveFromPath(string path, string scope)
+    {
+        if (OperatingSystem.IsWindows())
+            WindowsPathPal.RemoveFromPath(path, scope);
+        else
+            UnixPathPal.RemoveFromPath(path, scope);
+    }
+
+    public IReadOnlyList<(string Path, string Scope)> AddedPaths => _addedPaths;
+}
+
+internal static class WindowsPathPal
+{
+    [SupportedOSPlatform("windows")]
+    public static void AddToPath(string directory, string scope)
+    {
+        var (root, subKey) = scope.Equals("machine", StringComparison.OrdinalIgnoreCase)
+            ? (Registry.LocalMachine, @"SYSTEM\CurrentControlSet\Control\Session Manager\Environment")
+            : (Registry.CurrentUser, "Environment");
+
+        using var key = root.OpenSubKey(subKey, true)
+                        ?? throw new InvalidOperationException($"Could not open registry key for PATH modification.");
+        var existing = key.GetValue("Path", "", RegistryValueOptions.DoNotExpandEnvironmentNames) as string ?? "";
+        var entries = existing.Split(';', StringSplitOptions.RemoveEmptyEntries);
+        var normalized = directory.TrimEnd('\\');
+        if (entries.Any(e => e.TrimEnd('\\').Equals(normalized, StringComparison.OrdinalIgnoreCase)))
+            return;
+        var newPath = existing.EndsWith(';') ? existing + normalized : existing + ";" + normalized;
+        key.SetValue("Path", newPath, RegistryValueKind.ExpandString);
+        NativeMethods.NotifyEnvironmentChange();
+    }
+
+    [SupportedOSPlatform("windows")]
+    public static void RemoveFromPath(string directory, string scope)
+    {
+        var (root, subKey) = scope.Equals("machine", StringComparison.OrdinalIgnoreCase)
+            ? (Registry.LocalMachine, @"SYSTEM\CurrentControlSet\Control\Session Manager\Environment")
+            : (Registry.CurrentUser, "Environment");
+
+        using var key = root.OpenSubKey(subKey, true)
+                        ?? throw new InvalidOperationException($"Could not open registry key for PATH modification.");
+        var existing = key.GetValue("Path", "", RegistryValueOptions.DoNotExpandEnvironmentNames) as string ?? "";
+        var entries = existing.Split(';', StringSplitOptions.RemoveEmptyEntries).ToList();
+        var normalized = directory.TrimEnd('\\');
+        entries.RemoveAll(e => e.TrimEnd('\\').Equals(normalized, StringComparison.OrdinalIgnoreCase));
+        key.SetValue("Path", string.Join(";", entries), RegistryValueKind.ExpandString);
+        NativeMethods.NotifyEnvironmentChange();
+    }
+}
+
+internal static class UnixPathPal
+{
+    public static void AddToPath(string directory, string scope)
+    {
+        if (scope.Equals("machine", StringComparison.OrdinalIgnoreCase))
+        {
+            if (OperatingSystem.IsMacOS())
+            {
+                var profilePath = "/etc/paths.d";
+                if (!Directory.Exists(profilePath))
+                    Directory.CreateDirectory(profilePath);
+                var fileName = SanitizeFileName(directory);
+                File.WriteAllText(Path.Combine(profilePath, fileName), directory + "\n");
+            }
+            else
+            {
+                var profilePath = "/etc/profile.d";
+                if (!Directory.Exists(profilePath))
+                    Directory.CreateDirectory(profilePath);
+                var fileName = SanitizeFileName(directory) + ".sh";
+                File.WriteAllText(Path.Combine(profilePath, fileName),
+                    $"export PATH=\"$PATH:{directory}\"\n");
+            }
+        }
+        else
+        {
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var profileFile = FindShellProfile(home);
+            var entry = $"export PATH=\"$PATH:{directory}\"";
+            if (File.Exists(profileFile) && File.ReadAllText(profileFile).Contains(entry, StringComparison.Ordinal))
+                return;
+            File.AppendAllText(profileFile, $"\n{entry}\n");
+        }
+    }
+
+    public static void RemoveFromPath(string directory, string scope)
+    {
+        if (scope.Equals("machine", StringComparison.OrdinalIgnoreCase))
+        {
+            if (OperatingSystem.IsMacOS())
+            {
+                var pathsDir = "/etc/paths.d";
+                var fileName = SanitizeFileName(directory);
+                var filePath = Path.Combine(pathsDir, fileName);
+                if (File.Exists(filePath))
+                    File.Delete(filePath);
+            }
+            else
+            {
+                var profileDir = "/etc/profile.d";
+                var fileName = SanitizeFileName(directory) + ".sh";
+                var filePath = Path.Combine(profileDir, fileName);
+                if (File.Exists(filePath))
+                    File.Delete(filePath);
+            }
+        }
+        else
+        {
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var profileFile = FindShellProfile(home);
+            if (!File.Exists(profileFile))
+                return;
+            var entry = $"export PATH=\"$PATH:{directory}\"";
+            var lines = File.ReadAllLines(profileFile)
+                .Where(l => !l.Trim().Equals(entry, StringComparison.Ordinal))
+                .ToArray();
+            File.WriteAllLines(profileFile, lines);
+        }
+    }
+
+    private static string FindShellProfile(string home)
+    {
+        var bashrc = Path.Combine(home, ".bashrc");
+        if (File.Exists(bashrc))
+            return bashrc;
+        var zshrc = Path.Combine(home, ".zshrc");
+        if (File.Exists(zshrc))
+            return zshrc;
+        var profile = Path.Combine(home, ".profile");
+        if (File.Exists(profile))
+            return profile;
+        return bashrc;
+    }
+
+    private static string SanitizeFileName(string path)
+    {
+        var name = path.Replace('/', '_').Replace('\\', '_').Replace(':', '_');
+        var invalid = Path.GetInvalidFileNameChars();
+        return string.Join("_", name.Split(invalid, StringSplitOptions.RemoveEmptyEntries)).Trim('_');
+    }
+}
+
+internal static class NativeMethods
+{
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    [System.Runtime.InteropServices.DefaultDllImportSearchPaths(System.Runtime.InteropServices.DllImportSearchPath.System32)]
+    private static extern bool SendMessageNotifyAll(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+    private const uint WM_SETTINGCHANGE = 0x001A;
+    private static readonly IntPtr HWND_BROADCAST = new(0xFFFF);
+
+    public static void NotifyEnvironmentChange()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        SendMessageNotifyAll(HWND_BROADCAST, WM_SETTINGCHANGE, IntPtr.Zero, IntPtr.Zero);
     }
 }

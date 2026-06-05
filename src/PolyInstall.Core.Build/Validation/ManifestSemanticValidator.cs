@@ -136,6 +136,8 @@ public static class ManifestSemanticValidator
                 ValidateCreateDesktopEntry(task, prefix, errors);
             else if (task.Action.Equals("set_permissions", StringComparison.OrdinalIgnoreCase))
                 ValidateSetPermissions(task, prefix, errors);
+            else if (task.Action.Equals("add_to_path", StringComparison.OrdinalIgnoreCase))
+                ValidateAddToPath(task, prefix, isUserScope, errors);
         }
     }
 
@@ -257,6 +259,23 @@ public static class ManifestSemanticValidator
             errors.Add($"{prefix}: set_permissions requires parameter 'path'.");
         if (GetParamString(task, "mode") is null)
             errors.Add($"{prefix}: set_permissions requires parameter 'mode'.");
+    }
+
+    private static void ValidateAddToPath(InstallTask task, string prefix, bool isUserScope, List<string> errors)
+    {
+        var scope = GetParamString(task, "scope") ?? "user";
+        if (!scope.Equals("user", StringComparison.OrdinalIgnoreCase)
+            && !scope.Equals("machine", StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add($"{prefix}: add_to_path 'scope' must be 'user' or 'machine', got '{scope}'.");
+        }
+
+        if (scope.Equals("machine", StringComparison.OrdinalIgnoreCase) && isUserScope)
+        {
+            errors.Add(
+                $"{prefix}: add_to_path with scope 'machine' requires install_scope 'machine'. " +
+                "Machine-level PATH modification requires Administrator rights.");
+        }
     }
 
     private static bool IsWindowsTask(InstallTask task)

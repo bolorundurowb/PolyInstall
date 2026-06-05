@@ -8,6 +8,14 @@ public interface IPolyInstallPal : IInstallPathPal
     IRegistryPal? Registry { get; }
     IDesktopEntryPal? DesktopEntries { get; }
     IFilePermissionsPal? FilePermissions { get; }
+    IPathPal? Path { get; }
+}
+
+public interface IPathPal
+{
+    void AddToPath(string path, string scope);
+    void RemoveFromPath(string path, string scope);
+    IReadOnlyList<(string Path, string Scope)> AddedPaths { get; }
 }
 
 public interface IShortcutPal

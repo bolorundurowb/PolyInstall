@@ -498,6 +498,98 @@ public class ManifestSemanticValidatorTests
         ex.Message.Should().Contain("Unix-only");
     }
 
+    [Fact]
+    public void Validate_AddToPathUserScope_Passes()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall =
+            [
+                new InstallTask
+                {
+                    Action = "add_to_path",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        ["scope"] = "user",
+                    },
+                },
+            ],
+        };
+
+        ManifestSemanticValidator.Validate(manifest);
+    }
+
+    [Fact]
+    public void Validate_AddToPathMachineScopeWithMachineInstall_Passes()
+    {
+        var manifest = CreateBaseManifest("machine");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall =
+            [
+                new InstallTask
+                {
+                    Action = "add_to_path",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        ["scope"] = "machine",
+                    },
+                },
+            ],
+        };
+
+        ManifestSemanticValidator.Validate(manifest);
+    }
+
+    [Fact]
+    public void Validate_AddToPathMachineScopeWithUserInstall_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall =
+            [
+                new InstallTask
+                {
+                    Action = "add_to_path",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        ["scope"] = "machine",
+                    },
+                },
+            ],
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("add_to_path");
+        ex.Message.Should().Contain("machine");
+        ex.Message.Should().Contain("install_scope");
+    }
+
+    [Fact]
+    public void Validate_AddToPathInvalidScope_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall =
+            [
+                new InstallTask
+                {
+                    Action = "add_to_path",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        ["scope"] = "global",
+                    },
+                },
+            ],
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("'scope' must be 'user' or 'machine'");
+    }
+
     private static InstallManifest CreateBaseManifest(string installScope)
     {
         return new InstallManifest

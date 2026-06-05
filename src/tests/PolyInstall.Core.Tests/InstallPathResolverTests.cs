@@ -96,6 +96,7 @@ public class InstallPathResolverTests
         public IRegistryPal? Registry => null;
         public IDesktopEntryPal? DesktopEntries => null;
         public IFilePermissionsPal? FilePermissions => null;
+        public IPathPal? Path => null;
     }
 
     private sealed class NoOpShortcutPal : IShortcutPal
