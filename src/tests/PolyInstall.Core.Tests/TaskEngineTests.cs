@@ -333,6 +333,86 @@ public class TaskEngineTests
         pal.ShortcutCalls[0].Shortcut.Should().EndWith(expectedName);
     }
 
+    [Fact]
+    public void RunPhase_WhenAddToPath_CallsPathPalWithDefaultScope()
+    {
+        var pal = new RecordingPal();
+        var s = Path.DirectorySeparatorChar;
+        var installDir = $"{s}opt{s}testapp";
+        InstallBootstrap.Init(new InstallManifest
+        {
+            Metadata = new ManifestMetadata { Name = "Test", Version = "1.0" },
+            Build = new BuildConfiguration { Targets = ["windows-x64"] },
+        }, Path.GetTempPath(), pal);
+        InstallBootstrap.InstallDirectory = installDir;
+
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "add_to_path",
+            },
+        };
+
+        TaskEngine.RunPhase(tasks, pal);
+
+        pal.PathCalls.Should().ContainSingle();
+        pal.PathCalls[0].Path.Should().Be(installDir);
+        pal.PathCalls[0].Scope.Should().Be("user");
+    }
+
+    [Fact]
+    public void RunPhase_WhenAddToPathWithExplicitPath_ExpandsPlaceholders()
+    {
+        var s = Path.DirectorySeparatorChar;
+        var pal = new RecordingPal
+        {
+            AppDirBacking = $"C:{s}Program Files{s}MyApp",
+        };
+        InstallBootstrap.Init(new InstallManifest
+        {
+            Metadata = new ManifestMetadata { Name = "Test", Version = "1.0" },
+            Build = new BuildConfiguration { Targets = ["windows-x64"] },
+        }, Path.GetTempPath(), pal);
+        InstallBootstrap.InstallDirectory = $"C:{s}Program Files{s}MyApp";
+
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "add_to_path",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["path"] = "{AppDir}\\bin",
+                    ["scope"] = "machine",
+                },
+            },
+        };
+
+        TaskEngine.RunPhase(tasks, pal);
+
+        pal.PathCalls.Should().ContainSingle();
+        pal.PathCalls[0].Path.Should().Be($"C:{s}Program Files{s}MyApp{s}bin");
+        pal.PathCalls[0].Scope.Should().Be("machine");
+    }
+
+    [Fact]
+    public void RunPhase_WhenAddToPathPalNull_ThrowsPlatformNotSupportedException()
+    {
+        var pal = new NoRegistryPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "add_to_path",
+            },
+        };
+
+        FluentActions.Invoking(() => TaskEngine.RunPhase(tasks, pal))
+            .Should().Throw<PlatformNotSupportedException>()
+            .WithMessage("*PATH*");
+    }
+
     private sealed class RecordingPal : IPolyInstallPal
     {
         public string AppDirBacking { get; init; } = "";
@@ -349,11 +429,13 @@ public class TaskEngineTests
         public IRegistryPal? Registry { get; }
         public IDesktopEntryPal? DesktopEntries { get; }
         public IFilePermissionsPal? FilePermissions { get; }
+        public IPathPal? Path { get; }
 
         public List<(string Target, string Shortcut, string? Description, string? Icon)> ShortcutCalls { get; } = [];
         public List<(string KeyPath, string? ValueName, string Value, string ValueKind)> RegistryCalls { get; } = [];
         public List<(string FileName, string Name, string Exec, string? Icon, string? Comment)> DesktopEntryCalls { get; } = [];
         public List<(string Path, int Mode)> PermissionCalls { get; } = [];
+        public List<(string Path, string Scope)> PathCalls { get; } = [];
 
         public RecordingPal()
         {
@@ -361,6 +443,7 @@ public class TaskEngineTests
             Registry = new RecordingRegistryPal(this);
             DesktopEntries = new RecordingDesktopEntryPal(this);
             FilePermissions = new RecordingFilePermissionsPal(this);
+            Path = new RecordingPathPal(this);
         }
 
         private sealed class RecordingShortcutPal(RecordingPal owner) : IShortcutPal
@@ -394,6 +477,21 @@ public class TaskEngineTests
                 owner.PermissionCalls.Add((path, mode));
             }
         }
+
+        private sealed class RecordingPathPal(RecordingPal owner) : IPathPal
+        {
+            private readonly List<(string Path, string Scope)> _addedPaths = [];
+
+            public void AddToPath(string path, string scope)
+            {
+                owner.PathCalls.Add((path, scope));
+                _addedPaths.Add((path, scope));
+            }
+
+            public void RemoveFromPath(string path, string scope) { }
+
+            public IReadOnlyList<(string Path, string Scope)> AddedPaths => _addedPaths;
+        }
     }
 
     private sealed class NoRegistryPal : IPolyInstallPal
@@ -406,6 +504,7 @@ public class TaskEngineTests
         public IRegistryPal? Registry => null;
         public IDesktopEntryPal? DesktopEntries => null;
         public IFilePermissionsPal? FilePermissions => null;
+        public IPathPal? Path => null;
     }
 
     private sealed class NullShortcutPal : IShortcutPal

@@ -64,6 +64,14 @@ public static class InstallCoordinator
         options.CancellationToken.ThrowIfCancellationRequested();
         options.Progress?.Invoke("Write install metadata");
         var state = InstallFinalizer.FinalizeInstall(options.Manifest, dest, payloadFiles);
+
+        if (options.Pal.Path is { AddedPaths.Count: > 0 } pathPal)
+        {
+            state.AddedToPath = pathPal.AddedPaths.Select(a => a.Path).ToList();
+            InstallStateIo.WriteState(dest, state);
+            options.Progress?.Invoke("PATH entries recorded");
+        }
+
         options.Progress?.Invoke("Install metadata written");
 
         if (OperatingSystem.IsWindows() && (options.Manifest.Build.Windows?.RegisterArp ?? true))

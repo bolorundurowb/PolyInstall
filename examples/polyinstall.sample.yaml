@@ -5,6 +5,9 @@ metadata:
   publisher: Example
 build:
   output_dir: dist
+  # Optional: customize the output filename with placeholders {name}, {version}, {target}.
+  # Defaults to "{name}-{target}" if not set.
+  # output_name: "{name}-v{version}-{target}"
   compression: brotli
   targets:
     - windows-x64
@@ -31,6 +34,13 @@ ui:
       title: Installing
     - type: finish
       title: Complete
+# Optional: tasks that add the install directory to PATH.
+# Use scope: machine to modify the system PATH (requires install_scope: machine).
+# tasks:
+#   post_install:
+#     - action: add_to_path
+#       # path defaults to the install directory ({AppDir}) if not specified
+#       scope: user
 files:
   - source_dir: sample-payload
     include:

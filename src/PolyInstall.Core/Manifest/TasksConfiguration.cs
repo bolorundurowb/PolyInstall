@@ -37,7 +37,7 @@ public sealed class InstallTask
 
     [Description(
         "The action to perform. One of: create_shortcut, write_registry (Windows only), " +
-        "create_desktop_entry (Linux/macOS only), set_permissions (Unix only).")]
+        "create_desktop_entry (Linux/macOS only), set_permissions (Unix only), add_to_path.")]
     public string Action { get; set; } = "";
 
     [Description("Key/value map of parameters for the chosen action. Keys are snake_case strings.")]

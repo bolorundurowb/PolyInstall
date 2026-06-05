@@ -3,6 +3,7 @@ namespace PolyInstall.Manifest;
 public sealed class BuildConfiguration
 {
     public string OutputDir { get; set; } = "dist";
+    public string? OutputName { get; set; }
     public string Compression { get; set; } = "brotli";
     public List<string> Targets { get; set; } = [];
     public string? InstallerTarget { get; set; }

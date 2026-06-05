@@ -14,4 +14,5 @@ public sealed class InstallStateDocument
     public string InstallScope { get; set; } = "user";
     public string RegistryUninstallKeyRelative { get; set; } = "";
     public List<string>? PayloadFiles { get; set; }
+    public List<string>? AddedToPath { get; set; }
 }

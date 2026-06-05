@@ -62,6 +62,13 @@
         "output_dir": {
           "type": "string"
         },
+        "output_name": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "description": "Template for the output installer filename. Supports placeholders: {name}, {version}, {target}. Defaults to '{name}-{target}' if not set."
+        },
         "compression": {
           "type": "string",
           "enum": ["brotli", "gzip"]
@@ -303,8 +310,8 @@
         },
         "action": {
           "type": "string",
-          "enum": ["create_shortcut", "write_registry", "create_desktop_entry", "set_permissions"],
-          "description": "The action to perform. One of: create_shortcut, write_registry (Windows only), create_desktop_entry (Linux/macOS only), set_permissions (Unix only). For create_shortcut use parameters: target_path, name, location (start_menu or desktop), optional subfolder, optional description, optional icon_path."
+          "enum": ["create_shortcut", "write_registry", "create_desktop_entry", "set_permissions", "add_to_path"],
+          "description": "The action to perform. One of: create_shortcut, write_registry (Windows only), create_desktop_entry (Linux/macOS only), set_permissions (Unix only), add_to_path. For create_shortcut use parameters: target_path, name, location (start_menu or desktop), optional subfolder, optional description, optional icon_path. For add_to_path use parameters: optional path (defaults to install directory), optional scope (user or machine, defaults to user). Machine scope requires install_scope machine."
         },
         "parameters": {
           "type": [

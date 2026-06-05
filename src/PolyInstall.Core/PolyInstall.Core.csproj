@@ -3,4 +3,7 @@
     <RootNamespace>PolyInstall</RootNamespace>
     <Description>Shared manifest models, payload format, and install/uninstall logic for PolyInstall.</Description>
   </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="PolyInstall.Core.Tests" />
+  </ItemGroup>
 </Project>

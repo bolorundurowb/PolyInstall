@@ -23,6 +23,15 @@ public static class UninstallCoordinator
         TaskEngine.RunPhase(manifest.Tasks?.PreUninstall, pal);
         TaskEngine.RunPhase(manifest.Tasks?.PostUninstall, pal);
 
+        if (state.AddedToPath is { Count: > 0 } && pal.Path is not null)
+        {
+            var scope = state.InstallScope.Equals("machine", StringComparison.OrdinalIgnoreCase)
+                ? "machine"
+                : "user";
+            foreach (var pathEntry in state.AddedToPath)
+                pal.Path.RemoveFromPath(pathEntry, scope);
+        }
+
         if (OperatingSystem.IsWindows())
             WindowsArpRegistration.Unregister(state);
 

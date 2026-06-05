@@ -63,6 +63,13 @@ public static class TaskEngine
                     throw new PlatformNotSupportedException("Permission tasks are not supported on this platform.");
                 pal.FilePermissions.SetUnixFileMode(Expand(GetString(p, "path"), pal), GetInt(p, "mode"));
                 break;
+            case "add_to_path":
+                if (pal.Path is null)
+                    throw new PlatformNotSupportedException("PATH tasks are not supported on this platform.");
+                var pathValue = Expand(GetStringOrDefault(p, "path", InstallBootstrap.InstallDirectory ?? ""), pal);
+                var pathScope = GetOptionalString(p, "scope") ?? "user";
+                pal.Path.AddToPath(pathValue, pathScope);
+                break;
             default:
                 throw new NotSupportedException($"Unknown task action: '{task.Action}'.");
         }
@@ -158,6 +165,18 @@ public static class TaskEngine
             string s => s,
             JsonElement je => je.GetString(),
             _ => v.ToString(),
+        };
+    }
+
+    private static string GetStringOrDefault(Dictionary<string, object?> p, string key, string defaultValue)
+    {
+        if (!p.TryGetValue(key, out var v) || v is null)
+            return defaultValue;
+        return v switch
+        {
+            string s => s,
+            JsonElement je => je.GetString() ?? defaultValue,
+            _ => v.ToString() ?? defaultValue,
         };
     }
 

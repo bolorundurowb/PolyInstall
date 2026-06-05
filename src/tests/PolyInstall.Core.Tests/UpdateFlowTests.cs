@@ -305,13 +305,14 @@ public class UpdateFlowTests
     private sealed class TestPal(string appDir) : IPolyInstallPal
     {
         public string AppDir { get; } = appDir;
-        public string ProgramFiles => Path.GetTempPath();
-        public string UserHome => Path.GetTempPath();
-        public string Desktop => Path.GetTempPath();
+        public string ProgramFiles => System.IO.Path.GetTempPath();
+        public string UserHome => System.IO.Path.GetTempPath();
+        public string Desktop => System.IO.Path.GetTempPath();
         public IShortcutPal Shortcuts { get; } = new NoOpShortcutPal();
         public IRegistryPal? Registry => null;
         public IDesktopEntryPal? DesktopEntries => null;
         public IFilePermissionsPal? FilePermissions => null;
+        public IPathPal? Path => null;
     }
 
     private sealed class NoOpShortcutPal : IShortcutPal
