@@ -13,9 +13,8 @@ public static class InstallBundleReader
 
     public static (InstallManifest Manifest, byte[] CompressedPayload) ReadFromStream(Stream stream)
     {
-        var (manifestLen, payloadLen) = InstallPayloadTrailer.ReadFooter(stream);
-        var len = stream.Length;
-        var (manifestStart, payloadStart) = InstallPayloadTrailer.GetBlobOffsets(len, manifestLen, payloadLen);
+        var (manifestLen, payloadLen, footerStart) = InstallPayloadTrailer.ReadFooterWithOffset(stream);
+        var (manifestStart, payloadStart) = InstallPayloadTrailer.GetBlobOffsetsFromFooter(footerStart, manifestLen, payloadLen);
         var json = InstallPayloadTrailer.ReadManifestUtf8(stream, manifestStart, manifestLen);
         stream.Seek(payloadStart, SeekOrigin.Begin);
         if (payloadLen > Array.MaxLength)

@@ -3,6 +3,7 @@
     <RootNamespace>PolyInstall.Core.Build.Tests</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\PolyInstall.Cli\PolyInstall.Cli.csproj" />
     <ProjectReference Include="..\..\PolyInstall.Core.Build\PolyInstall.Core.Build.csproj" />
   </ItemGroup>
   <ItemGroup>

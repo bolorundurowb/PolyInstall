@@ -15,7 +15,7 @@ public static class AppImagePackager
         ["linux-arm64"] = "https://github.com/AppImage/AppImageKit/releases/download/12/runtime-aarch64",
     };
 
-    public static async Task CreateAsync(
+    public static async Task<string> CreateAsync(
         string bundleElfPath,
         InstallManifest manifest,
         string manifestTargetToken,
@@ -95,6 +95,7 @@ public static class AppImagePackager
             ChmodExec(outPath);
 
             BuildLog.Info($"Built AppImage {outPath} ({BuildLog.FormatBytes(new FileInfo(outPath).Length)})");
+            return outPath;
         }
         finally
         {

@@ -8,6 +8,7 @@ public sealed class BuildConfiguration
     public List<string> Targets { get; set; } = [];
     public string? InstallerTarget { get; set; }
     public string? StubPath { get; set; }
+    public SigningBuildOptions? Signing { get; set; }
     public WindowsBuildOptions? Windows { get; set; }
     public LinuxBuildOptions? Linux { get; set; }
     public MacOsBuildOptions? Macos { get; set; }

@@ -19,6 +19,16 @@ build:
   #   package: appimage   # requires Linux host + mksquashfs (squashfs-tools)
   # macos:
   #   package: dmg        # requires macOS host + hdiutil
+  # Optional: omit build.signing to produce unsigned installers.
+  # signing:
+  #   windows:
+  #     certificate_path: "${WINDOWS_CERT_PATH}"      # or certificate_thumbprint / certificate_subject
+  #     certificate_password_env: WINDOWS_CERT_PASSWORD
+  #     timestamp_url: "http://timestamp.digicert.com"
+  #   macos:
+  #     identity: "Developer ID Application: Example Corp"
+  #     keychain: "${MACOS_KEYCHAIN_PATH}"
+  #     notarization_profile: "polyinstall-notary"    # optional; requires macos.package: dmg
 ui:
   theme: system
   # Optional branding image shown in installer top-left.

@@ -181,6 +181,7 @@ The manifest is grouped into five sections. All are represented in JSON Schema; 
 | `windows` | Optional [Windows build options](#windows-build-options). |
 | `linux` | Optional [Linux build options](#linux-build-options). |
 | `macos` | Optional [macOS build options](#macos-build-options). |
+| `signing` | Optional [installer signing options](#installer-signing). Omit this to build unsigned installers. |
 
 #### Windows build options
 
@@ -204,6 +205,31 @@ After every successful install or update, PolyInstall writes **`.polyinstall/ins
 | Field | Meaning |
 |--------|---------|
 | `package` | `none` (default) or `dmg`. When `dmg`, the CLI runs **`hdiutil`** to produce a compressed DMG beside the Mach-O binary. This step runs **only on macOS**. |
+
+#### Installer signing
+
+Signing is optional. When `build.signing` is omitted, PolyInstall produces unsigned artifacts exactly as the normal build pipeline does. When a platform signing block is present, the CLI validates that the required identity or certificate reference is configured, then signs the generated artifact after PolyInstall has appended the manifest and payload.
+
+Do not put certificate passwords or Apple account credentials directly in YAML. Use certificate store references, keychains, notarytool keychain profiles, and environment-variable names for secrets.
+
+```yaml
+build:
+  signing:
+    windows:
+      certificate_path: "${WINDOWS_CERT_PATH}"      # or certificate_thumbprint / certificate_subject
+      certificate_password_env: WINDOWS_CERT_PASSWORD
+      timestamp_url: "http://timestamp.digicert.com"
+    macos:
+      identity: "Developer ID Application: Example Corp"
+      keychain: "${MACOS_KEYCHAIN_PATH}"
+      notarization_profile: "polyinstall-notary"    # optional; requires build.macos.package: dmg
+```
+
+Windows signing uses `signtool` from `PATH` unless `tool_path` is configured. If Windows ARP registration is enabled, PolyInstall signs a temporary copy of `PolyInstall.Uninstall.exe` before embedding it, then signs the final generated installer `.exe`.
+
+macOS signing uses `codesign` from `PATH` unless `codesign_path` is configured. For `build.macos.package: dmg`, PolyInstall signs the Mach-O installer before packaging, then signs the DMG; when `notarization_profile` is provided it also runs `xcrun notarytool submit --wait` and staples the ticket.
+
+Linux signing is not built in. Linux outputs remain unsigned unless you run an external detached-signature workflow after the build.
 
 ### `ui`
 
@@ -363,7 +389,7 @@ The CLI **does not** rebuild the stub per package. It copies the stub bytes, the
 2. Compressed payload bytes
 3. A **20-byte footer**: payload length (8 LE), manifest length (4 LE), magic `POLYIN01` (8 bytes)
 
-The stub opens its own executable path, seeks to the end, validates the magic, and reads manifest + payload. You can re-sign the final binary with your own pipeline if you add signing **after** this append step (signing details are outside this README).
+The stub opens its own executable path, finds the PolyInstall footer, and reads manifest + payload. It checks the physical end first, then scans backward so signed artifacts still work when signing tools append signature data after the PolyInstall footer.
 
 
 
