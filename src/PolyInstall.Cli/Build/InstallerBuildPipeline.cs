@@ -96,10 +96,7 @@ public static class InstallerBuildPipeline
 
             var isWinTarget = rid.StartsWith("win-", StringComparison.OrdinalIgnoreCase);
             var ext = isWinTarget ? ".exe" : "";
-            var safeName = string.Join("_", manifest.Metadata.Name.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries)).Trim();
-            if (string.IsNullOrEmpty(safeName))
-                safeName = "setup";
-            var outName = $"{safeName}-{target}{ext}";
+            var outName = ResolveOutputName(manifest, target, ext);
             var outPath = Path.Combine(outDir, outName);
             var manifestJson = JsonSerializer.Serialize(manifest, InstallManifest.JsonOptions);
             var targetFiles = new List<(string EntryName, string FullPath)>(baseFiles);
@@ -126,13 +123,15 @@ public static class InstallerBuildPipeline
                 && string.Equals(manifest.Build.Linux?.Package, "appimage", StringComparison.OrdinalIgnoreCase))
             {
                 BuildLog.Info("Packaging AppImage…");
-                await AppImagePackager.CreateAsync(outPath, manifest, target, safeName, outDir, baseDirectory, ct);
+                var sanitizedProductName = SanitizeProductName(manifest.Metadata.Name);
+                await AppImagePackager.CreateAsync(outPath, manifest, target, sanitizedProductName, outDir, baseDirectory, ct);
             }
 
             if (target.StartsWith("osx-", StringComparison.OrdinalIgnoreCase)
                 && string.Equals(manifest.Build.Macos?.Package, "dmg", StringComparison.OrdinalIgnoreCase))
             {
-                var dmgOut = Path.Combine(outDir, $"{safeName}-{target}.dmg");
+                var sanitizedProductName = SanitizeProductName(manifest.Metadata.Name);
+                var dmgOut = Path.Combine(outDir, $"{sanitizedProductName}-{target}.dmg");
                 BuildLog.Info($"Packaging DMG: {dmgOut}");
                 DmgPackager.Create(outPath, dmgOut, manifest.Metadata.Name);
             }
@@ -219,5 +218,32 @@ public static class InstallerBuildPipeline
             dir = dir.Parent;
         }
         return Path.Combine(Directory.GetCurrentDirectory(), "schema");
+    }
+
+    private static string ResolveOutputName(InstallManifest manifest, string target, string extension)
+    {
+        var pattern = manifest.Build.OutputName;
+        if (!string.IsNullOrWhiteSpace(pattern))
+        {
+            var resolved = pattern!
+                .Replace("{name}", manifest.Metadata.Name, StringComparison.OrdinalIgnoreCase)
+                .Replace("{version}", manifest.Metadata.Version, StringComparison.OrdinalIgnoreCase)
+                .Replace("{target}", target, StringComparison.OrdinalIgnoreCase);
+            var sanitized = string.Join("_", resolved.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries)).Trim();
+            if (string.IsNullOrEmpty(sanitized))
+                sanitized = "setup";
+            if (!sanitized.EndsWith(extension, StringComparison.OrdinalIgnoreCase) && extension.Length > 0)
+                sanitized += extension;
+            return sanitized;
+        }
+
+        var safeName = SanitizeProductName(manifest.Metadata.Name);
+        return $"{safeName}-{target}{extension}";
+    }
+
+    private static string SanitizeProductName(string name)
+    {
+        var safeName = string.Join("_", name.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries)).Trim();
+        return string.IsNullOrEmpty(safeName) ? "setup" : safeName;
     }
 }

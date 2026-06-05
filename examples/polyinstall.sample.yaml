@@ -5,6 +5,9 @@ metadata:
   publisher: Example
 build:
   output_dir: dist
+  # Optional: customize the output filename with placeholders {name}, {version}, {target}.
+  # Defaults to "{name}-{target}" if not set.
+  # output_name: "{name}-v{version}-{target}"
   compression: brotli
   targets:
     - windows-x64
