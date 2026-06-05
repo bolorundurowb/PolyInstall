@@ -383,7 +383,7 @@ public class ManifestSemanticValidatorTests
         var manifest = CreateBaseManifest("user");
         manifest.Files =
         [
-            new FilesEntry { SourceDir = @"C:\Windows", Include = ["*.txt"] },
+            new FilesEntry { SourceDir = Path.GetTempPath(), Include = ["*.txt"] },
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
