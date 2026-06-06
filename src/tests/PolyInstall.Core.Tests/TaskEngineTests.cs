@@ -413,6 +413,254 @@ public class TaskEngineTests
             .WithMessage("*PATH*");
     }
 
+    [Fact]
+    public void RunPhase_WhenFileAssociationInstall_CallsRegister()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "file_association",
+                Parameters = new Dictionary<string, object?>
+                {
+                    { "extension", ".oef" },
+                    { "description", "OEF File" },
+                    { "command", "open %1" }
+                }
+            }
+        };
+
+        TaskEngine.RunPhase(tasks, pal);
+
+        pal.RegisterCalls.Should().HaveCount(1);
+        pal.RegisterCalls[0].Extension.Should().Be(".oef");
+        pal.RegisterCalls[0].Description.Should().Be("OEF File");
+        pal.RegisterCalls[0].Command.Should().Be("open %1");
+    }
+
+    [Fact]
+    public void RunPhase_WhenFileAssociationUninstall_CallsUnregister()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "file_association",
+                Parameters = new Dictionary<string, object?>
+                {
+                    { "extension", ".oef" },
+                    { "description", "OEF File" },
+                    { "command", "open %1" }
+                }
+            }
+        };
+
+        TaskEngine.RunPhase(tasks, pal, isUninstall: true);
+
+        pal.UnregisterCalls.Should().HaveCount(1);
+        pal.UnregisterCalls[0].Extension.Should().Be(".oef");
+    }
+
+    [Fact]
+    public void RunPhase_WhenFileAssociationWithMimeType_PassesMimeType()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "file_association",
+                Parameters = new Dictionary<string, object?>
+                {
+                    { "extension", ".oef" },
+                    { "description", "OEF File" },
+                    { "command", "open %1" },
+                    { "mime_type", "application/x-custom" }
+                }
+            }
+        };
+
+        TaskEngine.RunPhase(tasks, pal);
+
+        pal.RegisterCalls.Should().HaveCount(1);
+        pal.RegisterCalls[0].MimeType.Should().Be("application/x-custom");
+    }
+
+    [Fact]
+    public void RunPhase_WhenFileAssociationWithBundlePath_PassesBundlePath()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "file_association",
+                Parameters = new Dictionary<string, object?>
+                {
+                    { "extension", ".oef" },
+                    { "description", "OEF File" },
+                    { "command", "open %1" },
+                    { "bundle_path", "/Applications/MyApp.app" }
+                }
+            }
+        };
+
+        TaskEngine.RunPhase(tasks, pal);
+
+        pal.RegisterCalls.Should().HaveCount(1);
+        pal.RegisterCalls[0].BundlePath.Should().Be("/Applications/MyApp.app");
+    }
+
+    [Fact]
+    public void RunPhase_WhenFileAssociationMissingProgId_AutoGeneratesFromAppName()
+    {
+        var pal = new RecordingPal();
+        InstallBootstrap.Init(new InstallManifest
+        {
+            Metadata = new ManifestMetadata { Name = "My Cool App!", Version = "1.0" },
+            Build = new BuildConfiguration { Targets = ["windows-x64"] },
+        }, Path.GetTempPath(), pal);
+
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "file_association",
+                Parameters = new Dictionary<string, object?>
+                {
+                    { "extension", ".oef" },
+                    { "description", "OEF File" },
+                    { "command", "open %1" }
+                }
+            }
+        };
+
+        TaskEngine.RunPhase(tasks, pal);
+
+        pal.RegisterCalls.Should().HaveCount(1);
+        pal.RegisterCalls[0].ProgId.Should().Be("MyCoolApp.oef.1");
+    }
+
+    [Fact]
+    public void RunPhase_WhenFileAssociationPalNull_ThrowsPlatformNotSupportedException()
+    {
+        var pal = new NoRegistryPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "file_association",
+                Parameters = new Dictionary<string, object?>
+                {
+                    { "extension", ".oef" },
+                    { "description", "OEF File" },
+                    { "command", "open %1" }
+                }
+            }
+        };
+
+        FluentActions.Invoking(() => TaskEngine.RunPhase(tasks, pal))
+            .Should().Throw<PlatformNotSupportedException>()
+            .WithMessage("*File association tasks are not supported*");
+    }
+
+    [Fact]
+    public void RunPhase_WhenCreateDesktopEntryPalNull_ThrowsPlatformNotSupportedException()
+    {
+        var pal = new NoRegistryPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "create_desktop_entry",
+                Parameters = new Dictionary<string, object?>
+                {
+                    { "file_name", "app.desktop" },
+                    { "name", "App" },
+                    { "exec", "/usr/bin/app" }
+                }
+            }
+        };
+
+        FluentActions.Invoking(() => TaskEngine.RunPhase(tasks, pal))
+            .Should().Throw<PlatformNotSupportedException>()
+            .WithMessage("*Desktop entry tasks are not supported*");
+    }
+
+    [Fact]
+    public void RunPhase_WhenSetPermissionsPalNull_ThrowsPlatformNotSupportedException()
+    {
+        var pal = new NoRegistryPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "set_permissions",
+                Parameters = new Dictionary<string, object?>
+                {
+                    { "path", "/usr/bin/app" },
+                    { "mode", 755 }
+                }
+            }
+        };
+
+        FluentActions.Invoking(() => TaskEngine.RunPhase(tasks, pal))
+            .Should().Throw<PlatformNotSupportedException>()
+            .WithMessage("*Permission tasks are not supported*");
+    }
+
+    [Fact]
+    public void RunPhase_WhenUnsupportedLocation_ThrowsNotSupportedException()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "create_shortcut",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["target_path"] = "app.exe",
+                    ["name"] = "app",
+                    ["location"] = "taskbar",
+                },
+            },
+        };
+
+        FluentActions.Invoking(() => TaskEngine.RunPhase(tasks, pal))
+            .Should().Throw<NotSupportedException>()
+            .WithMessage("*Unsupported shortcut location*");
+    }
+
+    [Fact]
+    public void RunPhase_WhenLinuxShortcutStartMenu_BuildsApplicationsPath()
+    {
+        if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
+            return;
+
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "create_shortcut",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["target_path"] = "/usr/bin/app",
+                    ["name"] = "app",
+                    ["location"] = "start_menu",
+                },
+            },
+        };
+
+        TaskEngine.RunPhase(tasks, pal);
+
+        pal.ShortcutCalls.Should().ContainSingle();
+        pal.ShortcutCalls[0].Shortcut.Should().EndWith("app");
+    }
+
     private sealed class RecordingPal : IPolyInstallPal
     {
         public string AppDirBacking { get; init; } = "";
@@ -430,12 +678,15 @@ public class TaskEngineTests
         public IDesktopEntryPal? DesktopEntries { get; }
         public IFilePermissionsPal? FilePermissions { get; }
         public IPathPal? Path { get; }
+        public IFileAssociationPal? FileAssociations { get; }
 
         public List<(string Target, string Shortcut, string? Description, string? Icon)> ShortcutCalls { get; } = [];
         public List<(string KeyPath, string? ValueName, string Value, string ValueKind)> RegistryCalls { get; } = [];
         public List<(string FileName, string Name, string Exec, string? Icon, string? Comment)> DesktopEntryCalls { get; } = [];
         public List<(string Path, int Mode)> PermissionCalls { get; } = [];
         public List<(string Path, string Scope)> PathCalls { get; } = [];
+        public List<FileAssociationInfo> RegisterCalls { get; } = [];
+        public List<FileAssociationInfo> UnregisterCalls { get; } = [];
 
         public RecordingPal()
         {
@@ -444,6 +695,7 @@ public class TaskEngineTests
             DesktopEntries = new RecordingDesktopEntryPal(this);
             FilePermissions = new RecordingFilePermissionsPal(this);
             Path = new RecordingPathPal(this);
+            FileAssociations = new RecordingFileAssociationPal(this);
         }
 
         private sealed class RecordingShortcutPal(RecordingPal owner) : IShortcutPal
@@ -472,7 +724,7 @@ public class TaskEngineTests
 
         private sealed class RecordingFilePermissionsPal(RecordingPal owner) : IFilePermissionsPal
         {
-            public void SetUnixFileMode(string path, int mode)
+            public void SetFileMode(string path, int mode)
             {
                 owner.PermissionCalls.Add((path, mode));
             }
@@ -492,6 +744,12 @@ public class TaskEngineTests
 
             public IReadOnlyList<(string Path, string Scope)> AddedPaths => _addedPaths;
         }
+
+        private sealed class RecordingFileAssociationPal(RecordingPal owner) : IFileAssociationPal
+        {
+            public void Register(FileAssociationInfo association) => owner.RegisterCalls.Add(association);
+            public void Unregister(FileAssociationInfo association) => owner.UnregisterCalls.Add(association);
+        }
     }
 
     private sealed class NoRegistryPal : IPolyInstallPal
@@ -505,6 +763,7 @@ public class TaskEngineTests
         public IDesktopEntryPal? DesktopEntries => null;
         public IFilePermissionsPal? FilePermissions => null;
         public IPathPal? Path => null;
+        public IFileAssociationPal? FileAssociations => null;
     }
 
     private sealed class NullShortcutPal : IShortcutPal

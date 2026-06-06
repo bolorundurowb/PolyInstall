@@ -49,7 +49,7 @@ public class ConditionEvaluatorTests
             "windows" => OperatingSystem.IsWindows(),
             "linux" => OperatingSystem.IsLinux(),
             "macos" => OperatingSystem.IsMacOS(),
-            "unix" => OperatingSystem.IsLinux() || OperatingSystem.IsMacOS() || OperatingSystem.IsFreeBSD(),
+            "unix" => OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
             _ => throw new ArgumentOutOfRangeException(nameof(osFamily), osFamily, null),
         };
         ConditionEvaluator.Evaluate(require).Should().Be(expected);

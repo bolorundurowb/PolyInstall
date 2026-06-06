@@ -31,13 +31,13 @@ public sealed class InstallTask
     [Description(
         "Optional OS predicate that must be true for this task to run. " +
         "Supported values: os.isWindows/os.is_windows, os.isLinux/os.is_linux, " +
-        "os.isOSX/os.is_osx, os.isMacOS/os.is_macos, os.isUnix/os.is_unix. " +
+        "os.isOSX/os.is_osx, os.isMacOS/os.is_macos, os.isUnix/os.is_unix (Linux or macOS). " +
         "If omitted the task always runs.")]
     public string? Require { get; set; }
 
     [Description(
         "The action to perform. One of: create_shortcut, write_registry (Windows only), " +
-        "create_desktop_entry (Linux/macOS only), set_permissions (Unix only), add_to_path.")]
+        "create_desktop_entry (Linux only), set_permissions (Linux/macOS only), add_to_path, file_association.")]
     public string Action { get; set; } = "";
 
     [Description("Key/value map of parameters for the chosen action. Keys are snake_case strings.")]

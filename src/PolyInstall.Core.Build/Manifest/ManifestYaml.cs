@@ -29,6 +29,7 @@ public static class ManifestYaml
             Build = dto.Build ?? new BuildConfiguration(),
             Ui = dto.Ui ?? new UiConfiguration(),
             Files = dto.Files ?? [],
+            FileAssociations = dto.FileAssociations,
             Tasks = dto.Tasks,
         };
         return m;
@@ -40,6 +41,7 @@ public static class ManifestYaml
         public BuildConfiguration? Build { get; set; }
         public UiConfiguration? Ui { get; set; }
         public List<FilesEntry>? Files { get; set; }
+        public List<FileAssociation>? FileAssociations { get; set; }
         public TasksConfiguration? Tasks { get; set; }
     }
 }

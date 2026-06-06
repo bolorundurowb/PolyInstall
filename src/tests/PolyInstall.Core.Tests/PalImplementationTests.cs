@@ -1,8 +1,11 @@
 using System.Runtime.Versioning;
+using PolyInstall.Hosting;
+using PolyInstall.Install;
 using PolyInstall.Pal;
 
 namespace PolyInstall.Core.Tests;
 
+[Collection("Sequential")]
 public class PalImplementationTests
 {
     [Fact]
@@ -52,9 +55,9 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixSymlinkShortcut_BuildFallbackScript_BuildsValidShellScript()
+    public void PosixSymlinkShortcut_BuildFallbackScript_BuildsValidShellScript()
     {
-        var script = UnixSymlinkShortcut.BuildFallbackScript("/usr/bin/myapp");
+        var script = PosixSymlinkShortcut.BuildFallbackScript("/usr/bin/myapp");
 
         script.Should().StartWith("#!/bin/sh");
         script.Should().Contain("exec");
@@ -63,17 +66,17 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixSymlinkShortcut_BuildFallbackScript_EscapesQuotes()
+    public void PosixSymlinkShortcut_BuildFallbackScript_EscapesQuotes()
     {
-        var script = UnixSymlinkShortcut.BuildFallbackScript("/usr/bin/my \"app\"");
+        var script = PosixSymlinkShortcut.BuildFallbackScript("/usr/bin/my \"app\"");
 
         script.Should().Contain("my \\\"app\\\"");
     }
 
     [Fact]
-    public void UnixDesktopEntryPal_BuildDesktopEntryContent_WithAllParameters_BuildsCorrectContent()
+    public void LinuxDesktopEntryPal_BuildDesktopEntryContent_WithAllParameters_BuildsCorrectContent()
     {
-        var content = UnixDesktopEntryPal.BuildDesktopEntryContent(
+        var content = LinuxDesktopEntryPal.BuildDesktopEntryContent(
             "My Application",
             "/usr/bin/myapp",
             "/usr/share/icons/myapp.png",
@@ -89,9 +92,9 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixDesktopEntryPal_BuildDesktopEntryContent_WithMinimalParameters_BuildsCorrectContent()
+    public void LinuxDesktopEntryPal_BuildDesktopEntryContent_WithMinimalParameters_BuildsCorrectContent()
     {
-        var content = UnixDesktopEntryPal.BuildDesktopEntryContent(
+        var content = LinuxDesktopEntryPal.BuildDesktopEntryContent(
             "MyApp",
             "/usr/bin/myapp",
             null,
@@ -107,9 +110,9 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixPathPal_SanitizeFileName_RemovesInvalidCharacters()
+    public void PosixPathPal_SanitizeFileName_RemovesInvalidCharacters()
     {
-        var sanitized = UnixPathPal.SanitizeFileName("/usr/local/bin/myapp");
+        var sanitized = PosixPathPal.SanitizeFileName("/usr/local/bin/myapp");
 
         sanitized.Should().NotContain("/");
         sanitized.Should().NotContain("\\");
@@ -117,23 +120,23 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixPathPal_SanitizeFileName_HandlesEmptyString()
+    public void PosixPathPal_SanitizeFileName_HandlesEmptyString()
     {
-        var sanitized = UnixPathPal.SanitizeFileName("");
+        var sanitized = PosixPathPal.SanitizeFileName("");
 
         sanitized.Should().BeEmpty();
     }
 
     [Fact]
-    public void UnixPathPal_SanitizeFileName_HandlesPathWithOnlySeparators()
+    public void PosixPathPal_SanitizeFileName_HandlesPathWithOnlySeparators()
     {
-        var sanitized = UnixPathPal.SanitizeFileName("///");
+        var sanitized = PosixPathPal.SanitizeFileName("///");
 
         sanitized.Should().BeEmpty();
     }
 
     [Fact]
-    public void UnixPathPal_FindShellProfile_PrefersBashrc()
+    public void PosixPathPal_FindShellProfile_PrefersBashrc()
     {
         var tempDir = TestHelpers.NewTempDir();
         try
@@ -146,7 +149,7 @@ public class PalImplementationTests
             File.WriteAllText(zshrc, "");
             File.WriteAllText(profile, "");
 
-            var result = UnixPathPal.FindShellProfile(tempDir);
+            var result = PosixPathPal.FindShellProfile(tempDir);
 
             result.Should().Be(bashrc);
         }
@@ -157,7 +160,7 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixPathPal_FindShellProfile_FallsBackToZshrc()
+    public void PosixPathPal_FindShellProfile_FallsBackToZshrc()
     {
         var tempDir = TestHelpers.NewTempDir();
         try
@@ -168,7 +171,7 @@ public class PalImplementationTests
             File.WriteAllText(zshrc, "");
             File.WriteAllText(profile, "");
 
-            var result = UnixPathPal.FindShellProfile(tempDir);
+            var result = PosixPathPal.FindShellProfile(tempDir);
 
             result.Should().Be(zshrc);
         }
@@ -179,7 +182,7 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixPathPal_FindShellProfile_FallsBackToProfile()
+    public void PosixPathPal_FindShellProfile_FallsBackToProfile()
     {
         var tempDir = TestHelpers.NewTempDir();
         try
@@ -187,7 +190,7 @@ public class PalImplementationTests
             var profile = Path.Combine(tempDir, ".profile");
             File.WriteAllText(profile, "");
 
-            var result = UnixPathPal.FindShellProfile(tempDir);
+            var result = PosixPathPal.FindShellProfile(tempDir);
 
             result.Should().Be(profile);
         }
@@ -198,12 +201,12 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixPathPal_FindShellProfile_DefaultsToBashrc()
+    public void PosixPathPal_FindShellProfile_DefaultsToBashrc()
     {
         var tempDir = TestHelpers.NewTempDir();
         try
         {
-            var result = UnixPathPal.FindShellProfile(tempDir);
+            var result = PosixPathPal.FindShellProfile(tempDir);
 
             result.Should().Be(Path.Combine(tempDir, ".bashrc"));
         }
@@ -256,7 +259,7 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void DefaultShortcutPal_CreateFileShortcut_OnUnix_CreatesSymlink()
+    public void DefaultShortcutPal_CreateFileShortcut_OnLinuxMacOS_CreatesSymlink()
     {
         if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
             return;
@@ -280,7 +283,7 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixSymlinkShortcut_Create_CreatesSymlinkOrFallback()
+    public void PosixSymlinkShortcut_Create_CreatesSymlinkOrFallback()
     {
         if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
             return;
@@ -292,7 +295,7 @@ public class PalImplementationTests
             var shortcutPath = Path.Combine(tempDir, "shortcut");
             File.WriteAllText(targetPath, "");
 
-            UnixSymlinkShortcut.Create(targetPath, shortcutPath);
+            PosixSymlinkShortcut.Create(targetPath, shortcutPath);
 
             (File.Exists(shortcutPath) || Directory.Exists(shortcutPath)).Should().BeTrue();
         }
@@ -303,7 +306,7 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixSymlinkShortcut_Create_OverwritesExistingFile()
+    public void PosixSymlinkShortcut_Create_OverwritesExistingFile()
     {
         if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
             return;
@@ -316,7 +319,7 @@ public class PalImplementationTests
             File.WriteAllText(targetPath, "");
             File.WriteAllText(shortcutPath, "old content");
 
-            UnixSymlinkShortcut.Create(targetPath, shortcutPath);
+            PosixSymlinkShortcut.Create(targetPath, shortcutPath);
 
             (File.Exists(shortcutPath) || Directory.Exists(shortcutPath)).Should().BeTrue();
         }
@@ -327,7 +330,7 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixDesktopEntryPal_CreateDesktopEntry_WritesFile()
+    public void LinuxDesktopEntryPal_CreateDesktopEntry_WritesFile()
     {
         if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
             return;
@@ -338,7 +341,7 @@ public class PalImplementationTests
         {
             Environment.SetEnvironmentVariable("HOME", tempDir);
 
-            var pal = new UnixDesktopEntryPal();
+            var pal = new LinuxDesktopEntryPal();
             pal.CreateDesktopEntry("test", "Test App", "/usr/bin/test", null, null);
 
             var expectedPath = Path.Combine(tempDir, ".local", "share", "applications", "test.desktop");
@@ -352,7 +355,7 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixDesktopEntryPal_CreateDesktopEntry_AppendsDesktopExtension()
+    public void LinuxDesktopEntryPal_CreateDesktopEntry_AppendsDesktopExtension()
     {
         if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
             return;
@@ -363,7 +366,7 @@ public class PalImplementationTests
         {
             Environment.SetEnvironmentVariable("HOME", tempDir);
 
-            var pal = new UnixDesktopEntryPal();
+            var pal = new LinuxDesktopEntryPal();
             pal.CreateDesktopEntry("myapp", "My App", "/usr/bin/myapp", null, null);
 
             var expectedPath = Path.Combine(tempDir, ".local", "share", "applications", "myapp.desktop");
@@ -377,7 +380,7 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixDesktopEntryPal_CreateDesktopEntry_DoesNotDoubleAppendExtension()
+    public void LinuxDesktopEntryPal_CreateDesktopEntry_DoesNotDoubleAppendExtension()
     {
         if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
             return;
@@ -388,7 +391,7 @@ public class PalImplementationTests
         {
             Environment.SetEnvironmentVariable("HOME", tempDir);
 
-            var pal = new UnixDesktopEntryPal();
+            var pal = new LinuxDesktopEntryPal();
             pal.CreateDesktopEntry("myapp.desktop", "My App", "/usr/bin/myapp", null, null);
 
             var expectedPath = Path.Combine(tempDir, ".local", "share", "applications", "myapp.desktop");
@@ -405,7 +408,7 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixFilePermissionsPal_SetUnixFileMode_OnUnix_SetsPermissions()
+    public void PosixFilePermissionsPal_SetFileMode_OnLinuxMacOS_SetsPermissions()
     {
         if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
             return;
@@ -416,8 +419,8 @@ public class PalImplementationTests
             var filePath = Path.Combine(tempDir, "test.sh");
             File.WriteAllText(filePath, "#!/bin/sh\necho test");
 
-            var pal = new UnixFilePermissionsPal();
-            pal.SetUnixFileMode(filePath, 0b111_101_101);
+            var pal = new PosixFilePermissionsPal();
+            pal.SetFileMode(filePath, 0b111_101_101);
 
             var fileInfo = new FileInfo(filePath);
             var mode = fileInfo.UnixFileMode;
@@ -484,5 +487,286 @@ public class PalImplementationTests
 
         act.Should().Throw<NotSupportedException>()
             .WithMessage("*Registry root not supported*");
+    }
+
+    [Fact]
+    public void PosixPathPal_AddToPath_UserScope_AppendsToProfile()
+    {
+        if (OperatingSystem.IsWindows())
+            return;
+
+        var tempDir = TestHelpers.NewTempDir();
+        var originalHome = Environment.GetEnvironmentVariable("HOME");
+        try
+        {
+            Environment.SetEnvironmentVariable("HOME", tempDir);
+            var profile = Path.Combine(tempDir, ".bashrc");
+            File.WriteAllText(profile, "# existing content\n");
+
+            PosixPathPal.AddToPath("/usr/local/testapp/bin", "user");
+
+            var content = File.ReadAllText(profile);
+            content.Should().Contain("export PATH=\"$PATH:/usr/local/testapp/bin\"");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("HOME", originalHome);
+            TestHelpers.TryDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void PosixPathPal_AddToPath_UserScope_DuplicateEntry_IsIgnored()
+    {
+        if (OperatingSystem.IsWindows())
+            return;
+
+        var tempDir = TestHelpers.NewTempDir();
+        var originalHome = Environment.GetEnvironmentVariable("HOME");
+        try
+        {
+            Environment.SetEnvironmentVariable("HOME", tempDir);
+            var profile = Path.Combine(tempDir, ".bashrc");
+            var entry = "export PATH=\"$PATH:/usr/local/testapp/bin\"";
+            File.WriteAllText(profile, $"# existing content\n{entry}\n");
+
+            PosixPathPal.AddToPath("/usr/local/testapp/bin", "user");
+
+            var lines = File.ReadAllLines(profile);
+            lines.Count(l => l.Trim() == entry).Should().Be(1);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("HOME", originalHome);
+            TestHelpers.TryDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void PosixPathPal_RemoveFromPath_UserScope_RemovesEntry()
+    {
+        if (OperatingSystem.IsWindows())
+            return;
+
+        var tempDir = TestHelpers.NewTempDir();
+        var originalHome = Environment.GetEnvironmentVariable("HOME");
+        try
+        {
+            Environment.SetEnvironmentVariable("HOME", tempDir);
+            var profile = Path.Combine(tempDir, ".bashrc");
+            var entry = "export PATH=\"$PATH:/usr/local/testapp/bin\"";
+            File.WriteAllText(profile, $"# existing content\n{entry}\n");
+
+            PosixPathPal.RemoveFromPath("/usr/local/testapp/bin", "user");
+
+            var content = File.ReadAllText(profile);
+            content.Should().NotContain(entry);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("HOME", originalHome);
+            TestHelpers.TryDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void PosixPathPal_RemoveFromPath_UserScope_NonExistentProfile_DoesNotThrow()
+    {
+        if (OperatingSystem.IsWindows())
+            return;
+
+        var tempDir = TestHelpers.NewTempDir();
+        var originalHome = Environment.GetEnvironmentVariable("HOME");
+        try
+        {
+            Environment.SetEnvironmentVariable("HOME", tempDir);
+
+            Action act = () => PosixPathPal.RemoveFromPath("/usr/local/testapp/bin", "user");
+
+            act.Should().NotThrow();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("HOME", originalHome);
+            TestHelpers.TryDeleteDirectory(tempDir);
+        }
+    }
+
+    [Fact]
+    public void DefaultPolyInstallPal_Constructor_SetsPropertiesCorrectly()
+    {
+        var pal = new DefaultPolyInstallPal();
+
+        pal.UserHome.Should().Be(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+        pal.Desktop.Should().Be(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory));
+        pal.Shortcuts.Should().NotBeNull();
+        pal.Path.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void DefaultPolyInstallPal_Constructor_Windows_HasRegistry()
+    {
+        var pal = new DefaultPolyInstallPal();
+
+        if (OperatingSystem.IsWindows())
+        {
+            pal.Registry.Should().NotBeNull();
+            pal.FileAssociations.Should().NotBeNull().And.BeOfType<WindowsFileAssociationPal>();
+        }
+        else
+        {
+            pal.Registry.Should().BeNull();
+        }
+    }
+
+    [Fact]
+    public void DefaultPolyInstallPal_Constructor_Linux_HasDesktopEntries()
+    {
+        var pal = new DefaultPolyInstallPal();
+
+        if (OperatingSystem.IsLinux())
+        {
+            pal.DesktopEntries.Should().NotBeNull().And.BeOfType<LinuxDesktopEntryPal>();
+            pal.FilePermissions.Should().NotBeNull().And.BeOfType<PosixFilePermissionsPal>();
+            pal.FileAssociations.Should().NotBeNull().And.BeOfType<LinuxFileAssociationPal>();
+        }
+        else
+        {
+            pal.DesktopEntries.Should().BeNull();
+        }
+    }
+
+    [Fact]
+    public void DefaultPolyInstallPal_Constructor_MacOS_HasFilePermissions()
+    {
+        var pal = new DefaultPolyInstallPal();
+
+        if (OperatingSystem.IsMacOS())
+        {
+            pal.FilePermissions.Should().NotBeNull().And.BeOfType<PosixFilePermissionsPal>();
+            pal.FileAssociations.Should().NotBeNull().And.BeOfType<MacOsFileAssociationPal>();
+        }
+        else if (!OperatingSystem.IsLinux())
+        {
+            pal.FilePermissions.Should().BeNull();
+        }
+    }
+
+    [Fact]
+    [SupportedOSPlatform("windows")]
+    public void WindowsFileAssociationPal_Register_BackupsExistingAssociation()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        var installDir = TestHelpers.NewTempDir();
+        var state = TestHelpers.StateFor(
+            TestHelpers.Manifest("TestApp", "1.0"),
+            installDir,
+            "1.0");
+        InstallStateIo.WriteState(installDir, state);
+        InstallBootstrap.InstallDirectory = installDir;
+
+        var testExt = ".polytest" + Guid.NewGuid().ToString("N");
+        var testProgId = "PolyInstall.Test." + Guid.NewGuid().ToString("N");
+        try
+        {
+            // Set up a pre-existing association
+            using (var key = Microsoft.Win32.Registry.ClassesRoot.CreateSubKey(testExt))
+            {
+                key.SetValue("", "OriginalProgId");
+            }
+
+            var pal = new WindowsFileAssociationPal();
+            pal.Register(new FileAssociationInfo
+            {
+                Extension = testExt,
+                Description = "Test",
+                ProgId = testProgId,
+                Command = "test %1",
+            });
+
+            // Verify backup was created
+            var updatedState = InstallStateIo.ReadState(installDir);
+            updatedState.FileAssociationBackups.Should().ContainSingle(b =>
+                b.Extension == testExt && b.OriginalProgId == "OriginalProgId");
+        }
+        finally
+        {
+            try { Microsoft.Win32.Registry.ClassesRoot.DeleteSubKeyTree(testExt, false); } catch { }
+            try { Microsoft.Win32.Registry.ClassesRoot.DeleteSubKeyTree(testProgId, false); } catch { }
+            InstallBootstrap.InstallDirectory = null;
+            TestHelpers.TryDeleteDirectory(installDir);
+        }
+    }
+
+    [Fact]
+    [SupportedOSPlatform("windows")]
+    public void WindowsFileAssociationPal_Unregister_RestoresOriginalAssociation()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        var installDir = TestHelpers.NewTempDir();
+        var state = TestHelpers.StateFor(
+            TestHelpers.Manifest("TestApp", "1.0"),
+            installDir,
+            "1.0");
+        state.FileAssociationBackups =
+        [
+            new FileAssociationBackup
+            {
+                Extension = ".polytestrestore",
+                OriginalProgId = "RestoredProgId",
+            },
+        ];
+        InstallStateIo.WriteState(installDir, state);
+        InstallBootstrap.InstallDirectory = installDir;
+
+        try
+        {
+            var pal = new WindowsFileAssociationPal();
+            pal.Unregister(new FileAssociationInfo
+            {
+                Extension = ".polytestrestore",
+                ProgId = "TempProgId",
+            });
+
+            using var key = Microsoft.Win32.Registry.ClassesRoot.OpenSubKey(".polytestrestore");
+            key.Should().NotBeNull();
+            key!.GetValue("").Should().Be("RestoredProgId");
+        }
+        finally
+        {
+            try { Microsoft.Win32.Registry.ClassesRoot.DeleteSubKeyTree(".polytestrestore", false); } catch { }
+            try { Microsoft.Win32.Registry.ClassesRoot.DeleteSubKeyTree("TempProgId", false); } catch { }
+            InstallBootstrap.InstallDirectory = null;
+            TestHelpers.TryDeleteDirectory(installDir);
+        }
+    }
+
+    [Fact]
+    [SupportedOSPlatform("windows")]
+    public void WindowsFileAssociationPal_GetBackup_WhenNoState_ReturnsNull()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        var original = InstallBootstrap.InstallDirectory;
+        try
+        {
+            InstallBootstrap.InstallDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+            var pal = new WindowsFileAssociationPal();
+            // Use reflection since GetBackup is internal, but we want to test the null-installDir path too
+            var result = typeof(WindowsFileAssociationPal).GetMethod("GetBackup",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+                null, [typeof(string)], null)!
+                .Invoke(pal, [".test"]);
+            result.Should().BeNull();
+        }
+        finally
+        {
+            InstallBootstrap.InstallDirectory = original;
+        }
     }
 }

@@ -220,6 +220,8 @@ public static class ManifestSemanticValidator
                 ValidateSetPermissions(task, prefix, errors);
             else if (task.Action.Equals("add_to_path", StringComparison.OrdinalIgnoreCase))
                 ValidateAddToPath(task, prefix, isUserScope, errors);
+            else if (task.Action.Equals("file_association", StringComparison.OrdinalIgnoreCase))
+                ValidateFileAssociation(task, prefix, errors);
         }
     }
 
@@ -315,10 +317,10 @@ public static class ManifestSemanticValidator
 
     private static void ValidateCreateDesktopEntry(InstallTask task, string prefix, List<string> errors)
     {
-        if (!HasOsPredicate(task, "linux") && !HasOsPredicate(task, "macos") && !HasOsPredicate(task, "unix"))
+        if (!HasOsPredicate(task, "linux") && !HasOsPredicate(task, "unix"))
         {
             errors.Add(
-                $"{prefix}: create_desktop_entry is Linux/macOS-only. Add require: 'os.isLinux' or 'os.isUnix' to avoid runtime errors on other platforms.");
+                $"{prefix}: create_desktop_entry is Linux-only. Add require: 'os.isLinux' to avoid runtime errors on other platforms.");
         }
 
         if (string.IsNullOrEmpty(GetParamString(task, "file_name")))
@@ -334,7 +336,7 @@ public static class ManifestSemanticValidator
         if (!HasOsPredicate(task, "linux") && !HasOsPredicate(task, "macos") && !HasOsPredicate(task, "unix"))
         {
             errors.Add(
-                $"{prefix}: set_permissions is Unix-only. Add require: 'os.isLinux' or 'os.isUnix' to avoid runtime errors on other platforms.");
+                $"{prefix}: set_permissions is Linux/macOS-only. Add require: 'os.isLinux', 'os.isMacOS', or 'os.isUnix' to avoid runtime errors on other platforms.");
         }
 
         if (string.IsNullOrEmpty(GetParamString(task, "path")))
@@ -358,6 +360,38 @@ public static class ManifestSemanticValidator
                 $"{prefix}: add_to_path with scope 'machine' requires install_scope 'machine'. " +
                 "Machine-level PATH modification requires Administrator rights.");
         }
+    }
+
+    private static void ValidateFileAssociation(InstallTask task, string prefix, List<string> errors)
+    {
+        var isWindows = HasOsPredicate(task, "windows");
+        var isLinux = HasOsPredicate(task, "linux") || HasOsPredicate(task, "unix");
+        var isMacOs = HasOsPredicate(task, "macos") || HasOsPredicate(task, "osx");
+
+        if (!isWindows && !isLinux && !isMacOs)
+        {
+            errors.Add(
+                $"{prefix}: file_association requires an OS predicate (e.g., 'os.isWindows', 'os.isLinux', or 'os.isMacOS') to avoid runtime errors on unsupported platforms.");
+        }
+
+        var extension = GetParamString(task, "extension");
+        if (string.IsNullOrEmpty(extension))
+        {
+            errors.Add($"{prefix}: file_association requires parameter 'extension'.");
+        }
+        else if (!extension.StartsWith('.'))
+        {
+            errors.Add($"{prefix}: file_association 'extension' must start with a dot, e.g. '.oef'.");
+        }
+
+        if (string.IsNullOrEmpty(GetParamString(task, "description")))
+            errors.Add($"{prefix}: file_association requires parameter 'description'.");
+
+        if (string.IsNullOrEmpty(GetParamString(task, "command")))
+            errors.Add($"{prefix}: file_association requires parameter 'command'.");
+
+        if (isMacOs && string.IsNullOrEmpty(GetParamString(task, "bundle_path")))
+            errors.Add($"{prefix}: file_association on macOS requires parameter 'bundle_path'.");
     }
 
     private static bool IsWindowsTask(InstallTask task)

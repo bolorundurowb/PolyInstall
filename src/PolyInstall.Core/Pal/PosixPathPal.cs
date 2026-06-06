@@ -1,6 +1,6 @@
 namespace PolyInstall.Pal;
 
-internal static class UnixPathPal
+internal static class PosixPathPal
 {
     public static void AddToPath(string directory, string scope)
     {

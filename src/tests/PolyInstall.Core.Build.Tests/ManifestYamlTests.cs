@@ -95,4 +95,57 @@ public class ManifestYamlTests
         m.Build.Signing.Macos.Keychain.Should().Be("${MACOS_KEYCHAIN}");
         m.Build.Signing.Macos.NotarizationProfile.Should().Be("polyinstall-notary");
     }
+
+    [Fact]
+    public void Parse_WithFileAssociations_RoundTrips()
+    {
+        var yaml = """
+            metadata:
+              name: T
+              version: 1.0.0
+            file_associations:
+              - extension: .oef
+                description: OEF File
+                prog_id: Custom.ProgId
+                icon: app.ico
+                command: '"my.exe" "%1"'
+            files:
+              - source_dir: .
+            """;
+
+        var m = ManifestYaml.Parse(yaml);
+
+        m.FileAssociations.Should().NotBeNull();
+        m.FileAssociations.Should().HaveCount(1);
+        m.FileAssociations![0].Extension.Should().Be(".oef");
+        m.FileAssociations[0].Description.Should().Be("OEF File");
+        m.FileAssociations[0].ProgId.Should().Be("Custom.ProgId");
+        m.FileAssociations[0].Icon.Should().Be("app.ico");
+        m.FileAssociations[0].Command.Should().Be("\"my.exe\" \"%1\"");
+    }
+
+    [Fact]
+    public void Parse_WithFileAssociationsPlatformFields_RoundTrips()
+    {
+        var yaml = """
+            metadata:
+              name: T
+              version: 1.0.0
+            file_associations:
+              - extension: .oef
+                description: OEF File
+                command: open %1
+                mime_type: application/x-oef
+                bundle_path: /Applications/MyApp.app
+            files:
+              - source_dir: .
+            """;
+
+        var m = ManifestYaml.Parse(yaml);
+
+        m.FileAssociations.Should().NotBeNull();
+        m.FileAssociations.Should().HaveCount(1);
+        m.FileAssociations![0].MimeType.Should().Be("application/x-oef");
+        m.FileAssociations[0].BundlePath.Should().Be("/Applications/MyApp.app");
+    }
 }

@@ -157,9 +157,9 @@ If you work offline, use a **relative** or `file:` URL to `schema/v1.json` in yo
 
 
 
-## Manifest structure (five domains)
+## Manifest structure (six domains)
 
-The manifest is grouped into five sections. All are represented in JSON Schema; only the fields you need must be set (defaults apply where defined in code).
+The manifest is grouped into six sections. All are represented in JSON Schema; only the fields you need must be set (defaults apply where defined in code).
 
 ### `metadata`
 
@@ -251,6 +251,27 @@ A list of **glob groups**. Each entry has:
 | `exclude` | Optional exclude patterns. |
 
 Matched files are stored in a **zip** inside the compressed payload, preserving paths relative to `source_dir`.
+
+### `file_associations`
+
+Optional list of file associations to register. Each entry has:
+
+| Field | Meaning |
+|-------|---------|
+| `extension` | The file extension, including the leading dot (e.g., `.oef`). |
+| `description` | A brief description of the file type. |
+| `prog_id` | Optional: The ProgID for the file association (Windows, e.g., `MyApp.oef.1`). If omitted, one will be generated based on the application name and extension. |
+| `icon` | Optional: The path to the icon file for this file type, relative to the install directory. |
+| `command` | The command to execute when opening a file of this type. Use `%1` as a placeholder for the file path. |
+| `mime_type` | Optional (Linux): The MIME type for this file association. If omitted, one will be derived from the extension (e.g., `.oef` → `application/x-oef`). |
+| `bundle_path` | Required on macOS: Path to the `.app` bundle to register associations for. |
+
+**Platform behavior:**
+- **Windows**: Registers extension → ProgID mapping and ProgID → command in the registry.
+- **Linux**: Writes MIME type XML to `~/.local/share/mime/packages/`, updates the `.desktop` entry, and sets the default handler via `xdg-mime`.
+- **macOS**: Modifies the app bundle's `Info.plist` with `CFBundleDocumentTypes` and `UTExportedTypeDeclarations`, then re-registers with Launch Services.
+
+These associations are registered during installation and restored or removed during uninstallation. Note: for more fine-grained control, you can also use the `file_association` task action.
 
 ### `tasks`
 
@@ -411,7 +432,7 @@ If `wizard_steps` is empty, the UI falls back to a minimal welcome + finish flow
 
 ## Path placeholders
 
-Wizard strings (for example `ui.wizard_steps` → `destination.default_path`) and **task string parameters** (all string fields passed to `create_shortcut`, `write_registry`, `create_desktop_entry`, and `set_permissions`) can include:
+Wizard strings (for example `ui.wizard_steps` → `destination.default_path`) and **task string parameters** (all string fields passed to `create_shortcut`, `write_registry`, `create_desktop_entry`, `set_permissions`, and `file_association`) can include:
 
 | Placeholder | Meaning |
 |-------------|---------|
@@ -433,7 +454,7 @@ Wizard strings (for example `ui.wizard_steps` → `destination.default_path`) an
 - `os.isWindows` / `os.is_windows`
 - `os.isLinux` / `os.is_linux`
 - `os.isOSX` / `os.is_osx` / `os.isMacOS` / `os.is_macos`
-- `os.isUnix` / `os.is_unix` (Linux, macOS, or FreeBSD)
+- `os.isUnix` / `os.is_unix` (Linux or macOS)
 
 Unknown expressions throw at runtime — there is **no** general-purpose expression language by design.
 
@@ -447,8 +468,9 @@ String parameter values are passed through [path placeholder](#path-placeholders
 |----------|----------|----------------------|
 | `create_shortcut` | Windows: `.lnk` via PowerShell; Linux/macOS: symlink or shell wrapper | `target_path`, `name`, `location` (`start_menu` or `desktop`), optional `subfolder`, optional `description`, `icon_path` |
 | `write_registry` | Windows only | `key_path` (e.g. `HKCU\Software\Vendor\App`), `value_name`, `value`, `value_kind` (`string`, `reg_sz`, `dword`, …) |
-| `create_desktop_entry` | Linux / macOS (Freedesktop-style) | `file_name`, `name`, `exec`, optional `icon`, `comment` |
-| `set_permissions` | Unix | `path`, `mode` (integer, e.g. octal `755` as decimal or use the value your pipeline expects — the PAL passes through to `chmod`) |
+| `create_desktop_entry` | Linux only (Freedesktop-style) | `file_name`, `name`, `exec`, optional `icon`, `comment` |
+| `set_permissions` | Linux / macOS | `path`, `mode` (integer, e.g. octal `755` as decimal or use the value your pipeline expects — the PAL passes through to `chmod`) |
+| `file_association` | All platforms | `extension`, `description`, optional `prog_id`, optional `icon`, `command`, optional `mime_type` (Linux), optional `bundle_path` (macOS, required) |
 
 If an action is not supported on the current OS, the runtime throws a clear **platform not supported** error for that task.
 

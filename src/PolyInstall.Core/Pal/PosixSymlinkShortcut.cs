@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace PolyInstall.Pal;
 
-internal static class UnixSymlinkShortcut
+internal static class PosixSymlinkShortcut
 {
     public static void Create(string targetPath, string shortcutPath)
     {

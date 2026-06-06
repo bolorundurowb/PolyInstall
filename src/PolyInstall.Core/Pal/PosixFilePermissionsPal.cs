@@ -2,9 +2,9 @@ using System.Diagnostics;
 
 namespace PolyInstall.Pal;
 
-internal sealed class UnixFilePermissionsPal : IFilePermissionsPal
+internal sealed class PosixFilePermissionsPal : IFilePermissionsPal
 {
-    public void SetUnixFileMode(string path, int mode)
+    public void SetFileMode(string path, int mode)
     {
         var psi = new ProcessStartInfo
         {

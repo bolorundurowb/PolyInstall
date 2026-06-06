@@ -9,7 +9,7 @@ internal sealed class PathPal : IPathPal
         if (OperatingSystem.IsWindows())
             WindowsPathPal.AddToPath(path, scope);
         else
-            UnixPathPal.AddToPath(path, scope);
+            PosixPathPal.AddToPath(path, scope);
 
         _addedPaths.Add((path, scope));
     }
@@ -19,7 +19,7 @@ internal sealed class PathPal : IPathPal
         if (OperatingSystem.IsWindows())
             WindowsPathPal.RemoveFromPath(path, scope);
         else
-            UnixPathPal.RemoveFromPath(path, scope);
+            PosixPathPal.RemoveFromPath(path, scope);
     }
 
     public IReadOnlyList<(string Path, string Scope)> AddedPaths => _addedPaths;

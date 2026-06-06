@@ -664,7 +664,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Should().Contain("Linux/macOS-only");
+        ex.Message.Should().Contain("Linux-only");
     }
 
     [Fact]
@@ -688,7 +688,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Should().Contain("Unix-only");
+        ex.Message.Should().Contain("Linux/macOS-only");
     }
 
     [Fact]
@@ -781,6 +781,173 @@ public class ManifestSemanticValidatorTests
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
         ex.Message.Should().Contain("'scope' must be 'user' or 'machine'");
+    }
+
+    [Fact]
+    public void Validate_FileAssociationWithoutOsPredicate_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall = [
+                new()
+                {
+                    Action = "file_association",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        { "extension", ".oef" },
+                        { "description", "OEF File" },
+                        { "command", "\"app.exe\" \"%1\"" }
+                    }
+                }
+            ]
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("requires an OS predicate");
+    }
+
+    [Fact]
+    public void Validate_FileAssociationMissingParameters_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall = [
+                new()
+                {
+                    Action = "file_association",
+                    Require = "os.is_windows",
+                    Parameters = []
+                }
+            ]
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("requires parameter 'extension'");
+    }
+
+    [Fact]
+    public void Validate_FileAssociationInvalidExtension_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall = [
+                new()
+                {
+                    Action = "file_association",
+                    Require = "os.is_windows",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        { "extension", "oef" },
+                        { "description", "OEF File" },
+                        { "command", "\"app.exe\" \"%1\"" }
+                    }
+                }
+            ]
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("must start with a dot");
+    }
+
+    [Fact]
+    public void Validate_FileAssociationValid_Passes()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall = [
+                new()
+                {
+                    Action = "file_association",
+                    Require = "os.is_windows",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        { "extension", ".oef" },
+                        { "description", "OEF File" },
+                        { "command", "\"app.exe\" \"%1\"" }
+                    }
+                }
+            ]
+        };
+
+        ManifestSemanticValidator.Validate(manifest);
+    }
+
+    [Fact]
+    public void Validate_FileAssociationLinux_Passes()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall = [
+                new()
+                {
+                    Action = "file_association",
+                    Require = "os.is_linux",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        { "extension", ".oef" },
+                        { "description", "OEF File" },
+                        { "command", "app %1" }
+                    }
+                }
+            ]
+        };
+
+        ManifestSemanticValidator.Validate(manifest);
+    }
+
+    [Fact]
+    public void Validate_FileAssociationMacOSWithoutBundlePath_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall = [
+                new()
+                {
+                    Action = "file_association",
+                    Require = "os.is_macos",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        { "extension", ".oef" },
+                        { "description", "OEF File" },
+                        { "command", "open %1" }
+                    }
+                }
+            ]
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("bundle_path");
+    }
+
+    [Fact]
+    public void Validate_FileAssociationMacOSWithBundlePath_Passes()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall = [
+                new()
+                {
+                    Action = "file_association",
+                    Require = "os.is_macos",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        { "extension", ".oef" },
+                        { "description", "OEF File" },
+                        { "command", "open %1" },
+                        { "bundle_path", "/Applications/MyApp.app" }
+                    }
+                }
+            ]
+        };
+
+        ManifestSemanticValidator.Validate(manifest);
     }
 
     private static InstallManifest CreateBaseManifest(string installScope)

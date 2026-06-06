@@ -1,6 +1,6 @@
 namespace PolyInstall.Pal;
 
-internal sealed class UnixDesktopEntryPal : IDesktopEntryPal
+internal sealed class LinuxDesktopEntryPal : IDesktopEntryPal
 {
     public void CreateDesktopEntry(string fileName, string name, string exec, string? icon, string? comment)
     {

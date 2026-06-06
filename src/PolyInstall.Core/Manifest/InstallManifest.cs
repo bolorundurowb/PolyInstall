@@ -9,6 +9,7 @@ public sealed class InstallManifest
     public BuildConfiguration Build { get; set; } = new();
     public UiConfiguration Ui { get; set; } = new();
     public List<FilesEntry> Files { get; set; } = [];
+    public List<FileAssociation>? FileAssociations { get; set; }
     public TasksConfiguration? Tasks { get; set; }
 
     public static JsonSerializerOptions JsonOptions { get; } = new()

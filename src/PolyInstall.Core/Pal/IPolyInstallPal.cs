@@ -9,6 +9,7 @@ public interface IPolyInstallPal : IInstallPathPal
     IDesktopEntryPal? DesktopEntries { get; }
     IFilePermissionsPal? FilePermissions { get; }
     IPathPal? Path { get; }
+    IFileAssociationPal? FileAssociations { get; }
 }
 
 public interface IPathPal
@@ -35,5 +36,5 @@ public interface IDesktopEntryPal
 
 public interface IFilePermissionsPal
 {
-    void SetUnixFileMode(string path, int mode);
+    void SetFileMode(string path, int mode);
 }
