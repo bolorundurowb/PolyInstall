@@ -7,6 +7,36 @@ namespace PolyInstall.Core.Tests;
 public class InstallStateIoTests
 {
     [Fact]
+    public void WriteState_WithSelectedFeatures_RoundTrips()
+    {
+        var state = new InstallStateDocument
+        {
+            ProductId = "{AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE}",
+            DisplayName = "Test",
+            DisplayVersion = "2.0",
+            InstallLocation = @"C:\Apps\Test",
+            InstallScope = "user",
+            RegistryUninstallKeyRelative = "key",
+            SelectedFeatures = ["samples", "simulator"],
+        };
+        var installRoot = Path.Combine(Path.GetTempPath(), "polyinstall-state-features-" + Guid.NewGuid().ToString("n"));
+        Directory.CreateDirectory(installRoot);
+        try
+        {
+            InstallStateIo.WriteState(installRoot, state);
+            var json = File.ReadAllText(InstallStatePaths.InstallStatePath(installRoot));
+            json.Should().Contain("selected_features");
+
+            var read = InstallStateIo.ReadState(installRoot);
+            read.SelectedFeatures.Should().BeEquivalentTo("samples", "simulator");
+        }
+        finally
+        {
+            try { Directory.Delete(installRoot, true); } catch { }
+        }
+    }
+
+    [Fact]
     public void WriteState_ThenReadState_PreservesDocument()
     {
         var state = new InstallStateDocument

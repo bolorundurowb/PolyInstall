@@ -5,6 +5,7 @@ using PolyInstall.Pal;
 
 namespace PolyInstall.Core.Tests;
 
+[Collection("Sequential")]
 public class TaskEngineTests
 {
     [Fact]
@@ -491,6 +492,11 @@ public class TaskEngineTests
     [Fact]
     public void RunPhase_WhenFileAssociationWithBundlePath_PassesBundlePath()
     {
+        // bundle_path is a macOS .app path; on non-macOS hosts InstallPathResolver.Expand
+        // rewrites the slashes to the host separator, making the assertion non-portable.
+        if (!OperatingSystem.IsMacOS())
+            return;
+
         var pal = new RecordingPal();
         var tasks = new[]
         {
@@ -541,6 +547,77 @@ public class TaskEngineTests
 
         pal.RegisterCalls.Should().HaveCount(1);
         pal.RegisterCalls[0].ProgId.Should().Be("MyCoolApp.oef.1");
+    }
+
+    [Fact]
+    public void RunPhase_WhenTaskFeatureNotSelected_SkipsTask()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "create_shortcut",
+                Features = ["samples"],
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["target_path"] = "app.exe",
+                    ["name"] = "app",
+                    ["location"] = "desktop",
+                },
+            },
+        };
+
+        TaskEngine.RunPhase(tasks, pal, new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "simulator" });
+
+        pal.ShortcutCalls.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RunPhase_WhenTaskFeatureSelected_RunsTask()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "create_shortcut",
+                Features = ["simulator"],
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["target_path"] = "app.exe",
+                    ["name"] = "app",
+                    ["location"] = "desktop",
+                },
+            },
+        };
+
+        TaskEngine.RunPhase(tasks, pal, new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "simulator" });
+
+        pal.ShortcutCalls.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void RunPhase_WhenTaskHasNoFeatures_AlwaysRuns()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "create_shortcut",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["target_path"] = "app.exe",
+                    ["name"] = "app",
+                    ["location"] = "desktop",
+                },
+            },
+        };
+
+        TaskEngine.RunPhase(tasks, pal, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+
+        pal.ShortcutCalls.Should().ContainSingle();
     }
 
     [Fact]
