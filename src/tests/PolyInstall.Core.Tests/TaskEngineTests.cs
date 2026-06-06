@@ -576,7 +576,7 @@ public class TaskEngineTests
 
         private sealed class RecordingFilePermissionsPal(RecordingPal owner) : IFilePermissionsPal
         {
-            public void SetUnixFileMode(string path, int mode)
+            public void SetFileMode(string path, int mode)
             {
                 owner.PermissionCalls.Add((path, mode));
             }

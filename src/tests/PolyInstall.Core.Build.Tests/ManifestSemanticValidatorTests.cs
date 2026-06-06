@@ -688,7 +688,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Should().Contain("Unix-only");
+        ex.Message.Should().Contain("Linux/macOS-only");
     }
 
     [Fact]

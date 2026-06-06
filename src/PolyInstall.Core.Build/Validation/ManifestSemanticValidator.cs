@@ -320,7 +320,7 @@ public static class ManifestSemanticValidator
         if (!HasOsPredicate(task, "linux") && !HasOsPredicate(task, "unix"))
         {
             errors.Add(
-                $"{prefix}: create_desktop_entry is Linux-only. Add require: 'os.isLinux' or 'os.isUnix' to avoid runtime errors on other platforms.");
+                $"{prefix}: create_desktop_entry is Linux-only. Add require: 'os.isLinux' to avoid runtime errors on other platforms.");
         }
 
         if (string.IsNullOrEmpty(GetParamString(task, "file_name")))
@@ -336,7 +336,7 @@ public static class ManifestSemanticValidator
         if (!HasOsPredicate(task, "linux") && !HasOsPredicate(task, "macos") && !HasOsPredicate(task, "unix"))
         {
             errors.Add(
-                $"{prefix}: set_permissions is Unix-only. Add require: 'os.isLinux' or 'os.isUnix' to avoid runtime errors on other platforms.");
+                $"{prefix}: set_permissions is Linux/macOS-only. Add require: 'os.isLinux', 'os.isMacOS', or 'os.isUnix' to avoid runtime errors on other platforms.");
         }
 
         if (string.IsNullOrEmpty(GetParamString(task, "path")))

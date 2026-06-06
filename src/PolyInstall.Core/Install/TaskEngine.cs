@@ -61,7 +61,7 @@ public static class TaskEngine
             case "set_permissions":
                 if (pal.FilePermissions is null)
                     throw new PlatformNotSupportedException("Permission tasks are not supported on this platform.");
-                pal.FilePermissions.SetUnixFileMode(Expand(GetString(p, "path"), pal), GetInt(p, "mode"));
+                pal.FilePermissions.SetFileMode(Expand(GetString(p, "path"), pal), GetInt(p, "mode"));
                 break;
             case "add_to_path":
                 if (pal.Path is null)

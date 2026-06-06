@@ -8,7 +8,7 @@ internal sealed class DefaultShortcutPal : IShortcutPal
         if (OperatingSystem.IsWindows())
             WindowsShortcut.Create(targetPath, shortcutPath, description, iconPath);
         else if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
-            UnixSymlinkShortcut.Create(targetPath, shortcutPath);
+            PosixSymlinkShortcut.Create(targetPath, shortcutPath);
         else
             throw new PlatformNotSupportedException("Shortcuts are not supported on this OS.");
     }

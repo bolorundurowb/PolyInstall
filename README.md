@@ -454,7 +454,7 @@ Wizard strings (for example `ui.wizard_steps` → `destination.default_path`) an
 - `os.isWindows` / `os.is_windows`
 - `os.isLinux` / `os.is_linux`
 - `os.isOSX` / `os.is_osx` / `os.isMacOS` / `os.is_macos`
-- `os.isUnix` / `os.is_unix` (Linux, macOS, or FreeBSD)
+- `os.isUnix` / `os.is_unix` (Linux or macOS)
 
 Unknown expressions throw at runtime — there is **no** general-purpose expression language by design.
 
@@ -469,7 +469,7 @@ String parameter values are passed through [path placeholder](#path-placeholders
 | `create_shortcut` | Windows: `.lnk` via PowerShell; Linux/macOS: symlink or shell wrapper | `target_path`, `name`, `location` (`start_menu` or `desktop`), optional `subfolder`, optional `description`, `icon_path` |
 | `write_registry` | Windows only | `key_path` (e.g. `HKCU\Software\Vendor\App`), `value_name`, `value`, `value_kind` (`string`, `reg_sz`, `dword`, …) |
 | `create_desktop_entry` | Linux only (Freedesktop-style) | `file_name`, `name`, `exec`, optional `icon`, `comment` |
-| `set_permissions` | Unix | `path`, `mode` (integer, e.g. octal `755` as decimal or use the value your pipeline expects — the PAL passes through to `chmod`) |
+| `set_permissions` | Linux / macOS | `path`, `mode` (integer, e.g. octal `755` as decimal or use the value your pipeline expects — the PAL passes through to `chmod`) |
 | `file_association` | All platforms | `extension`, `description`, optional `prog_id`, optional `icon`, `command`, optional `mime_type` (Linux), optional `bundle_path` (macOS, required) |
 
 If an action is not supported on the current OS, the runtime throws a clear **platform not supported** error for that task.

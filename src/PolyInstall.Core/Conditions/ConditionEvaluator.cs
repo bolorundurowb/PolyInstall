@@ -15,7 +15,7 @@ public static class ConditionEvaluator
             "os.iswindows" or "os.is_windows" => OperatingSystem.IsWindows(),
             "os.islinux" or "os.is_linux" => OperatingSystem.IsLinux(),
             "os.isosx" or "os.is_osx" or "os.ismacos" or "os.is_macos" => OperatingSystem.IsMacOS(),
-            "os.isunix" or "os.is_unix" => OperatingSystem.IsLinux() || OperatingSystem.IsMacOS() || OperatingSystem.IsFreeBSD(),
+            "os.isunix" or "os.is_unix" => OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
             _ => throw new NotSupportedException($"Unknown require condition: '{require}'. Supported: os.isWindows, os.isLinux, os.isOSX/os.isMacOS, os.isUnix."),
         };
     }

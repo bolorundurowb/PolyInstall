@@ -52,9 +52,9 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixSymlinkShortcut_BuildFallbackScript_BuildsValidShellScript()
+    public void PosixSymlinkShortcut_BuildFallbackScript_BuildsValidShellScript()
     {
-        var script = UnixSymlinkShortcut.BuildFallbackScript("/usr/bin/myapp");
+        var script = PosixSymlinkShortcut.BuildFallbackScript("/usr/bin/myapp");
 
         script.Should().StartWith("#!/bin/sh");
         script.Should().Contain("exec");
@@ -63,17 +63,17 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixSymlinkShortcut_BuildFallbackScript_EscapesQuotes()
+    public void PosixSymlinkShortcut_BuildFallbackScript_EscapesQuotes()
     {
-        var script = UnixSymlinkShortcut.BuildFallbackScript("/usr/bin/my \"app\"");
+        var script = PosixSymlinkShortcut.BuildFallbackScript("/usr/bin/my \"app\"");
 
         script.Should().Contain("my \\\"app\\\"");
     }
 
     [Fact]
-    public void UnixDesktopEntryPal_BuildDesktopEntryContent_WithAllParameters_BuildsCorrectContent()
+    public void LinuxDesktopEntryPal_BuildDesktopEntryContent_WithAllParameters_BuildsCorrectContent()
     {
-        var content = UnixDesktopEntryPal.BuildDesktopEntryContent(
+        var content = LinuxDesktopEntryPal.BuildDesktopEntryContent(
             "My Application",
             "/usr/bin/myapp",
             "/usr/share/icons/myapp.png",
@@ -89,9 +89,9 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixDesktopEntryPal_BuildDesktopEntryContent_WithMinimalParameters_BuildsCorrectContent()
+    public void LinuxDesktopEntryPal_BuildDesktopEntryContent_WithMinimalParameters_BuildsCorrectContent()
     {
-        var content = UnixDesktopEntryPal.BuildDesktopEntryContent(
+        var content = LinuxDesktopEntryPal.BuildDesktopEntryContent(
             "MyApp",
             "/usr/bin/myapp",
             null,
@@ -107,9 +107,9 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixPathPal_SanitizeFileName_RemovesInvalidCharacters()
+    public void PosixPathPal_SanitizeFileName_RemovesInvalidCharacters()
     {
-        var sanitized = UnixPathPal.SanitizeFileName("/usr/local/bin/myapp");
+        var sanitized = PosixPathPal.SanitizeFileName("/usr/local/bin/myapp");
 
         sanitized.Should().NotContain("/");
         sanitized.Should().NotContain("\\");
@@ -117,23 +117,23 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixPathPal_SanitizeFileName_HandlesEmptyString()
+    public void PosixPathPal_SanitizeFileName_HandlesEmptyString()
     {
-        var sanitized = UnixPathPal.SanitizeFileName("");
+        var sanitized = PosixPathPal.SanitizeFileName("");
 
         sanitized.Should().BeEmpty();
     }
 
     [Fact]
-    public void UnixPathPal_SanitizeFileName_HandlesPathWithOnlySeparators()
+    public void PosixPathPal_SanitizeFileName_HandlesPathWithOnlySeparators()
     {
-        var sanitized = UnixPathPal.SanitizeFileName("///");
+        var sanitized = PosixPathPal.SanitizeFileName("///");
 
         sanitized.Should().BeEmpty();
     }
 
     [Fact]
-    public void UnixPathPal_FindShellProfile_PrefersBashrc()
+    public void PosixPathPal_FindShellProfile_PrefersBashrc()
     {
         var tempDir = TestHelpers.NewTempDir();
         try
@@ -146,7 +146,7 @@ public class PalImplementationTests
             File.WriteAllText(zshrc, "");
             File.WriteAllText(profile, "");
 
-            var result = UnixPathPal.FindShellProfile(tempDir);
+            var result = PosixPathPal.FindShellProfile(tempDir);
 
             result.Should().Be(bashrc);
         }
@@ -157,7 +157,7 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixPathPal_FindShellProfile_FallsBackToZshrc()
+    public void PosixPathPal_FindShellProfile_FallsBackToZshrc()
     {
         var tempDir = TestHelpers.NewTempDir();
         try
@@ -168,7 +168,7 @@ public class PalImplementationTests
             File.WriteAllText(zshrc, "");
             File.WriteAllText(profile, "");
 
-            var result = UnixPathPal.FindShellProfile(tempDir);
+            var result = PosixPathPal.FindShellProfile(tempDir);
 
             result.Should().Be(zshrc);
         }
@@ -179,7 +179,7 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixPathPal_FindShellProfile_FallsBackToProfile()
+    public void PosixPathPal_FindShellProfile_FallsBackToProfile()
     {
         var tempDir = TestHelpers.NewTempDir();
         try
@@ -187,7 +187,7 @@ public class PalImplementationTests
             var profile = Path.Combine(tempDir, ".profile");
             File.WriteAllText(profile, "");
 
-            var result = UnixPathPal.FindShellProfile(tempDir);
+            var result = PosixPathPal.FindShellProfile(tempDir);
 
             result.Should().Be(profile);
         }
@@ -198,12 +198,12 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixPathPal_FindShellProfile_DefaultsToBashrc()
+    public void PosixPathPal_FindShellProfile_DefaultsToBashrc()
     {
         var tempDir = TestHelpers.NewTempDir();
         try
         {
-            var result = UnixPathPal.FindShellProfile(tempDir);
+            var result = PosixPathPal.FindShellProfile(tempDir);
 
             result.Should().Be(Path.Combine(tempDir, ".bashrc"));
         }
@@ -256,7 +256,7 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void DefaultShortcutPal_CreateFileShortcut_OnUnix_CreatesSymlink()
+    public void DefaultShortcutPal_CreateFileShortcut_OnLinuxMacOS_CreatesSymlink()
     {
         if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
             return;
@@ -280,7 +280,7 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixSymlinkShortcut_Create_CreatesSymlinkOrFallback()
+    public void PosixSymlinkShortcut_Create_CreatesSymlinkOrFallback()
     {
         if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
             return;
@@ -292,7 +292,7 @@ public class PalImplementationTests
             var shortcutPath = Path.Combine(tempDir, "shortcut");
             File.WriteAllText(targetPath, "");
 
-            UnixSymlinkShortcut.Create(targetPath, shortcutPath);
+            PosixSymlinkShortcut.Create(targetPath, shortcutPath);
 
             (File.Exists(shortcutPath) || Directory.Exists(shortcutPath)).Should().BeTrue();
         }
@@ -303,7 +303,7 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixSymlinkShortcut_Create_OverwritesExistingFile()
+    public void PosixSymlinkShortcut_Create_OverwritesExistingFile()
     {
         if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
             return;
@@ -316,7 +316,7 @@ public class PalImplementationTests
             File.WriteAllText(targetPath, "");
             File.WriteAllText(shortcutPath, "old content");
 
-            UnixSymlinkShortcut.Create(targetPath, shortcutPath);
+            PosixSymlinkShortcut.Create(targetPath, shortcutPath);
 
             (File.Exists(shortcutPath) || Directory.Exists(shortcutPath)).Should().BeTrue();
         }
@@ -327,7 +327,7 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixDesktopEntryPal_CreateDesktopEntry_WritesFile()
+    public void LinuxDesktopEntryPal_CreateDesktopEntry_WritesFile()
     {
         if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
             return;
@@ -338,7 +338,7 @@ public class PalImplementationTests
         {
             Environment.SetEnvironmentVariable("HOME", tempDir);
 
-            var pal = new UnixDesktopEntryPal();
+            var pal = new LinuxDesktopEntryPal();
             pal.CreateDesktopEntry("test", "Test App", "/usr/bin/test", null, null);
 
             var expectedPath = Path.Combine(tempDir, ".local", "share", "applications", "test.desktop");
@@ -352,7 +352,7 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixDesktopEntryPal_CreateDesktopEntry_AppendsDesktopExtension()
+    public void LinuxDesktopEntryPal_CreateDesktopEntry_AppendsDesktopExtension()
     {
         if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
             return;
@@ -363,7 +363,7 @@ public class PalImplementationTests
         {
             Environment.SetEnvironmentVariable("HOME", tempDir);
 
-            var pal = new UnixDesktopEntryPal();
+            var pal = new LinuxDesktopEntryPal();
             pal.CreateDesktopEntry("myapp", "My App", "/usr/bin/myapp", null, null);
 
             var expectedPath = Path.Combine(tempDir, ".local", "share", "applications", "myapp.desktop");
@@ -377,7 +377,7 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixDesktopEntryPal_CreateDesktopEntry_DoesNotDoubleAppendExtension()
+    public void LinuxDesktopEntryPal_CreateDesktopEntry_DoesNotDoubleAppendExtension()
     {
         if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
             return;
@@ -388,7 +388,7 @@ public class PalImplementationTests
         {
             Environment.SetEnvironmentVariable("HOME", tempDir);
 
-            var pal = new UnixDesktopEntryPal();
+            var pal = new LinuxDesktopEntryPal();
             pal.CreateDesktopEntry("myapp.desktop", "My App", "/usr/bin/myapp", null, null);
 
             var expectedPath = Path.Combine(tempDir, ".local", "share", "applications", "myapp.desktop");
@@ -405,7 +405,7 @@ public class PalImplementationTests
     }
 
     [Fact]
-    public void UnixFilePermissionsPal_SetUnixFileMode_OnUnix_SetsPermissions()
+    public void PosixFilePermissionsPal_SetFileMode_OnLinuxMacOS_SetsPermissions()
     {
         if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
             return;
@@ -416,8 +416,8 @@ public class PalImplementationTests
             var filePath = Path.Combine(tempDir, "test.sh");
             File.WriteAllText(filePath, "#!/bin/sh\necho test");
 
-            var pal = new UnixFilePermissionsPal();
-            pal.SetUnixFileMode(filePath, 0b111_101_101);
+            var pal = new PosixFilePermissionsPal();
+            pal.SetFileMode(filePath, 0b111_101_101);
 
             var fileInfo = new FileInfo(filePath);
             var mode = fileInfo.UnixFileMode;

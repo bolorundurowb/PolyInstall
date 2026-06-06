@@ -36,5 +36,5 @@ public interface IDesktopEntryPal
 
 public interface IFilePermissionsPal
 {
-    void SetUnixFileMode(string path, int mode);
+    void SetFileMode(string path, int mode);
 }

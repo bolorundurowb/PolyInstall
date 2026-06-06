@@ -15,8 +15,8 @@ public sealed class DefaultPolyInstallPal : IPolyInstallPal
                 : "/usr/local";
         Shortcuts = new DefaultShortcutPal();
         Registry = OperatingSystem.IsWindows() ? new WindowsRegistryPal() : null;
-        DesktopEntries = OperatingSystem.IsLinux() ? new UnixDesktopEntryPal() : null;
-        FilePermissions = OperatingSystem.IsLinux() || OperatingSystem.IsMacOS() ? new UnixFilePermissionsPal() : null;
+        DesktopEntries = OperatingSystem.IsLinux() ? new LinuxDesktopEntryPal() : null;
+        FilePermissions = OperatingSystem.IsLinux() || OperatingSystem.IsMacOS() ? new PosixFilePermissionsPal() : null;
         FileAssociations = OperatingSystem.IsWindows()
             ? new WindowsFileAssociationPal()
             : OperatingSystem.IsLinux()
