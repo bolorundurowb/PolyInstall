@@ -53,10 +53,10 @@ internal sealed class MacOsFileAssociationPal : IFileAssociationPal
         ReRegisterBundle(association.BundlePath);
     }
 
-    private static string GetInfoPlistPath(string bundlePath)
+    internal static string GetInfoPlistPath(string bundlePath)
         => Path.Combine(bundlePath, "Contents", "Info.plist");
 
-    private static string ResolveUti(FileAssociationInfo association)
+    internal static string ResolveUti(FileAssociationInfo association)
     {
         if (!string.IsNullOrEmpty(association.MimeType))
             return association.MimeType;
@@ -93,7 +93,7 @@ internal sealed class MacOsFileAssociationPal : IFileAssociationPal
         catch { }
     }
 
-    private static FileAssociationBackup? GetBackup(string extension)
+    internal static FileAssociationBackup? GetBackup(string extension)
     {
         var installDir = InstallBootstrap.InstallDirectory;
         if (string.IsNullOrEmpty(installDir)) return null;
@@ -110,7 +110,7 @@ internal sealed class MacOsFileAssociationPal : IFileAssociationPal
         }
     }
 
-    private static void AddOrUpdateDocumentType(
+    internal static void AddOrUpdateDocumentType(
         XElement rootDict, FileAssociationInfo association, string uti, string extWithoutDot)
     {
         var docTypesArray = GetOrCreateArray(rootDict, "CFBundleDocumentTypes");
@@ -132,7 +132,7 @@ internal sealed class MacOsFileAssociationPal : IFileAssociationPal
         docTypesArray.Add(newEntry);
     }
 
-    private static void AddOrUpdateTypeDeclaration(
+    internal static void AddOrUpdateTypeDeclaration(
         XElement rootDict, FileAssociationInfo association, string uti, string extWithoutDot)
     {
         var typeDeclsArray = GetOrCreateArray(rootDict, "UTExportedTypeDeclarations");
@@ -169,7 +169,7 @@ internal sealed class MacOsFileAssociationPal : IFileAssociationPal
         typeDeclsArray.Add(newDecl);
     }
 
-    private static XElement GetOrCreateArray(XElement parentDict, string key)
+    internal static XElement GetOrCreateArray(XElement parentDict, string key)
     {
         var existing = parentDict.Elements()
             .Where(e => e.Name == "key" && e.Value == key)
@@ -185,7 +185,7 @@ internal sealed class MacOsFileAssociationPal : IFileAssociationPal
         return newArray;
     }
 
-    private static XElement? FindDictInArray(XElement array, string keyName, string keyValue)
+    internal static XElement? FindDictInArray(XElement array, string keyName, string keyValue)
     {
         return array.Elements("dict")
             .FirstOrDefault(d => d.Elements()
@@ -193,7 +193,7 @@ internal sealed class MacOsFileAssociationPal : IFileAssociationPal
                     && e.ElementsAfterSelf().FirstOrDefault()?.Value == keyValue));
     }
 
-    private static void UpdateStringInDict(XElement dict, string key, string value, bool append)
+    internal static void UpdateStringInDict(XElement dict, string key, string value, bool append)
     {
         if (!append)
         {
@@ -229,7 +229,7 @@ internal sealed class MacOsFileAssociationPal : IFileAssociationPal
         dict.Add(new XElement("array", new XElement("string", value)));
     }
 
-    private static XElement CreateStringElement(string key, string value)
+    internal static XElement CreateStringElement(string key, string value)
     {
         return new XElement("dict",
             new XElement("key", key),
@@ -237,7 +237,7 @@ internal sealed class MacOsFileAssociationPal : IFileAssociationPal
             .Elements().First().Parent!;
     }
 
-    private static XElement CreateArrayElement(string key, string value)
+    internal static XElement CreateArrayElement(string key, string value)
     {
         return new XElement("placeholder",
             new XElement("key", key),
@@ -245,7 +245,7 @@ internal sealed class MacOsFileAssociationPal : IFileAssociationPal
             .Elements().First().Parent!;
     }
 
-    private static bool IsKeyBefore(XElement element, string keyName)
+    internal static bool IsKeyBefore(XElement element, string keyName)
     {
         return element.Name == "key" && element.Value == keyName;
     }

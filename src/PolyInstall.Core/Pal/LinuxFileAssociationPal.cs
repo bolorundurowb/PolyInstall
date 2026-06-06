@@ -46,7 +46,7 @@ internal sealed class LinuxFileAssociationPal : IFileAssociationPal
         }
     }
 
-    private static string ResolveMimeType(FileAssociationInfo association)
+    internal static string ResolveMimeType(FileAssociationInfo association)
     {
         if (!string.IsNullOrEmpty(association.MimeType))
             return association.MimeType;
@@ -55,7 +55,7 @@ internal sealed class LinuxFileAssociationPal : IFileAssociationPal
         return $"application/x-{ext}";
     }
 
-    private static string ResolveDesktopFileName(FileAssociationInfo association)
+    internal static string ResolveDesktopFileName(FileAssociationInfo association)
     {
         var safeAppName = new string(association.ProgId
             .Where(c => char.IsLetterOrDigit(c) || c == '-' || c == '_' || c == '.')
@@ -180,7 +180,7 @@ internal sealed class LinuxFileAssociationPal : IFileAssociationPal
         catch { }
     }
 
-    private static FileAssociationBackup? GetBackup(string extension)
+    internal static FileAssociationBackup? GetBackup(string extension)
     {
         var installDir = InstallBootstrap.InstallDirectory;
         if (string.IsNullOrEmpty(installDir)) return null;
@@ -197,7 +197,7 @@ internal sealed class LinuxFileAssociationPal : IFileAssociationPal
         }
     }
 
-    private static List<string> GetCreatedFiles(FileAssociationInfo association, string mimeType)
+    internal static List<string> GetCreatedFiles(FileAssociationInfo association, string mimeType)
     {
         var files = new List<string>();
 
@@ -213,15 +213,15 @@ internal sealed class LinuxFileAssociationPal : IFileAssociationPal
         return files.Distinct().ToList();
     }
 
-    private static string GetMimeDatabasePath()
+    internal static string GetMimeDatabasePath()
         => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             ".local", "share", "mime");
 
-    private static string GetMimePackagesPath()
+    internal static string GetMimePackagesPath()
         => Path.Combine(GetMimeDatabasePath(), "packages");
 
-    private static string GetApplicationsPath()
+    internal static string GetApplicationsPath()
         => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             ".local", "share", "applications");

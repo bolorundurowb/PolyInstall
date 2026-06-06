@@ -513,6 +513,154 @@ public class TaskEngineTests
         pal.RegisterCalls[0].BundlePath.Should().Be("/Applications/MyApp.app");
     }
 
+    [Fact]
+    public void RunPhase_WhenFileAssociationMissingProgId_AutoGeneratesFromAppName()
+    {
+        var pal = new RecordingPal();
+        InstallBootstrap.Init(new InstallManifest
+        {
+            Metadata = new ManifestMetadata { Name = "My Cool App!", Version = "1.0" },
+            Build = new BuildConfiguration { Targets = ["windows-x64"] },
+        }, Path.GetTempPath(), pal);
+
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "file_association",
+                Parameters = new Dictionary<string, object?>
+                {
+                    { "extension", ".oef" },
+                    { "description", "OEF File" },
+                    { "command", "open %1" }
+                }
+            }
+        };
+
+        TaskEngine.RunPhase(tasks, pal);
+
+        pal.RegisterCalls.Should().HaveCount(1);
+        pal.RegisterCalls[0].ProgId.Should().Be("MyCoolApp.oef.1");
+    }
+
+    [Fact]
+    public void RunPhase_WhenFileAssociationPalNull_ThrowsPlatformNotSupportedException()
+    {
+        var pal = new NoRegistryPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "file_association",
+                Parameters = new Dictionary<string, object?>
+                {
+                    { "extension", ".oef" },
+                    { "description", "OEF File" },
+                    { "command", "open %1" }
+                }
+            }
+        };
+
+        FluentActions.Invoking(() => TaskEngine.RunPhase(tasks, pal))
+            .Should().Throw<PlatformNotSupportedException>()
+            .WithMessage("*File association tasks are not supported*");
+    }
+
+    [Fact]
+    public void RunPhase_WhenCreateDesktopEntryPalNull_ThrowsPlatformNotSupportedException()
+    {
+        var pal = new NoRegistryPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "create_desktop_entry",
+                Parameters = new Dictionary<string, object?>
+                {
+                    { "file_name", "app.desktop" },
+                    { "name", "App" },
+                    { "exec", "/usr/bin/app" }
+                }
+            }
+        };
+
+        FluentActions.Invoking(() => TaskEngine.RunPhase(tasks, pal))
+            .Should().Throw<PlatformNotSupportedException>()
+            .WithMessage("*Desktop entry tasks are not supported*");
+    }
+
+    [Fact]
+    public void RunPhase_WhenSetPermissionsPalNull_ThrowsPlatformNotSupportedException()
+    {
+        var pal = new NoRegistryPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "set_permissions",
+                Parameters = new Dictionary<string, object?>
+                {
+                    { "path", "/usr/bin/app" },
+                    { "mode", 755 }
+                }
+            }
+        };
+
+        FluentActions.Invoking(() => TaskEngine.RunPhase(tasks, pal))
+            .Should().Throw<PlatformNotSupportedException>()
+            .WithMessage("*Permission tasks are not supported*");
+    }
+
+    [Fact]
+    public void RunPhase_WhenUnsupportedLocation_ThrowsNotSupportedException()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "create_shortcut",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["target_path"] = "app.exe",
+                    ["name"] = "app",
+                    ["location"] = "taskbar",
+                },
+            },
+        };
+
+        FluentActions.Invoking(() => TaskEngine.RunPhase(tasks, pal))
+            .Should().Throw<NotSupportedException>()
+            .WithMessage("*Unsupported shortcut location*");
+    }
+
+    [Fact]
+    public void RunPhase_WhenLinuxShortcutStartMenu_BuildsApplicationsPath()
+    {
+        if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
+            return;
+
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "create_shortcut",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["target_path"] = "/usr/bin/app",
+                    ["name"] = "app",
+                    ["location"] = "start_menu",
+                },
+            },
+        };
+
+        TaskEngine.RunPhase(tasks, pal);
+
+        pal.ShortcutCalls.Should().ContainSingle();
+        pal.ShortcutCalls[0].Shortcut.Should().EndWith("app");
+    }
+
     private sealed class RecordingPal : IPolyInstallPal
     {
         public string AppDirBacking { get; init; } = "";
