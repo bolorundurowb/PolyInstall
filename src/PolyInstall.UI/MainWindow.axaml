@@ -2,6 +2,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="PolyInstall.UI.MainWindow"
         Width="560" Height="420"
+        MinWidth="480" MinHeight="360"
+        MaxWidth="900" MaxHeight="720"
         WindowStartupLocation="CenterScreen">
     <Grid Margin="16" RowDefinitions="Auto,Auto,*,Auto">
         <Image Name="BrandLogoImage"

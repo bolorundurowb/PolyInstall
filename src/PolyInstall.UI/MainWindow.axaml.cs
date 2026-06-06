@@ -34,6 +34,7 @@ public partial class MainWindow : Window
     private bool _installInProgress;
     private bool _installTouchedDisk;
     private bool _installCreatedInstallDirectory;
+    private bool _installRan;
     private string? _activeInstallDirectory;
     private InstallMode _activeInstallMode = InstallMode.Install;
 
@@ -187,11 +188,16 @@ public partial class MainWindow : Window
     private void RenderStep(int index)
     {
         _stepIndex = index;
-        BackButton.IsEnabled = index > 0;
+        // Once an install run has completed, Back must stay disabled — re-entering earlier
+        // steps after files have been touched leads to inconsistent state.
+        BackButton.IsEnabled = index > 0 && !_installRan;
         var step = _steps[index];
         StepTitle.Text = step.Title ?? step.Type;
         StepContent.Content = BuildStepUi(step);
         NextButton.Content = index == _steps.Count - 1 ? "Close" : "Next";
+        // After a successful install, Cancel no longer makes sense — only Close.
+        if (_installRan)
+            CancelButton.IsEnabled = false;
     }
 
     private Control BuildStepUi(WizardStep step)
@@ -628,7 +634,9 @@ public partial class MainWindow : Window
                     _progressBar.IsIndeterminate = false;
                     _progressBar.Value = 100;
                 }
+                _installRan = true;
                 NextButton.IsEnabled = true;
+                BackButton.IsEnabled = false;
                 CancelButton.IsEnabled = false;
             });
         }
