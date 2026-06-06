@@ -26,6 +26,7 @@ installation UI built on **Avalonia**, PolyInstall simplifies the deployment pro
 
 - YAML-Based Manifests: Define your installer metadata, files, and build configurations in a single, simple YAML file.
 - Cross-Platform Support: Generate self-extracting installers for Windows (.exe), Linux (AppImage), and macOS (DMG).
+- Service/Daemon Registration: Register Windows services, Linux systemd units, and macOS launchd jobs from the manifest.
 - Modern Avalonia UI: A clean, responsive installation interface that works across Windows, Linux, and macOS.
 
 ---
@@ -46,12 +47,17 @@ PolyInstall, need unreleased changes, or want custom stub layouts.
 | Piece                            | Role                                                                                                                                                                                                      |
 |----------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **`polyinstall` CLI**            | Parses YAML, substitutes environment variables, validates against JSON Schema, globs files, builds a zip payload, compresses it, and produces one output binary per `build.targets` entry.                |
-| **Stub (`PolyInstall.Runtime`)** | The actual installer binary you ship. It reads the bundle appended to itself, shows a wizard (`PolyInstall.UI`), copies files, and can run **tasks** (shortcuts, registry, `.desktop` files, permissions). |
+| **Stub (`PolyInstall.Runtime`)** | The actual installer binary you ship. It reads the bundle appended to itself, shows a wizard (`PolyInstall.UI`), copies files, registers services/daemons, and can run **tasks** (shortcuts, registry, `.desktop` files, permissions). |
 | **`PolyInstall.Uninstall` (Windows)** | A small, trimmed **uninstall host** published beside the stub. When Windows ARP registration is enabled, the CLI embeds it in the payload as `.polyinstall/tools/PolyInstall.Uninstall.exe`; after install it is copied to **`Uninstall.exe`** at the install root for Add/Remove Programs and command-line uninstall. |
 | **`schema/v1.json`**             | JSON Schema generated from the same C# models as the runtime. Use it in your editor for completion and diagnostics (see [Manifest and schema](#manifest-and-schema)).                                     |
 
-**Platform outputs:** On **Windows**, the installer can register **Add/Remove Programs** and deploy a dedicated **`Uninstall.exe`** (the published `PolyInstall.Uninstall` host) that runs **`--uninstall`**. Re-running a newer packaged installer for the same product detects the existing install, offers an update/repair flow, updates files in place, and refreshes stored install metadata. On **Linux**, the CLI can optionally emit an **AppImage** (requires `mksquashfs` on a Linux
-host). On **macOS**, the CLI can optionally emit a **DMG** via `hdiutil` (requires building on macOS).
+**Platform outputs:** On **Windows**, the installer can register **Add/Remove Programs**, deploy a dedicated
+**`Uninstall.exe`** (the published `PolyInstall.Uninstall` host) that runs **`--uninstall`**, and register Windows
+services. Re-running a newer packaged installer for the same product detects the existing install, offers an
+update/repair flow, updates files in place, removes stale services/daemons, and refreshes stored install metadata. On
+**Linux**, the CLI can optionally emit an **AppImage** (requires `mksquashfs` on a Linux host) and register systemd
+system/user units. On **macOS**, the CLI can optionally emit a **DMG** via `hdiutil` (requires building on macOS) and
+register launchd agents/daemons.
 See [Windows uninstall and ARP](#windows-uninstall-and-arp), [Linux AppImage](#linux-appimage),
 and [macOS DMG](#macos-dmg).
 
@@ -64,6 +70,12 @@ and [macOS DMG](#macos-dmg).
 - The **machine that runs your finished installer** must match the RID you built for (see [Build targets](#build-targets)).
 - **Windows** installers that use `create_shortcut` tasks expect **PowerShell** on the end user’s machine (COM via
   `WScript.Shell`).
+- **Windows services** require Administrator rights. PolyInstall relaunches with UAC when the manifest includes a
+  Windows service.
+- **Linux services** require `systemctl`; `scope: system` requires root, while `scope: user` runs through
+  `systemctl --user`.
+- **macOS services** require `launchctl`; `scope: system` writes a `LaunchDaemon` and requires root, while
+  `scope: user` writes a `LaunchAgent`.
 
 **Building PolyInstall from source** (optional; contributors and advanced setups)
 
@@ -189,7 +201,7 @@ If you work offline, use a **relative** or `file:` URL to `schema/v1.json` in yo
 
 
 
-## Manifest structure (six domains)
+## Manifest structure (seven domains)
 
 The manifest is grouped into six sections. All are represented in JSON Schema; only the fields you need must be set (defaults apply where defined in code).
 
@@ -304,6 +316,47 @@ Optional list of file associations to register. Each entry has:
 - **macOS**: Modifies the app bundle's `Info.plist` with `CFBundleDocumentTypes` and `UTExportedTypeDeclarations`, then re-registers with Launch Services.
 
 These associations are registered during installation and restored or removed during uninstallation. Note: for more fine-grained control, you can also use the `file_association` task action.
+
+### `services`
+
+Optional list of background services/daemons to register after payload files are copied. Services are recorded in
+`.polyinstall/install-state.json` so updates can remove stale registrations and uninstall can stop/disable/remove them
+before deleting installed files.
+
+| Field | Meaning |
+|-------|---------|
+| `name` | Service name. On macOS this is used as the launchd label; reverse-DNS names are recommended. |
+| `require` | Required OS predicate such as `os.isWindows`, `os.isLinux`, or `os.isMacOS`. |
+| `scope` | `system` or `user`. Windows supports `system` only. Linux/macOS support both. Defaults to `system`. |
+| `enabled` | Whether the service is enabled for startup. Defaults to `true`. |
+| `start` | Whether to start the service immediately after registration. Defaults to `false`. |
+| `display_name` | Optional Windows display name. |
+| `description` | Optional service description. |
+| `executable` | Service executable path. Supports path placeholders. |
+| `arguments` | Optional command-line arguments. |
+| `working_directory` | Optional working directory. Supports path placeholders. |
+| `restart` | Optional restart policy. Linux accepts systemd restart values; macOS maps `always` / `on-failure` to `KeepAlive`. |
+| `environment` | Optional environment variables. |
+| `features` | Optional feature ids that gate this service. |
+
+**Platform behavior:**
+- **Windows**: Uses the Service Control Manager via `sc.exe`. Services are machine-level and require Administrator rights.
+- **Linux**: Writes systemd unit files under `/etc/systemd/system` for `scope: system` or `~/.config/systemd/user` for `scope: user`, then runs `systemctl`.
+- **macOS**: Writes launchd plists under `/Library/LaunchDaemons` for `scope: system` or `~/Library/LaunchAgents` for `scope: user`, then runs `launchctl`.
+
+```yaml
+services:
+  - name: "com.example.myapp"
+    require: os.isLinux
+    scope: user
+    enabled: true
+    start: false
+    description: "MyApp background service"
+    executable: "{AppDir}/bin/myapp"
+    arguments: ["--service"]
+    working_directory: "{AppDir}"
+    restart: on-failure
+```
 
 ### `features`
 
@@ -528,7 +581,7 @@ If `wizard_steps` is empty, the UI falls back to a minimal welcome + finish flow
 
 ## Path placeholders
 
-Wizard strings (for example `ui.wizard_steps` → `destination.default_path`) and **task string parameters** (all string fields passed to `create_shortcut`, `write_registry`, `create_desktop_entry`, `set_permissions`, and `file_association`) can include:
+Wizard strings (for example `ui.wizard_steps` → `destination.default_path`), **task string parameters**, and **service string fields** (`executable`, `arguments`, `working_directory`, and `environment` values) can include:
 
 | Placeholder | Meaning |
 |-------------|---------|

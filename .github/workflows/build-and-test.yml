@@ -16,7 +16,12 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -42,6 +47,7 @@ jobs:
           /p:CollectCoverage=true
 
       - name: Upload coverage to Codecov
+        if: runner.os == 'Linux'
         uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -51,6 +57,7 @@ jobs:
           name: polyinstall-coverage
 
       - name: Publish CLI fixture for setup action
+        if: runner.os == 'Linux'
         run: >
           dotnet publish src/PolyInstall.Cli/PolyInstall.Cli.csproj
           --configuration Release
@@ -62,6 +69,7 @@ jobs:
           --output ./setup-action-smoke/polyinstall-linux-x64
 
       - name: Package setup action fixture
+        if: runner.os == 'Linux'
         shell: bash
         run: |
           set -euo pipefail
@@ -71,6 +79,7 @@ jobs:
 
       - id: setup-polyinstall-smoke
         name: Smoke test setup-polyinstall action
+        if: runner.os == 'Linux'
         uses: ./.github/actions/setup-polyinstall
         with:
           version: v0.0.0-test
@@ -79,6 +88,7 @@ jobs:
           install-dir: ${{ runner.temp }}/setup-polyinstall-smoke
 
       - name: Verify setup action PATH
+        if: runner.os == 'Linux'
         shell: bash
         run: |
           set -euo pipefail
