@@ -468,7 +468,7 @@ String parameter values are passed through [path placeholder](#path-placeholders
 |----------|----------|----------------------|
 | `create_shortcut` | Windows: `.lnk` via PowerShell; Linux/macOS: symlink or shell wrapper | `target_path`, `name`, `location` (`start_menu` or `desktop`), optional `subfolder`, optional `description`, `icon_path` |
 | `write_registry` | Windows only | `key_path` (e.g. `HKCU\Software\Vendor\App`), `value_name`, `value`, `value_kind` (`string`, `reg_sz`, `dword`, …) |
-| `create_desktop_entry` | Linux / macOS (Freedesktop-style) | `file_name`, `name`, `exec`, optional `icon`, `comment` |
+| `create_desktop_entry` | Linux only (Freedesktop-style) | `file_name`, `name`, `exec`, optional `icon`, `comment` |
 | `set_permissions` | Unix | `path`, `mode` (integer, e.g. octal `755` as decimal or use the value your pipeline expects — the PAL passes through to `chmod`) |
 | `file_association` | All platforms | `extension`, `description`, optional `prog_id`, optional `icon`, `command`, optional `mime_type` (Linux), optional `bundle_path` (macOS, required) |
 
