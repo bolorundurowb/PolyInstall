@@ -1,3 +1,7 @@
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Runtime.Versioning;
+using System.Security.Principal;
 using PolyInstall.Manifest;
 using PolyInstall.Install;
 using PolyInstall.Pal;
@@ -57,6 +61,9 @@ internal static class UninstallRunner
             return 1;
         }
 
+        if (ShouldRelaunchElevated(state) && RelaunchElevated(exe, Environment.GetCommandLineArgs().Skip(1)))
+            return 0;
+
         if (!cmd.Quiet && !WindowsUninstallPrompt.Confirm(state.DisplayName))
             return 1;
 
@@ -75,5 +82,53 @@ internal static class UninstallRunner
             return Path.GetDirectoryName(hostExe);
 
         return null;
+    }
+
+    private static bool ShouldRelaunchElevated(InstallStateDocument state)
+    {
+        return OperatingSystem.IsWindows()
+               && state.RegisteredServices?.Any(s =>
+                   s.Platform.Equals("windows", StringComparison.OrdinalIgnoreCase)
+                   && s.Scope.Equals("system", StringComparison.OrdinalIgnoreCase)) == true
+               && !IsWindowsAdministrator();
+    }
+
+    private static bool RelaunchElevated(string exe, IEnumerable<string> args)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = exe,
+                Arguments = JoinArguments(args),
+                UseShellExecute = true,
+                Verb = "runas",
+            });
+            return true;
+        }
+        catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        {
+            return false;
+        }
+    }
+
+    [SupportedOSPlatform("windows")]
+    private static bool IsWindowsAdministrator()
+    {
+        using var wi = WindowsIdentity.GetCurrent();
+        var wp = new WindowsPrincipal(wi);
+        return wp.IsInRole(WindowsBuiltInRole.Administrator);
+    }
+
+    private static string JoinArguments(IEnumerable<string> args) => string.Join(" ", args.Select(QuoteArgument));
+
+    private static string QuoteArgument(string arg)
+    {
+        if (arg.Length == 0)
+            return "\"\"";
+        if (!arg.Any(char.IsWhiteSpace) && !arg.Contains('"'))
+            return arg;
+
+        return "\"" + arg.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
     }
 }
