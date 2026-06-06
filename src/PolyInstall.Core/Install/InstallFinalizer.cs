@@ -10,8 +10,15 @@ public static class InstallFinalizer
         InstallManifest manifest,
         string installDirectory,
         IReadOnlyCollection<string> payloadFiles)
+        => FinalizeInstall(manifest, installDirectory, payloadFiles, selectedFeatures: null);
+
+    public static InstallStateDocument FinalizeInstall(
+        InstallManifest manifest,
+        string installDirectory,
+        IReadOnlyCollection<string> payloadFiles,
+        IReadOnlySet<string>? selectedFeatures)
     {
-        var state = CreateState(manifest, installDirectory, payloadFiles);
+        var state = CreateState(manifest, installDirectory, payloadFiles, selectedFeatures);
 
         InstallStateIo.WriteEmbeddedManifest(installDirectory, manifest);
         InstallStateIo.WriteState(installDirectory, state);
@@ -26,6 +33,13 @@ public static class InstallFinalizer
         InstallManifest manifest,
         string installDirectory,
         IReadOnlyCollection<string> payloadFiles)
+        => CreateState(manifest, installDirectory, payloadFiles, selectedFeatures: null);
+
+    public static InstallStateDocument CreateState(
+        InstallManifest manifest,
+        string installDirectory,
+        IReadOnlyCollection<string> payloadFiles,
+        IReadOnlySet<string>? selectedFeatures)
     {
         var productId = ProductIdHelper.StableProductGuidString(manifest.Metadata);
         return new InstallStateDocument
@@ -38,6 +52,9 @@ public static class InstallFinalizer
             InstallScope = InstallScopeHelper.GetInstallScope(manifest),
             RegistryUninstallKeyRelative = WindowsArpRegistration.RegistryKeyRelativeForProductId(productId),
             PayloadFiles = payloadFiles.Order(StringComparer.OrdinalIgnoreCase).ToList(),
+            SelectedFeatures = selectedFeatures is { Count: > 0 }
+                ? selectedFeatures.Order(StringComparer.OrdinalIgnoreCase).ToList()
+                : null,
         };
     }
 

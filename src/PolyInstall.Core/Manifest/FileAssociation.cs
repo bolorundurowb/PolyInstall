@@ -24,4 +24,7 @@ public sealed class FileAssociation
 
     [Description("macOS only: Path to the .app bundle to register associations for.")]
     public string? BundlePath { get; set; }
+
+    [Description("Optional list of feature ids that gate this association. When null or empty, the association is always registered. When set, it is only registered if at least one referenced feature is selected.")]
+    public List<string>? Features { get; set; }
 }

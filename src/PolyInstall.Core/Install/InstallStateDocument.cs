@@ -16,6 +16,14 @@ public sealed class InstallStateDocument
     public List<string>? PayloadFiles { get; set; }
     public List<string>? AddedToPath { get; set; }
     public List<FileAssociationBackup>? FileAssociationBackups { get; set; }
+
+    /// <summary>
+    /// Feature ids that were selected by the user at install time. Used on update/uninstall
+    /// to scope feature-gated tasks and file associations. Null/empty means either the
+    /// manifest declared no features (legacy/full install) or an older installer that
+    /// pre-dates feature support.
+    /// </summary>
+    public List<string>? SelectedFeatures { get; set; }
 }
 
 public sealed class FileAssociationBackup

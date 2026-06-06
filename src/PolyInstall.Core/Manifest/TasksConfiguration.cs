@@ -42,4 +42,7 @@ public sealed class InstallTask
 
     [Description("Key/value map of parameters for the chosen action. Keys are snake_case strings.")]
     public Dictionary<string, object?>? Parameters { get; set; }
+
+    [Description("Optional list of feature ids that gate this task. When null or empty, the task always runs (subject to require). When set, the task only runs if at least one referenced feature is selected.")]
+    public List<string>? Features { get; set; }
 }

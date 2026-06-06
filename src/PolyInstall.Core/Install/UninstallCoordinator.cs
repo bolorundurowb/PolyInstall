@@ -20,13 +20,18 @@ public static class UninstallCoordinator
         InstallBootstrap.Init(manifest, state.InstallLocation, pal);
         InstallBootstrap.InstallDirectory = state.InstallLocation;
 
-        TaskEngine.RunPhase(manifest.Tasks?.PreUninstall, pal, isUninstall: true);
-        TaskEngine.RunPhase(manifest.Tasks?.PostUninstall, pal, isUninstall: true);
+        var installedFeatures = ResolveInstalledFeatures(manifest, state);
+        InstallBootstrap.SelectedFeatures = new HashSet<string>(installedFeatures, StringComparer.OrdinalIgnoreCase);
+
+        TaskEngine.RunPhase(manifest.Tasks?.PreUninstall, pal, installedFeatures, isUninstall: true);
+        TaskEngine.RunPhase(manifest.Tasks?.PostUninstall, pal, installedFeatures, isUninstall: true);
 
         if (manifest.FileAssociations is { Count: > 0 } && pal.FileAssociations is not null)
         {
             foreach (var assoc in manifest.FileAssociations)
             {
+                if (!FeatureFilter.IsActive(assoc.Features, installedFeatures))
+                    continue;
                 var info = InstallCoordinator.MapToFileAssociationInfo(assoc, pal);
                 pal.FileAssociations.Unregister(info);
             }
@@ -50,6 +55,28 @@ public static class UninstallCoordinator
             ScheduleWindowsDeleteInstallRoot(state.InstallLocation);
         else
             TryDeleteDirectoryRecursive(state.InstallLocation);
+    }
+
+    /// <summary>
+    /// Resolves which features were installed. Prefers state.SelectedFeatures (recorded by
+    /// the installer). Falls back to all manifest features for legacy installs that pre-date
+    /// feature support so uninstall remains complete and backward compatible.
+    /// </summary>
+    private static IReadOnlySet<string> ResolveInstalledFeatures(InstallManifest manifest, InstallStateDocument state)
+    {
+        if (state.SelectedFeatures is { Count: > 0 } recorded)
+            return new HashSet<string>(recorded, StringComparer.OrdinalIgnoreCase);
+
+        var fallback = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (manifest.Features is { Count: > 0 } features)
+        {
+            foreach (var feat in features)
+            {
+                if (!string.IsNullOrWhiteSpace(feat.Id))
+                    fallback.Add(feat.Id);
+            }
+        }
+        return fallback;
     }
 
     private static void DeleteAllFilesExcept(string runningExePath, string installRoot)
