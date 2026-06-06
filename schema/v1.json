@@ -19,6 +19,24 @@
         "$ref": "#/definitions/FilesEntry"
       }
     },
+    "file_associations": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/FileAssociation"
+      }
+    },
+    "services": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/ServiceDefinition"
+      }
+    },
     "tasks": {
       "oneOf": [
         {
@@ -30,8 +48,10 @@
       ]
     },
     "features": {
-      "type": ["array", "null"],
-      "description": "Optional list of installable features the user can toggle in the installer's features wizard step. Entries in files[], tasks.*[], and file_associations[] without a 'features' reference are always installed (core). Backward compatible: omit to install everything (full install).",
+      "type": [
+        "array",
+        "null"
+      ],
       "items": {
         "$ref": "#/definitions/FeatureDefinition"
       }
@@ -44,8 +64,7 @@
         {
           "$ref": "#/definitions/PayloadFeatureIndex"
         }
-      ],
-      "description": "Build-time index mapping payload-relative file paths to features. Produced by the CLI when 'features' is set; consumed by the runtime stub to filter extraction based on selected features."
+      ]
     }
   },
   "definitions": {
@@ -84,19 +103,15 @@
           "type": [
             "null",
             "string"
-          ],
-          "description": "Template for the output installer filename. Supports placeholders: {name}, {version}, {target}. Defaults to '{name}-{target}' if not set."
+          ]
         },
         "compression": {
-          "type": "string",
-          "enum": ["brotli", "gzip"]
+          "type": "string"
         },
         "targets": {
           "type": "array",
-          "minItems": 1,
           "items": {
-            "type": "string",
-            "enum": ["windows-x64", "windows-arm64", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64"]
+            "type": "string"
           }
         },
         "installer_target": {
@@ -312,8 +327,7 @@
       "additionalProperties": false,
       "properties": {
         "install_scope": {
-          "type": "string",
-          "enum": ["user", "machine"]
+          "type": "string"
         },
         "register_arp": {
           "type": "boolean"
@@ -343,8 +357,7 @@
       "additionalProperties": false,
       "properties": {
         "theme": {
-          "type": "string",
-          "enum": ["light", "dark", "system"]
+          "type": "string"
         },
         "logo_path": {
           "type": [
@@ -386,8 +399,7 @@
       "additionalProperties": false,
       "properties": {
         "type": {
-          "type": "string",
-          "enum": ["welcome", "eula", "destination", "features", "progress", "finish"]
+          "type": "string"
         },
         "title": {
           "type": [
@@ -432,55 +444,160 @@
           }
         },
         "features": {
-          "type": ["array", "null"],
-          "description": "Optional list of feature ids this entry belongs to. When null or empty the matched files are always installed (core); when set they are only installed if at least one referenced feature is selected.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "description": "Optional list of feature ids this entry belongs to. When null or empty, the matched files are always installed (core). When set, the matched files are only installed if at least one referenced feature is selected.",
           "items": {
             "type": "string"
           }
         }
       }
     },
-    "FeatureDefinition": {
+    "FileAssociation": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "id": {
+        "extension": {
           "type": "string",
-          "description": "Unique identifier referenced by files[], tasks[], and file_associations[] entries."
+          "description": "The file extension, including the leading dot (e.g., \u0027.oef\u0027)."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of the file type."
+        },
+        "prog_id": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "description": "Optional: The ProgID for the file association (e.g., \u0027MyApp.oef.1\u0027). If omitted, one will be generated based on the application name and extension."
+        },
+        "icon": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "description": "The path to the icon file for this file type, relative to the install directory."
+        },
+        "command": {
+          "type": "string",
+          "description": "The command to execute when opening a file of this type. Use \u0027%1\u0027 as a placeholder for the file path."
+        },
+        "mime_type": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "description": "Optional: The MIME type for this file association (Linux only). If omitted, one will be derived from the extension (e.g., \u0027.oef\u0027 -\u003E \u0027application/x-oef\u0027)."
+        },
+        "bundle_path": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "description": "macOS only: Path to the .app bundle to register associations for."
+        },
+        "features": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "description": "Optional list of feature ids that gate this association. When null or empty, the association is always registered. When set, it is only registered if at least one referenced feature is selected.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ServiceDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "require": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "description": "Optional OS predicate that must be true for this service to be installed. Use os.isWindows, os.isLinux, or os.isMacOS/os.isOSX to target the platform service manager."
         },
         "name": {
           "type": "string",
-          "description": "Human-readable name shown in the installer's features step."
+          "description": "Service name. On macOS this is used as the launchd Label; reverse-DNS names are recommended."
+        },
+        "display_name": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "description": "Optional display name for platforms that distinguish it from the service name."
         },
         "description": {
-          "type": ["null", "string"],
-          "description": "Short description shown alongside the feature checkbox in the installer."
+          "type": [
+            "null",
+            "string"
+          ],
+          "description": "Optional service description."
         },
-        "default_selected": {
+        "scope": {
+          "type": "string",
+          "description": "Service scope: system or user. Windows supports system only. Defaults to system."
+        },
+        "enabled": {
           "type": "boolean",
-          "description": "Whether the feature is pre-checked on a fresh install. Defaults to true."
-        }
-      }
-    },
-    "PayloadFeatureIndex": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "core_files": {
-          "type": "array",
-          "description": "Relative payload paths that are always installed regardless of selected features.",
+          "description": "Whether the service should be enabled for startup. Defaults to true."
+        },
+        "start": {
+          "type": "boolean",
+          "description": "Whether the service should be started immediately after installation. Defaults to false."
+        },
+        "executable": {
+          "type": "string",
+          "description": "Path to the service executable. String values support PolyInstall path placeholders."
+        },
+        "arguments": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "description": "Optional command-line arguments passed to the service executable.",
           "items": {
             "type": "string"
           }
         },
-        "feature_files": {
-          "type": "object",
-          "description": "Map of feature id → list of relative payload paths that belong to that feature.",
+        "working_directory": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "description": "Optional working directory. String values support PolyInstall path placeholders."
+        },
+        "restart": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "description": "Optional restart policy. Supported values are platform-specific."
+        },
+        "environment": {
+          "type": [
+            "null",
+            "object"
+          ],
+          "description": "Optional environment variables for service managers that support them.",
           "additionalProperties": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "type": "string"
+          }
+        },
+        "features": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "description": "Optional feature ids that gate this service. When null or empty, the service always applies.",
+          "items": {
+            "type": "string"
           }
         }
       }
@@ -540,12 +657,11 @@
             "null",
             "string"
           ],
-          "description": "Optional OS predicate that must be true for this task to run. Supported values: os.isWindows/os.is_windows, os.isLinux/os.is_linux, os.isOSX/os.is_osx, os.isMacOS/os.is_macos, os.isUnix/os.is_unix. If omitted the task always runs."
+          "description": "Optional OS predicate that must be true for this task to run. Supported values: os.isWindows/os.is_windows, os.isLinux/os.is_linux, os.isOSX/os.is_osx, os.isMacOS/os.is_macos, os.isUnix/os.is_unix (Linux or macOS). If omitted the task always runs."
         },
         "action": {
           "type": "string",
-          "enum": ["create_shortcut", "write_registry", "create_desktop_entry", "set_permissions", "add_to_path", "file_association"],
-          "description": "The action to perform. One of: create_shortcut, write_registry (Windows only), create_desktop_entry (Linux only), set_permissions (Linux/macOS only), add_to_path, file_association. For create_shortcut use parameters: target_path, name (do not include .lnk; it is appended automatically on Windows), location (start_menu or desktop), optional subfolder, optional description, optional icon_path. For add_to_path use parameters: optional path (defaults to install directory), optional scope (user or machine, defaults to user). Machine scope requires install_scope machine."
+          "description": "The action to perform. One of: create_shortcut, write_registry (Windows only), create_desktop_entry (Linux only), set_permissions (Linux/macOS only), add_to_path, file_association."
         },
         "parameters": {
           "type": [
@@ -556,10 +672,61 @@
           "additionalProperties": {}
         },
         "features": {
-          "type": ["array", "null"],
-          "description": "Optional list of feature ids that gate this task. When null or empty the task always runs; when set it only runs if at least one referenced feature is selected.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "description": "Optional list of feature ids that gate this task. When null or empty, the task always runs (subject to require). When set, the task only runs if at least one referenced feature is selected.",
           "items": {
             "type": "string"
+          }
+        }
+      }
+    },
+    "FeatureDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier referenced by files[], tasks[], and file_associations[] entries. Lowercase snake_case is recommended."
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable name shown in the installer\u0027s features step."
+        },
+        "description": {
+          "type": [
+            "null",
+            "string"
+          ],
+          "description": "Short description shown alongside the feature checkbox in the installer."
+        },
+        "default_selected": {
+          "type": "boolean",
+          "description": "Whether the feature is pre-checked on a fresh install. Defaults to true."
+        }
+      }
+    },
+    "PayloadFeatureIndex": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "core_files": {
+          "type": "array",
+          "description": "Relative payload paths that are always installed regardless of selected features.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "feature_files": {
+          "type": "object",
+          "description": "Map of feature id \u2192 relative payload paths that belong to that feature. A file may appear under multiple features.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       }
