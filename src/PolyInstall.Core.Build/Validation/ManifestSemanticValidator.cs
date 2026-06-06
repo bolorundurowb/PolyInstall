@@ -317,10 +317,10 @@ public static class ManifestSemanticValidator
 
     private static void ValidateCreateDesktopEntry(InstallTask task, string prefix, List<string> errors)
     {
-        if (!HasOsPredicate(task, "linux") && !HasOsPredicate(task, "macos") && !HasOsPredicate(task, "unix"))
+        if (!HasOsPredicate(task, "linux") && !HasOsPredicate(task, "unix"))
         {
             errors.Add(
-                $"{prefix}: create_desktop_entry is Linux/macOS-only. Add require: 'os.isLinux' or 'os.isUnix' to avoid runtime errors on other platforms.");
+                $"{prefix}: create_desktop_entry is Linux-only. Add require: 'os.isLinux' or 'os.isUnix' to avoid runtime errors on other platforms.");
         }
 
         if (string.IsNullOrEmpty(GetParamString(task, "file_name")))
@@ -364,10 +364,14 @@ public static class ManifestSemanticValidator
 
     private static void ValidateFileAssociation(InstallTask task, string prefix, List<string> errors)
     {
-        if (!HasOsPredicate(task, "windows"))
+        var isWindows = HasOsPredicate(task, "windows");
+        var isLinux = HasOsPredicate(task, "linux") || HasOsPredicate(task, "unix");
+        var isMacOs = HasOsPredicate(task, "macos") || HasOsPredicate(task, "osx");
+
+        if (!isWindows && !isLinux && !isMacOs)
         {
             errors.Add(
-                $"{prefix}: file_association is Windows-only. Add require: 'os.isWindows' (or similar) to avoid runtime errors on other platforms.");
+                $"{prefix}: file_association requires an OS predicate (e.g., 'os.isWindows', 'os.isLinux', or 'os.isMacOS') to avoid runtime errors on unsupported platforms.");
         }
 
         var extension = GetParamString(task, "extension");
@@ -385,6 +389,9 @@ public static class ManifestSemanticValidator
 
         if (string.IsNullOrEmpty(GetParamString(task, "command")))
             errors.Add($"{prefix}: file_association requires parameter 'command'.");
+
+        if (isMacOs && string.IsNullOrEmpty(GetParamString(task, "bundle_path")))
+            errors.Add($"{prefix}: file_association on macOS requires parameter 'bundle_path'.");
     }
 
     private static bool IsWindowsTask(InstallTask task)
