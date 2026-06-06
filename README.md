@@ -157,9 +157,9 @@ If you work offline, use a **relative** or `file:` URL to `schema/v1.json` in yo
 
 
 
-## Manifest structure (five domains)
+## Manifest structure (six domains)
 
-The manifest is grouped into five sections. All are represented in JSON Schema; only the fields you need must be set (defaults apply where defined in code).
+The manifest is grouped into six sections. All are represented in JSON Schema; only the fields you need must be set (defaults apply where defined in code).
 
 ### `metadata`
 
@@ -251,6 +251,20 @@ A list of **glob groups**. Each entry has:
 | `exclude` | Optional exclude patterns. |
 
 Matched files are stored in a **zip** inside the compressed payload, preserving paths relative to `source_dir`.
+
+### `file_associations`
+
+Optional list of file associations to register (Windows only). Each entry has:
+
+| Field | Meaning |
+|-------|---------|
+| `extension` | The file extension, including the leading dot (e.g., `.oef`). |
+| `description` | A brief description of the file type. |
+| `prog_id` | Optional: The ProgID for the file association (e.g., `MyApp.oef.1`). If omitted, one will be generated based on the application name and extension. |
+| `icon` | Optional: The path to the icon file for this file type, relative to the install directory. |
+| `command` | The command to execute when opening a file of this type. Use `%1` as a placeholder for the file path. |
+
+These associations are registered during installation and restored or removed during uninstallation. Note: for more fine-grained control, you can also use the `file_association` task action.
 
 ### `tasks`
 
@@ -411,7 +425,7 @@ If `wizard_steps` is empty, the UI falls back to a minimal welcome + finish flow
 
 ## Path placeholders
 
-Wizard strings (for example `ui.wizard_steps` → `destination.default_path`) and **task string parameters** (all string fields passed to `create_shortcut`, `write_registry`, `create_desktop_entry`, and `set_permissions`) can include:
+Wizard strings (for example `ui.wizard_steps` → `destination.default_path`) and **task string parameters** (all string fields passed to `create_shortcut`, `write_registry`, `create_desktop_entry`, `set_permissions`, and `file_association`) can include:
 
 | Placeholder | Meaning |
 |-------------|---------|
@@ -449,6 +463,7 @@ String parameter values are passed through [path placeholder](#path-placeholders
 | `write_registry` | Windows only | `key_path` (e.g. `HKCU\Software\Vendor\App`), `value_name`, `value`, `value_kind` (`string`, `reg_sz`, `dword`, …) |
 | `create_desktop_entry` | Linux / macOS (Freedesktop-style) | `file_name`, `name`, `exec`, optional `icon`, `comment` |
 | `set_permissions` | Unix | `path`, `mode` (integer, e.g. octal `755` as decimal or use the value your pipeline expects — the PAL passes through to `chmod`) |
+| `file_association` | Windows only | `extension`, `description`, optional `prog_id`, optional `icon`, `command` |
 
 If an action is not supported on the current OS, the runtime throws a clear **platform not supported** error for that task.
 
