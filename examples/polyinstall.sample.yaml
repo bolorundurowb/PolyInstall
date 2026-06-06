@@ -51,6 +51,21 @@ ui:
 #     - action: add_to_path
 #       # path defaults to the install directory ({AppDir}) if not specified
 #       scope: user
+#     # Example: create a shortcut on Windows (name should NOT include .lnk)
+#     - action: create_shortcut
+#       require: os.isWindows
+#       parameters:
+#         target_path: "{AppDir}\\SampleApp.exe"
+#         name: "SampleApp"
+#         location: start_menu
+#         description: "Sample Application"
+#     # Example: register a file association on Windows
+#     - action: file_association
+#       require: os.isWindows
+#       parameters:
+#         extension: ".txt"
+#         description: "Text File"
+#         command: "{AppDir}\\SampleApp.exe %1"
 files:
   - source_dir: sample-payload
     include:
