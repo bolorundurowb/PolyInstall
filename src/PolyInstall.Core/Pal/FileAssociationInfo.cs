@@ -7,4 +7,6 @@ public class FileAssociationInfo
     public string ProgId { get; set; } = "";
     public string? Icon { get; set; }
     public string Command { get; set; } = "";
+    public string? MimeType { get; set; }
+    public string? BundlePath { get; set; }
 }

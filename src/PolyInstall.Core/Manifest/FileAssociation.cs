@@ -18,4 +18,10 @@ public sealed class FileAssociation
 
     [Description("The command to execute when opening a file of this type. Use '%1' as a placeholder for the file path.")]
     public string Command { get; set; } = "";
+
+    [Description("Optional: The MIME type for this file association (Linux only). If omitted, one will be derived from the extension (e.g., '.oef' -> 'application/x-oef').")]
+    public string? MimeType { get; set; }
+
+    [Description("macOS only: Path to the .app bundle to register associations for.")]
+    public string? BundlePath { get; set; }
 }
