@@ -53,18 +53,56 @@ public static class InstallerBuildPipeline
 
         BuildLog.Info("Collecting files from manifest entries…");
         var baseFiles = new List<(string EntryName, string FullPath)>();
+        var featureIndex = manifest.Features is { Count: > 0 } ? new PayloadFeatureIndex() : null;
+        var seenCore = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seenPerFeature = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
         foreach (var entry in manifest.Files)
         {
             var globs = GlobResolver.Collect(baseDirectory, entry.SourceDir, entry.Include, entry.Exclude);
             var excludeList = entry.Exclude is { } ex ? string.Join(", ", ex) : "(none)";
+            var entryFeatures = entry.Features is { Count: > 0 } ? entry.Features : null;
+            var featuresLabel = entryFeatures is null ? "(core)" : string.Join(",", entryFeatures);
             BuildLog.VerboseLine(
-                $"  {entry.SourceDir}: {globs.Count} file(s) (include: {string.Join(", ", entry.Include)}; exclude: {excludeList})");
+                $"  {entry.SourceDir}: {globs.Count} file(s) (include: {string.Join(", ", entry.Include)}; exclude: {excludeList}; features: {featuresLabel})");
             foreach (var g in globs)
+            {
                 baseFiles.Add((g.RelativePath, g.FullPath));
+                if (featureIndex is null)
+                    continue;
+                if (entryFeatures is null)
+                {
+                    if (seenCore.Add(g.RelativePath))
+                        featureIndex.CoreFiles.Add(g.RelativePath);
+                }
+                else
+                {
+                    foreach (var featureId in entryFeatures)
+                    {
+                        if (!seenPerFeature.TryGetValue(featureId, out var set))
+                            seenPerFeature[featureId] = set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        if (!featureIndex.FeatureFiles.TryGetValue(featureId, out var list))
+                            featureIndex.FeatureFiles[featureId] = list = new List<string>();
+                        if (set.Add(g.RelativePath))
+                            list.Add(g.RelativePath);
+                    }
+                }
+            }
         }
 
         if (baseFiles.Count == 0)
             throw new InvalidOperationException("No files matched manifest files entries; nothing to pack.");
+
+        if (featureIndex is not null)
+        {
+            featureIndex.CoreFiles.Sort(StringComparer.OrdinalIgnoreCase);
+            foreach (var list in featureIndex.FeatureFiles.Values)
+                list.Sort(StringComparer.OrdinalIgnoreCase);
+            manifest.FeatureIndex = featureIndex;
+            BuildLog.Info(
+                $"Payload feature index: {featureIndex.CoreFiles.Count} core file(s), " +
+                $"{featureIndex.FeatureFiles.Count} feature group(s) " +
+                $"[{string.Join(", ", featureIndex.FeatureFiles.Select(kv => $"{kv.Key}={kv.Value.Count}"))}].");
+        }
 
         BuildLog.Info($"Collected {baseFiles.Count} file(s) for the payload.");
 
