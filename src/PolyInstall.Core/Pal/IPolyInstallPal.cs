@@ -10,6 +10,7 @@ public interface IPolyInstallPal : IInstallPathPal
     IFilePermissionsPal? FilePermissions { get; }
     IPathPal? Path { get; }
     IFileAssociationPal? FileAssociations { get; }
+    IServiceManagerPal? Services { get; }
 }
 
 public interface IPathPal
@@ -37,4 +38,11 @@ public interface IDesktopEntryPal
 public interface IFilePermissionsPal
 {
     void SetFileMode(string path, int mode);
+}
+
+public interface IServiceManagerPal
+{
+    void InstallOrUpdate(ServiceRegistrationInfo service);
+    void Remove(RegisteredServiceInfo service);
+    IReadOnlyList<RegisteredServiceInfo> RegisteredServices { get; }
 }

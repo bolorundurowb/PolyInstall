@@ -37,6 +37,8 @@ public static class UninstallCoordinator
             }
         }
 
+        RemoveRegisteredServices(state.RegisteredServices, pal);
+
         if (state.AddedToPath is { Count: > 0 } && pal.Path is not null)
         {
             var scope = state.InstallScope.Equals("machine", StringComparison.OrdinalIgnoreCase)
@@ -78,6 +80,30 @@ public static class UninstallCoordinator
         }
         return fallback;
     }
+
+    private static void RemoveRegisteredServices(IReadOnlyCollection<RegisteredServiceInfo>? services, IPolyInstallPal pal)
+    {
+        if (services is not { Count: > 0 })
+            return;
+        if (pal.Services is null)
+            throw new PlatformNotSupportedException("Service management is not supported on this platform.");
+
+        var platform = CurrentServicePlatform();
+        foreach (var service in services)
+        {
+            if (!service.Platform.Equals(platform, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            pal.Services.Remove(service);
+        }
+    }
+
+    private static string CurrentServicePlatform() =>
+        OperatingSystem.IsWindows()
+            ? "windows"
+            : OperatingSystem.IsMacOS()
+                ? "macos"
+                : "linux";
 
     private static void DeleteAllFilesExcept(string runningExePath, string installRoot)
     {

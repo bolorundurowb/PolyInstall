@@ -24,6 +24,13 @@ public sealed class DefaultPolyInstallPal : IPolyInstallPal
                 : OperatingSystem.IsMacOS()
                     ? new MacOsFileAssociationPal()
                     : null;
+        Services = OperatingSystem.IsWindows()
+            ? new WindowsServiceManagerPal()
+            : OperatingSystem.IsLinux()
+                ? new LinuxSystemdServiceManagerPal()
+                : OperatingSystem.IsMacOS()
+                    ? new MacOsLaunchdServiceManagerPal()
+                    : null;
         Path = new PathPal();
     }
 
@@ -37,4 +44,5 @@ public sealed class DefaultPolyInstallPal : IPolyInstallPal
     public IFilePermissionsPal? FilePermissions { get; }
     public IFileAssociationPal? FileAssociations { get; }
     public IPathPal? Path { get; }
+    public IServiceManagerPal? Services { get; }
 }

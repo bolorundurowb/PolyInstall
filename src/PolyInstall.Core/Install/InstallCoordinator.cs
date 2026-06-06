@@ -1,3 +1,4 @@
+using PolyInstall.Conditions;
 using PolyInstall.Hosting;
 using PolyInstall.Manifest;
 using PolyInstall.Pal;
@@ -27,11 +28,15 @@ public static class InstallCoordinator
         options.Progress?.Invoke(existedBefore ? $"Use existing folder: {dest}" : $"Create folder: {dest}");
 
         var selectedFeatures = ResolveSelectedFeatures(options.Manifest);
+        var activeServices = ResolveActiveServices(options.Manifest, options.Pal, selectedFeatures);
 
         options.CancellationToken.ThrowIfCancellationRequested();
         options.Progress?.Invoke("Run pre-install tasks");
         TaskEngine.RunPhase(options.Manifest.Tasks?.PreInstall, options.Pal, selectedFeatures);
         options.Progress?.Invoke("Pre-install tasks completed");
+
+        options.CancellationToken.ThrowIfCancellationRequested();
+        RemoveStaleServices(existing?.State?.RegisteredServices, activeServices, options.Pal, options.Progress);
 
         options.CancellationToken.ThrowIfCancellationRequested();
         var allPayloadFiles = PayloadFileInventory.Enumerate(options.ExtractRoot);
@@ -84,6 +89,8 @@ public static class InstallCoordinator
             options.Progress?.Invoke("File associations registered");
         }
 
+        var registeredServices = InstallServices(activeServices, options.Pal, options.Progress);
+
         options.CancellationToken.ThrowIfCancellationRequested();
         options.Progress?.Invoke("Write install metadata");
         var state = InstallFinalizer.FinalizeInstall(
@@ -92,12 +99,26 @@ public static class InstallCoordinator
             installedPayloadFiles,
             selectedFeatures);
 
+        var stateUpdated = false;
+        if (registeredServices.Count > 0)
+        {
+            state.RegisteredServices = registeredServices
+                .OrderBy(s => s.Platform, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(s => s.Scope, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            stateUpdated = true;
+        }
+
         if (options.Pal.Path is { AddedPaths.Count: > 0 } pathPal)
         {
             state.AddedToPath = pathPal.AddedPaths.Select(a => a.Path).ToList();
-            InstallStateIo.WriteState(dest, state);
+            stateUpdated = true;
             options.Progress?.Invoke("PATH entries recorded");
         }
+
+        if (stateUpdated)
+            InstallStateIo.WriteState(dest, state);
 
         options.Progress?.Invoke("Install metadata written");
 
@@ -188,6 +209,112 @@ public static class InstallCoordinator
             BundlePath = string.IsNullOrEmpty(assoc.BundlePath) ? null : InstallPathResolver.Expand(assoc.BundlePath, pal),
         };
     }
+
+    private static List<ServiceRegistrationInfo> ResolveActiveServices(
+        InstallManifest manifest,
+        IPolyInstallPal pal,
+        IReadOnlySet<string> selectedFeatures)
+    {
+        var services = new List<ServiceRegistrationInfo>();
+        if (manifest.Services is not { Count: > 0 })
+            return services;
+
+        foreach (var service in manifest.Services)
+        {
+            if (!ConditionEvaluator.Evaluate(service.Require))
+                continue;
+            if (!FeatureFilter.IsActive(service.Features, selectedFeatures))
+                continue;
+
+            services.Add(MapToServiceRegistrationInfo(service, pal));
+        }
+
+        return services;
+    }
+
+    internal static ServiceRegistrationInfo MapToServiceRegistrationInfo(ServiceDefinition service, IPolyInstallPal pal)
+    {
+        return new ServiceRegistrationInfo
+        {
+            Name = service.Name,
+            DisplayName = service.DisplayName,
+            Description = service.Description,
+            Scope = NormalizeServiceScope(service.Scope),
+            Enabled = service.Enabled,
+            Start = service.Start,
+            Executable = InstallPathResolver.Expand(service.Executable, pal),
+            Arguments = service.Arguments?.Select(a => InstallPathResolver.Expand(a, pal)).ToList() ?? [],
+            WorkingDirectory = string.IsNullOrWhiteSpace(service.WorkingDirectory)
+                ? null
+                : InstallPathResolver.Expand(service.WorkingDirectory, pal),
+            Restart = service.Restart,
+            Environment = service.Environment?.ToDictionary(
+                e => e.Key,
+                e => InstallPathResolver.Expand(e.Value, pal),
+                StringComparer.Ordinal),
+        };
+    }
+
+    private static List<RegisteredServiceInfo> InstallServices(
+        IReadOnlyCollection<ServiceRegistrationInfo> activeServices,
+        IPolyInstallPal pal,
+        Action<string>? progress)
+    {
+        if (activeServices.Count == 0)
+            return [];
+        if (pal.Services is null)
+            throw new PlatformNotSupportedException("Service management is not supported on this platform.");
+
+        progress?.Invoke("Register services");
+        foreach (var service in activeServices)
+        {
+            pal.Services.InstallOrUpdate(service);
+            progress?.Invoke($"Registered service: {service.Name}");
+        }
+
+        return pal.Services.RegisteredServices.ToList();
+    }
+
+    private static void RemoveStaleServices(
+        IReadOnlyCollection<RegisteredServiceInfo>? previouslyRegistered,
+        IReadOnlyCollection<ServiceRegistrationInfo> activeServices,
+        IPolyInstallPal pal,
+        Action<string>? progress)
+    {
+        if (previouslyRegistered is not { Count: > 0 })
+            return;
+        if (pal.Services is null)
+            throw new PlatformNotSupportedException("Service management is not supported on this platform.");
+
+        var platform = CurrentServicePlatform();
+        var activeKeys = activeServices
+            .Select(service => ServiceKey(service.Name, service.Scope, platform))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var service in previouslyRegistered)
+        {
+            if (!service.Platform.Equals(platform, StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (activeKeys.Contains(ServiceKey(service.Name, service.Scope, service.Platform)))
+                continue;
+
+            pal.Services.Remove(service);
+            progress?.Invoke($"Removed stale service: {service.Name}");
+        }
+    }
+
+    private static string ServiceKey(string name, string scope, string platform) =>
+        $"{platform}:{NormalizeServiceScope(scope)}:{name}";
+
+    private static string NormalizeServiceScope(string scope) =>
+        scope.Equals("machine", StringComparison.OrdinalIgnoreCase) ? "system" : scope;
+
+    private static string CurrentServicePlatform() =>
+        OperatingSystem.IsWindows()
+            ? "windows"
+            : OperatingSystem.IsMacOS()
+                ? "macos"
+                : "linux";
 }
 
 public sealed class InstallOperationOptions
