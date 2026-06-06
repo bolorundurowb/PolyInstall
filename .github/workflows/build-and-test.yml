@@ -49,3 +49,38 @@ jobs:
           files: ./src/coverage/**/coverage.cobertura.xml
           flags: unittests
           name: polyinstall-coverage
+
+      - name: Publish CLI fixture for setup action
+        run: >
+          dotnet publish src/PolyInstall.Cli/PolyInstall.Cli.csproj
+          --configuration Release
+          --runtime linux-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=embedded
+          --output ./setup-action-smoke/polyinstall-linux-x64
+
+      - name: Package setup action fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd setup-action-smoke
+          zip -r polyinstall-linux-x64-v0.0.0-test.zip polyinstall-linux-x64
+          sha256sum polyinstall-linux-x64-v0.0.0-test.zip > SHA256SUMS.txt
+
+      - id: setup-polyinstall-smoke
+        name: Smoke test setup-polyinstall action
+        uses: ./.github/actions/setup-polyinstall
+        with:
+          version: v0.0.0-test
+          rid: linux-x64
+          asset-dir: setup-action-smoke
+          install-dir: ${{ runner.temp }}/setup-polyinstall-smoke
+
+      - name: Verify setup action PATH
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x "${{ steps.setup-polyinstall-smoke.outputs.polyinstall-path }}"
+          polyinstall --version
