@@ -4,8 +4,10 @@
     <RootNamespace>PolyInstall.Cli</RootNamespace>
     <AssemblyName>polyinstall</AssemblyName>
     <Description>PolyInstall build CLI.</Description>
-    <InternalsVisibleTo Include="PolyInstall.Core.Build.Tests" />
   </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="PolyInstall.Core.Build.Tests" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="JsonSchema.Net" Version="9.2.1" />
   </ItemGroup>
