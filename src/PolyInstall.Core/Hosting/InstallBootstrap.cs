@@ -16,6 +16,12 @@ public static class InstallBootstrap
     public static InstallMode SelectedInstallMode { get; set; } = InstallMode.Install;
     public static string? InstallDirectory { get; set; }
 
+    /// <summary>
+    /// Feature ids selected for this install run. Populated by the UI's <c>features</c> step
+    /// (or pre-seeded for update/repair) and consumed by <see cref="InstallCoordinator"/>.
+    /// </summary>
+    public static HashSet<string> SelectedFeatures { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
     public static void Init(
         InstallManifest manifest,
         string extractRoot,
@@ -30,5 +36,33 @@ public static class InstallBootstrap
         InstallDirectory = null;
         if (existingInstall is not null)
             InstallDirectory = existingInstall.InstallLocation;
+
+        SelectedFeatures = SeedSelectedFeatures(manifest, existingInstall);
+    }
+
+    private static HashSet<string> SeedSelectedFeatures(InstallManifest manifest, ExistingInstallInfo? existingInstall)
+    {
+        var selected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (existingInstall?.State?.SelectedFeatures is { Count: > 0 } prior)
+        {
+            foreach (var id in prior)
+            {
+                if (!string.IsNullOrWhiteSpace(id))
+                    selected.Add(id);
+            }
+            return selected;
+        }
+
+        if (manifest.Features is { Count: > 0 } defined)
+        {
+            foreach (var feat in defined)
+            {
+                if (!string.IsNullOrWhiteSpace(feat.Id) && feat.DefaultSelected)
+                    selected.Add(feat.Id);
+            }
+        }
+
+        return selected;
     }
 }
