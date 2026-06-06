@@ -9,7 +9,7 @@ public sealed class FileAssociation
 
     [Description("A brief description of the file type.")]
     public string Description { get; set; } = "";
-    
+
     [Description("Optional: The ProgID for the file association (e.g., 'MyApp.oef.1'). If omitted, one will be generated based on the application name and extension.")]
     public string? ProgId { get; set; }
 

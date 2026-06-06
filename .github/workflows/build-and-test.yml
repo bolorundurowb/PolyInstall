@@ -45,7 +45,7 @@ jobs:
         uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          disable_gpg_verify: true
+          skip-validation: false
           fail_ci_if_error: true
           files: ./src/coverage/**/coverage.cobertura.xml
           flags: unittests
