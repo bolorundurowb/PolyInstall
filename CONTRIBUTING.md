@@ -66,6 +66,23 @@ dotnet publish src/PolyInstall.Uninstall/PolyInstall.Uninstall.csproj -c Release
 dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj -- build examples/polyinstall.sample.yaml --base examples --stubs stubs
 ```
 
+For cross-platform smoke tests, publish the runtime stub for the matching RID. Linux and macOS
+targets do not need `PolyInstall.Uninstall` (Windows-only).
+
+```bash
+# Linux x64 (AppImage requires squashfs-tools: apt-get install squashfs-tools)
+dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r linux-x64 -o stubs/linux-x64
+dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj -- build examples/polyinstall.sample.yaml --base examples --stubs stubs
+
+# macOS arm64 (Apple Silicon, DMG requires hdiutil on macOS)
+dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r osx-arm64 -o stubs/osx-arm64
+dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj -- build examples/polyinstall.sample.yaml --base examples --stubs stubs
+
+# macOS x64 (Intel)
+dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r osx-x64 -o stubs/osx-x64
+dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj -- build examples/polyinstall.sample.yaml --base examples --stubs stubs
+```
+
 ## Pull request expectations
 
 - Keep PRs focused and reviewable.
