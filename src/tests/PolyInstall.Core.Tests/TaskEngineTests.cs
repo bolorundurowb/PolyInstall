@@ -463,6 +463,56 @@ public class TaskEngineTests
         pal.UnregisterCalls[0].Extension.Should().Be(".oef");
     }
 
+    [Fact]
+    public void RunPhase_WhenFileAssociationWithMimeType_PassesMimeType()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "file_association",
+                Parameters = new Dictionary<string, object?>
+                {
+                    { "extension", ".oef" },
+                    { "description", "OEF File" },
+                    { "command", "open %1" },
+                    { "mime_type", "application/x-custom" }
+                }
+            }
+        };
+
+        TaskEngine.RunPhase(tasks, pal);
+
+        pal.RegisterCalls.Should().HaveCount(1);
+        pal.RegisterCalls[0].MimeType.Should().Be("application/x-custom");
+    }
+
+    [Fact]
+    public void RunPhase_WhenFileAssociationWithBundlePath_PassesBundlePath()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "file_association",
+                Parameters = new Dictionary<string, object?>
+                {
+                    { "extension", ".oef" },
+                    { "description", "OEF File" },
+                    { "command", "open %1" },
+                    { "bundle_path", "/Applications/MyApp.app" }
+                }
+            }
+        };
+
+        TaskEngine.RunPhase(tasks, pal);
+
+        pal.RegisterCalls.Should().HaveCount(1);
+        pal.RegisterCalls[0].BundlePath.Should().Be("/Applications/MyApp.app");
+    }
+
     private sealed class RecordingPal : IPolyInstallPal
     {
         public string AppDirBacking { get; init; } = "";
