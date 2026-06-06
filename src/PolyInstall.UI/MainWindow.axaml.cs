@@ -25,6 +25,10 @@ public partial class MainWindow : Window
     private TextBlock? _progressText;
     private TextBlock? _progressLogText;
     private ProgressBar? _progressBar;
+    private RadioButton? _featuresFullRadio;
+    private RadioButton? _featuresCustomRadio;
+    private StackPanel? _featuresCustomPanel;
+    private readonly List<(FeatureDefinition Feature, CheckBox CheckBox)> _featureCheckboxes = [];
     private readonly List<WizardStep> _steps;
     private CancellationTokenSource? _installCts;
     private bool _installInProgress;
@@ -37,10 +41,21 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         TrySetBrandingImage();
-        _steps = InstallBootstrap.Manifest.Ui.WizardSteps.Count > 0
+        var configured = InstallBootstrap.Manifest.Ui.WizardSteps.Count > 0
             ? InstallBootstrap.Manifest.Ui.WizardSteps
             : DefaultSteps();
+        _steps = FilterStepsForManifest(configured);
         RenderStep(0);
+    }
+
+    private static List<WizardStep> FilterStepsForManifest(List<WizardStep> steps)
+    {
+        var hasFeatures = InstallBootstrap.Manifest.Features is { Count: > 0 };
+        if (hasFeatures)
+            return new List<WizardStep>(steps);
+        return steps
+            .Where(s => !string.Equals(s.Type?.Trim(), "features", StringComparison.OrdinalIgnoreCase))
+            .ToList();
     }
 
     private void TrySetBrandingImage()
@@ -191,6 +206,7 @@ public partial class MainWindow : Window
             },
             "eula" => BuildEula(step),
             "destination" => BuildDestination(step, pal),
+            "features" => BuildFeatures(),
             "progress" => BuildProgress(),
             "finish" => new TextBlock
             {
@@ -199,6 +215,117 @@ public partial class MainWindow : Window
             },
             _ => new TextBlock { Text = $"Unknown step type: {step.Type}" },
         };
+    }
+
+    private Control BuildFeatures()
+    {
+        _featureCheckboxes.Clear();
+        var features = InstallBootstrap.Manifest.Features ?? [];
+        if (features.Count == 0)
+        {
+            return new TextBlock
+            {
+                Text = "No optional features defined for this installer.",
+                TextWrapping = TextWrapping.Wrap,
+            };
+        }
+
+        var selected = InstallBootstrap.SelectedFeatures;
+        var isUpdate = InstallBootstrap.ExistingInstall is not null;
+
+        // On a fresh install with no overrides, "Full" reflects current selection if all
+        // features are selected; otherwise the user is in Custom mode.
+        var allSelected = features.All(f => string.IsNullOrWhiteSpace(f.Id) || selected.Contains(f.Id));
+        var defaultToCustom = isUpdate || !allSelected;
+
+        _featuresFullRadio = new RadioButton
+        {
+            Content = "Full install (all features)",
+            GroupName = "FeaturesMode",
+            IsChecked = !defaultToCustom,
+        };
+        _featuresCustomRadio = new RadioButton
+        {
+            Content = "Custom install (choose features)",
+            GroupName = "FeaturesMode",
+            IsChecked = defaultToCustom,
+        };
+
+        _featuresCustomPanel = new StackPanel
+        {
+            Spacing = 6,
+            Margin = new Thickness(20, 4, 0, 0),
+            IsVisible = defaultToCustom,
+        };
+
+        foreach (var feat in features)
+        {
+            if (string.IsNullOrWhiteSpace(feat.Id))
+                continue;
+            var isChecked = selected.Contains(feat.Id);
+            var cb = new CheckBox
+            {
+                Content = !string.IsNullOrWhiteSpace(feat.Description)
+                    ? $"{NameOrId(feat)} — {feat.Description}"
+                    : NameOrId(feat),
+                IsChecked = isChecked,
+            };
+            _featureCheckboxes.Add((feat, cb));
+            _featuresCustomPanel.Children.Add(cb);
+        }
+
+        _featuresFullRadio.IsCheckedChanged += (_, _) =>
+        {
+            if (_featuresFullRadio.IsChecked == true && _featuresCustomPanel is not null)
+            {
+                _featuresCustomPanel.IsVisible = false;
+                foreach (var (_, cb) in _featureCheckboxes)
+                    cb.IsChecked = true;
+            }
+        };
+        _featuresCustomRadio.IsCheckedChanged += (_, _) =>
+        {
+            if (_featuresCustomRadio.IsChecked == true && _featuresCustomPanel is not null)
+                _featuresCustomPanel.IsVisible = true;
+        };
+
+        return new StackPanel
+        {
+            Spacing = 10,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = isUpdate
+                        ? "Adjust which optional features are installed. Previously installed features are pre-selected; clearing a feature removes its files on this update."
+                        : "Choose which optional features to install.",
+                    TextWrapping = TextWrapping.Wrap,
+                },
+                _featuresFullRadio,
+                _featuresCustomRadio,
+                _featuresCustomPanel,
+            },
+        };
+    }
+
+    private static string NameOrId(FeatureDefinition feat) =>
+        string.IsNullOrWhiteSpace(feat.Name) ? feat.Id : feat.Name;
+
+    private void CaptureFeatureSelections()
+    {
+        if (_featureCheckboxes.Count == 0)
+            return;
+
+        var selected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var useFull = _featuresFullRadio?.IsChecked == true;
+        foreach (var (feat, cb) in _featureCheckboxes)
+        {
+            if (string.IsNullOrWhiteSpace(feat.Id))
+                continue;
+            if (useFull || cb.IsChecked == true)
+                selected.Add(feat.Id);
+        }
+        InstallBootstrap.SelectedFeatures = selected;
     }
 
     private static string BuildWelcomeText()
@@ -412,6 +539,10 @@ public partial class MainWindow : Window
             var destination = (destBox.Text ?? string.Empty).Trim();
             InstallBootstrap.InstallDirectory = destination;
             DetectExistingInstallAtSelectedDestination(destination);
+        }
+        else if (step.Type.Equals("features", StringComparison.OrdinalIgnoreCase))
+        {
+            CaptureFeatureSelections();
         }
 
         if (_stepIndex >= _steps.Count - 1)
