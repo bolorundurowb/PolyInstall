@@ -110,7 +110,7 @@ public class LinuxFileAssociationPalTests
             return;
 
         // Skip if required commands are not available
-        if (!CommandExists("xdg-mime") || !CommandExists("update-mime-database"))
+        if (!CommandExists("xdg-mime") || !CommandExists("update-mime-database") || !CommandExists("update-desktop-database"))
             return;
 
         var tempDir = TestHelpers.NewTempDir();
@@ -156,7 +156,7 @@ public class LinuxFileAssociationPalTests
             return;
 
         // Skip if required commands are not available
-        if (!CommandExists("xdg-mime") || !CommandExists("update-mime-database"))
+        if (!CommandExists("xdg-mime") || !CommandExists("update-mime-database") || !CommandExists("update-desktop-database"))
             return;
 
         var tempDir = TestHelpers.NewTempDir();
