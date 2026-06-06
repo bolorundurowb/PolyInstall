@@ -23,6 +23,15 @@ public static class UninstallCoordinator
         TaskEngine.RunPhase(manifest.Tasks?.PreUninstall, pal, isUninstall: true);
         TaskEngine.RunPhase(manifest.Tasks?.PostUninstall, pal, isUninstall: true);
 
+        if (manifest.FileAssociations is { Count: > 0 } && pal.FileAssociations is not null)
+        {
+            foreach (var assoc in manifest.FileAssociations)
+            {
+                var info = InstallCoordinator.MapToFileAssociationInfo(assoc, pal);
+                pal.FileAssociations.Unregister(info);
+            }
+        }
+
         if (state.AddedToPath is { Count: > 0 } && pal.Path is not null)
         {
             var scope = state.InstallScope.Equals("machine", StringComparison.OrdinalIgnoreCase)

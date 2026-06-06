@@ -90,7 +90,9 @@ public static class TaskEngine
                     Description = GetString(p, "description"),
                     ProgId = progId,
                     Icon = ExpandOptional(GetOptionalString(p, "icon"), pal),
-                    Command = Expand(GetString(p, "command"), pal)
+                    Command = Expand(GetString(p, "command"), pal),
+                    MimeType = GetOptionalString(p, "mime_type"),
+                    BundlePath = ExpandOptional(GetOptionalString(p, "bundle_path"), pal),
                 };
 
                 if (isUninstall)

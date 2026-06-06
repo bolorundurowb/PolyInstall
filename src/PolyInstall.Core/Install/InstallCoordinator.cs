@@ -61,6 +61,17 @@ public static class InstallCoordinator
         TaskEngine.RunPhase(options.Manifest.Tasks?.PostInstall, options.Pal);
         options.Progress?.Invoke("Post-install tasks completed");
 
+        if (options.Manifest.FileAssociations is { Count: > 0 } && options.Pal.FileAssociations is not null)
+        {
+            options.Progress?.Invoke("Register file associations");
+            foreach (var assoc in options.Manifest.FileAssociations)
+            {
+                var info = MapToFileAssociationInfo(assoc, options.Pal);
+                options.Pal.FileAssociations.Register(info);
+            }
+            options.Progress?.Invoke("File associations registered");
+        }
+
         options.CancellationToken.ThrowIfCancellationRequested();
         options.Progress?.Invoke("Write install metadata");
         var state = InstallFinalizer.FinalizeInstall(options.Manifest, dest, payloadFiles);
@@ -115,6 +126,28 @@ public static class InstallCoordinator
         {
             return left.Equals(right, StringComparison.OrdinalIgnoreCase);
         }
+    }
+
+    internal static FileAssociationInfo MapToFileAssociationInfo(Manifest.FileAssociation assoc, IPolyInstallPal pal)
+    {
+        var progId = assoc.ProgId;
+        if (string.IsNullOrEmpty(progId))
+        {
+            var appName = InstallBootstrap.Manifest.Metadata.Name;
+            var safeAppName = new string(appName.Where(c => char.IsLetterOrDigit(c) || c == '.').ToArray());
+            progId = $"{safeAppName}{assoc.Extension}.1";
+        }
+
+        return new FileAssociationInfo
+        {
+            Extension = assoc.Extension,
+            Description = assoc.Description,
+            ProgId = progId,
+            Icon = string.IsNullOrEmpty(assoc.Icon) ? null : InstallPathResolver.Expand(assoc.Icon, pal),
+            Command = InstallPathResolver.Expand(assoc.Command, pal),
+            MimeType = assoc.MimeType,
+            BundlePath = string.IsNullOrEmpty(assoc.BundlePath) ? null : InstallPathResolver.Expand(assoc.BundlePath, pal),
+        };
     }
 }
 
