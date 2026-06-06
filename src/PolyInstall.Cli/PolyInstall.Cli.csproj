@@ -6,6 +6,9 @@
     <Description>PolyInstall build CLI.</Description>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="PolyInstall.Core.Build.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="JsonSchema.Net" Version="9.2.1" />
   </ItemGroup>
   <ItemGroup>

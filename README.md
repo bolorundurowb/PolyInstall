@@ -343,7 +343,7 @@ This is intended for **CI and local paths**, not for security-sensitive runtime 
 `polyinstall.dll` with `dotnet polyinstall.dll`.
 
 ```text
-polyinstall build <manifest.yaml> [--base <dir>] [--stubs <dir>]
+polyinstall build <manifest.yaml> [--base <dir>] [--stubs <dir>] [--verbose] [--json] [--output-manifest <file>]
 polyinstall validate <manifest.yaml> [--base <dir>]
 ```
 
@@ -356,6 +356,9 @@ polyinstall validate <manifest.yaml> [--base <dir>]
 |--------|---------|
 | **`--base`** | Working directory used to resolve `files[].source_dir` and default `output_dir`. Defaults to the manifest file’s directory. |
 | **`--stubs`** | Root folder containing per-RID stub directories. When omitted: `stubs` next to the `polyinstall` executable if that directory exists, otherwise `<base>/stubs`. |
+| **`--verbose`** | Emit detailed build progress messages. |
+| **`--json`** | After a successful build, emit a JSON manifest to **stdout** listing every produced artifact. When this flag is present, normal build logs are suppressed so the output is machine-parseable. |
+| **`--output-manifest`** | After a successful build, write the same JSON artifact manifest to the specified file path. Can be combined with `--json`. |
 
 The CLI loads `schema/v1.json` from next to the built CLI assembly, walks upward from the CLI assembly directory, then falls back to `schema/v1.json` under the current working directory.
 
@@ -507,6 +510,66 @@ String parameter values are passed through [path placeholder](#path-placeholders
 
 If an action is not supported on the current OS, the runtime throws a clear **platform not supported** error for that task.
 
+### `create_shortcut` examples
+
+On **Windows**, `name` should **not** include `.lnk` — PolyInstall appends it automatically when invoking `WScript.Shell`.
+
+```yaml
+tasks:
+  post_install:
+    - action: create_shortcut
+      require: os.isWindows
+      parameters:
+        target_path: "{AppDir}\\MyApp.exe"
+        name: "MyApp"                # Do NOT add .lnk
+        location: start_menu          # or desktop
+        subfolder: "MyVendor"         # optional
+        description: "My Application"
+        icon_path: "{AppDir}\\MyApp.ico"
+```
+
+On **Linux/macOS**, `create_shortcut` creates a symlink or shell wrapper. The `.lnk` rule does not apply.
+
+```yaml
+tasks:
+  post_install:
+    - action: create_shortcut
+      require: os.isLinux
+      parameters:
+        target_path: "{AppDir}/bin/myapp"
+        name: "MyApp"
+        location: desktop
+```
+
+### `file_association` examples
+
+Always add a `require` predicate so the task only runs on the intended platform. Use `%1` as the placeholder for the file path.
+
+```yaml
+tasks:
+  post_install:
+    - action: file_association
+      require: os.isWindows
+      parameters:
+        extension: ".oef"
+        description: "Open Exam File"
+        command: "{AppDir}\\MyApp.exe %1"
+    - action: file_association
+      require: os.isLinux
+      parameters:
+        extension: ".oef"
+        description: "Open Exam File"
+        command: "myapp %1"
+        mime_type: "application/x-oef"
+    - action: file_association
+      require: os.isMacOS
+      parameters:
+        extension: ".oef"
+        description: "Open Exam File"
+        command: "open -a MyApp %1"
+        bundle_path: "{AppDir}/MyApp.app"
+```
+
 
 
 ## Output file naming
@@ -538,6 +601,54 @@ Invalid file-name characters in `metadata.name` are replaced with underscores.
 
 - **`examples/polyinstall.sample.yaml`** — Minimal end-to-end manifest.
 - **`examples/sample-payload/`** — Tiny payload tree for testing globs.
+
+
+
+## CI Examples (GitHub Actions)
+
+This workflow downloads a pre-built `polyinstall` release, builds an installer, and uses `--json` to discover the artifact path for a release upload.
+
+```yaml
+name: Build Installer
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download polyinstall CLI
+        run: |
+          curl -L -o polyinstall.zip \
+            "https://github.com/${{ github.repository }}/releases/download/v1.0.0/polyinstall-linux-x64-v1.0.0.zip"
+          unzip polyinstall.zip
+          chmod +x polyinstall-linux-x64/polyinstall
+
+      - name: Build installer
+        run: |
+          ./polyinstall-linux-x64/polyinstall build \
+            manifest.yaml \
+            --base . \
+            --json \
+            --output-manifest build-manifest.json
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: installer
+          path: |
+            ${{ fromJson(steps.build.outputs.manifest).artifacts[0].path }}
+```
+
+> **Tip:** Pipe `--json` output directly to `jq` to extract paths in shell scripts:
+> ```bash
+> ./polyinstall build manifest.yaml --json | jq -r '.artifacts[0].path'
+> ```
 
 
 

@@ -9,7 +9,7 @@ static void Usage()
 {
     Console.WriteLine("""
         polyinstall --version
-        polyinstall build <manifest.yaml> [--base <dir>] [--stubs <dir>] [--verbose]
+        polyinstall build <manifest.yaml> [--base <dir>] [--stubs <dir>] [--verbose] [--json] [--output-manifest <file>]
         polyinstall validate <manifest.yaml> [--base <dir>]
         """);
 }
@@ -55,6 +55,8 @@ try
     string? baseDir = null;
     string? stubsDir = null;
     var verbose = false;
+    var jsonFlag = false;
+    string? outputManifestPath = null;
     for (var i = 2; i < args.Length; i++)
     {
         switch (args[i].ToLowerInvariant())
@@ -68,6 +70,12 @@ try
             case "--verbose":
             case "-v":
                 verbose = true;
+                break;
+            case "--json":
+                jsonFlag = true;
+                break;
+            case "--output-manifest":
+                outputManifestPath = Take(ref i, args);
                 break;
             default:
                 Console.Error.WriteLine($"Unknown option: {args[i]}");
@@ -108,7 +116,21 @@ try
             }
         case "build":
             BuildLog.Verbose = verbose;
-            await InstallerBuildPipeline.RunAsync(manifestPath, basePath, stubsDir, default);
+            BuildLog.Quiet = jsonFlag || !string.IsNullOrEmpty(outputManifestPath);
+            var result = await InstallerBuildPipeline.RunAsync(manifestPath, basePath, stubsDir, default);
+            if (jsonFlag || !string.IsNullOrEmpty(outputManifestPath))
+            {
+                var jsonOptions = new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+                    WriteIndented = true,
+                };
+                var json = JsonSerializer.Serialize(result, jsonOptions);
+                if (jsonFlag)
+                    Console.WriteLine(json);
+                if (!string.IsNullOrEmpty(outputManifestPath))
+                    await File.WriteAllTextAsync(outputManifestPath, json);
+            }
             return 0;
         default:
             Usage();

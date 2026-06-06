@@ -4,6 +4,7 @@ namespace PolyInstall.Cli.Build;
 internal static class BuildLog
 {
     private static bool _verbose;
+    private static bool _quiet;
 
     public static bool Verbose
     {
@@ -11,10 +12,23 @@ internal static class BuildLog
         set => _verbose = value;
     }
 
-    public static void Info(string message) => Console.WriteLine($"polyinstall: {message}");
+    public static bool Quiet
+    {
+        get => _quiet;
+        set => _quiet = value;
+    }
+
+    public static void Info(string message)
+    {
+        if (_quiet)
+            return;
+        Console.WriteLine($"polyinstall: {message}");
+    }
 
     public static void VerboseLine(string message)
     {
+        if (_quiet)
+            return;
         if (_verbose)
             Info(message);
     }

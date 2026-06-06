@@ -19,7 +19,7 @@ namespace PolyInstall.Cli.Build;
 /// </summary>
 public static class InstallerBuildPipeline
 {
-    public static async Task RunAsync(
+    public static async Task<BuildOutputManifest> RunAsync(
         string manifestPath,
         string baseDirectory,
         string? stubsRoot,
@@ -78,6 +78,8 @@ public static class InstallerBuildPipeline
         var stubRoot = ResolveStubRoot(baseDirectory, stubsRoot);
         BuildLog.Info($"Stubs root: {stubRoot}");
         BuildLog.Info($"Build targets: {string.Join(", ", manifest.Build.Targets)}");
+
+        var artifacts = new List<BuildArtifact>();
 
         foreach (var target in manifest.Build.Targets)
         {
@@ -138,11 +140,16 @@ public static class InstallerBuildPipeline
                     BuildLog.Info("Signed macOS installer executable.");
                 }
 
+                var finalInstallerSize = new FileInfo(outPath).Length;
+                artifacts.Add(new BuildArtifact(target, rid, "installer", outPath, finalInstallerSize));
+
                 if (target.StartsWith("linux-", StringComparison.OrdinalIgnoreCase)
                     && string.Equals(manifest.Build.Linux?.Package, "appimage", StringComparison.OrdinalIgnoreCase))
                 {
                     BuildLog.Info("Packaging AppImage…");
-                    await AppImagePackager.CreateAsync(outPath, manifest, target, sanitizedProductName, outDir, baseDirectory, ct);
+                    var appImagePath = await AppImagePackager.CreateAsync(outPath, manifest, target, sanitizedProductName, outDir, baseDirectory, ct);
+                    var appImageSize = new FileInfo(appImagePath).Length;
+                    artifacts.Add(new BuildArtifact(target, rid, "appimage", appImagePath, appImageSize));
                 }
 
                 if (target.StartsWith("osx-", StringComparison.OrdinalIgnoreCase)
@@ -157,6 +164,8 @@ public static class InstallerBuildPipeline
                         await InstallerSigner.SignMacOsDmgAsync(dmgPath, macOsDmgSigning, ct);
                         BuildLog.Info("Signed macOS DMG.");
                     }
+                    var dmgSize = new FileInfo(dmgPath).Length;
+                    artifacts.Add(new BuildArtifact(target, rid, "dmg", dmgPath, dmgSize));
                 }
             }
             finally
@@ -167,6 +176,7 @@ public static class InstallerBuildPipeline
         }
 
         BuildLog.Info("Build finished.");
+        return new BuildOutputManifest(manifest.Metadata.Name, manifest.Metadata.Version, artifacts);
     }
 
     /// <summary>
