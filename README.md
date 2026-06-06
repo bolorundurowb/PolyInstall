@@ -340,12 +340,26 @@ before deleting installed files.
 | `features` | Optional feature ids that gate this service. |
 
 **Platform behavior:**
-- **Windows**: Uses the Service Control Manager via `sc.exe`. Services are machine-level and require Administrator rights.
+- **Windows**: Uses the Service Control Manager via `sc.exe`. Services are machine-level and require Administrator rights; the installer relaunches elevated when needed.
 - **Linux**: Writes systemd unit files under `/etc/systemd/system` for `scope: system` or `~/.config/systemd/user` for `scope: user`, then runs `systemctl`.
 - **macOS**: Writes launchd plists under `/Library/LaunchDaemons` for `scope: system` or `~/Library/LaunchAgents` for `scope: user`, then runs `launchctl`.
 
+`enabled` controls startup registration and defaults to `true`. `start` controls whether the service is started immediately
+after registration and defaults to `false`. On uninstall, PolyInstall best-effort stops, disables, and removes every
+service recorded in install state before deleting installed files.
+
 ```yaml
 services:
+  - name: "ExampleService"
+    require: os.isWindows
+    scope: system
+    enabled: true
+    start: false
+    display_name: "Example Service"
+    description: "MyApp background service"
+    executable: "{AppDir}\\MyApp.exe"
+    arguments: ["--service"]
+
   - name: "com.example.myapp"
     require: os.isLinux
     scope: user
@@ -356,6 +370,17 @@ services:
     arguments: ["--service"]
     working_directory: "{AppDir}"
     restart: on-failure
+
+  - name: "com.example.myapp"
+    require: os.isMacOS
+    scope: user
+    enabled: true
+    start: false
+    description: "MyApp background service"
+    executable: "{AppDir}/MyApp.app/Contents/MacOS/MyApp"
+    arguments: ["--service"]
+    working_directory: "{AppDir}"
+    restart: always
 ```
 
 ### `features`
@@ -365,12 +390,12 @@ Optional list of installable features that the end user can toggle in the instal
 
 | Field | Meaning |
 |-------|---------|
-| `id` | Unique identifier referenced by `files[].features`, `tasks.*[].features`, and `file_associations[].features`. |
+| `id` | Unique identifier referenced by `files[].features`, `tasks.*[].features`, `file_associations[].features`, and `services[].features`. |
 | `name` | Human-readable name shown next to the feature's checkbox. |
 | `description` | Optional short description shown alongside the checkbox. |
 | `default_selected` | When `true` (default), the feature is pre-checked on a fresh install. |
 
-`files`, `tasks`, and `file_associations` entries without a `features:` list are **core**
+`files`, `tasks`, `file_associations`, and `services` entries without a `features:` list are **core**
 — always installed regardless of selection. Entries that list one or more feature ids are
 gated: they are installed/registered/executed only when at least one of the referenced
 features is selected. The set of files that belongs to multiple features is allowed if
@@ -410,12 +435,13 @@ checkboxes). When the manifest has no `features:` list, the step is skipped auto
 
 **Updates and uninstall.** `install-state.json` records the selected features. On update,
 the installer pre-selects what was previously installed; deselecting a feature on an
-update prunes its files. On uninstall, feature-gated tasks and file associations only
-run if the feature was installed. Pre-feature installs (no `selected_features` recorded)
-fall back to running every feature-gated task during uninstall.
+update prunes its files and removes stale services. On uninstall, feature-gated tasks,
+file associations, and services only run or clean up if the feature was installed.
+Pre-feature installs (no `selected_features` recorded) fall back to running every
+feature-gated task during uninstall.
 
 **Backward compatibility.** A manifest without a `features:` list behaves exactly like
-before this feature existed: every file/task/association is core and installed in full.
+before this feature existed: every file/task/association/service is core and installed in full.
 
 ### `tasks`
 
@@ -707,6 +733,9 @@ Invalid file-name characters in `metadata.name` are replaced with underscores.
 | **No files matched** | Check `source_dir` relative to `--base`, and `include` / `exclude` patterns. |
 | **Wrong OS** | The stub RID must match the machine (e.g. do not run a `win-x64` build on Linux). |
 | **Shortcut / registry tasks fail on Windows** | PowerShell execution policy, permissions, and paths in `parameters`. |
+| **Service registration fails on Windows** | Windows services require Administrator rights. Confirm the installer elevated successfully and that `sc.exe` is available. |
+| **Service registration fails on Linux** | Confirm `systemctl` exists. `scope: system` requires root; `scope: user` requires a usable user systemd session. |
+| **Service registration fails on macOS** | Confirm `launchctl` is available. `scope: system` requires root and writes `/Library/LaunchDaemons`; `scope: user` writes `~/Library/LaunchAgents`. |
 
 
 
