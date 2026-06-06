@@ -37,9 +37,9 @@ installer wizard.
 
 This document is written for **consumers**: teams who want to ship installers without adopting a separate installer
 product, and who are comfortable with YAML and a small command-line tool. **Prefer the self-contained `polyinstall`
-binaries from [GitHub Releases](https://github.com/bolorundurowb/PolyInstall/releases)** (each zip includes bundled
-stubs); build from source only when you contribute to PolyInstall, need unreleased changes, or want custom stub
-layouts.
+binaries from [GitHub Releases](https://github.com/bolorundurowb/PolyInstall/releases)** (each CLI zip includes the
+matching host stub, with separate stub archives for cross-target builds); build from source only when you contribute to
+PolyInstall, need unreleased changes, or want custom stub layouts.
 
 ## What you get
 
@@ -75,8 +75,9 @@ and [macOS DMG](#macos-dmg).
 
 Use the **pre-built** `polyinstall` from [GitHub Releases](https://github.com/bolorundurowb/PolyInstall/releases) instead
 of compiling this repository yourself. Pick the zip for your **host** OS (for example `polyinstall-win-x64-<tag>.zip` on
-Windows). Each archive contains a self-contained `polyinstall` executable, `schema/v1.json`, and a `stubs/` tree with
-**every** release RID (`win-x64`, `linux-x64`, `osx-arm64`) plus `PolyInstall.Uninstall.exe` under `stubs/win-x64/`.
+Windows). Each CLI archive contains a self-contained `polyinstall` executable, `schema/v1.json`, and a `stubs/` tree for
+that archive's RID. The release also publishes separate `stubs-<rid>-<tag>.zip` archives when you need to build for a
+different target RID.
 
 1. **Download and extract** the release zip so `polyinstall` (or `polyinstall.exe` on Windows) sits in the same folder
    as the `stubs/` directory.
@@ -97,6 +98,37 @@ Windows). Each archive contains a self-contained `polyinstall` executable, `sche
    temp folder and launches the wizard.
 
 Built files land under `build.output_dir` from the manifest (relative to `--base`).
+
+### CI: setup-polyinstall GitHub Action
+
+In GitHub Actions, prefer the bundled setup action instead of scripting release download, extraction, executable lookup,
+and checksum verification yourself:
+
+```yaml
+- uses: bolorundurowb/PolyInstall/.github/actions/setup-polyinstall@v1
+  with:
+    version: v0.1.0
+    rid: linux-x64
+
+- run: polyinstall build ./polyinstall.yaml --base .
+```
+
+For workflows inside this repository, use the local action path after checkout:
+
+```yaml
+- uses: actions/checkout@v6
+- uses: ./.github/actions/setup-polyinstall
+  with:
+    version: v0.1.0
+```
+
+The action downloads the selected release zip and `SHA256SUMS.txt`, verifies the zip's SHA-256 hash, extracts the CLI,
+adds it to `PATH`, and exposes `polyinstall-path`, `install-dir`, `version`, and `rid` outputs. If you download release
+assets manually, download `SHA256SUMS.txt` from the same release and verify the zip before extraction, for example:
+
+```bash
+sha256sum -c SHA256SUMS.txt --ignore-missing
+```
 
 ### Optional: build PolyInstall from source
 
@@ -345,8 +377,9 @@ Manifest `build.targets` entries use **tokens** that map to .NET RIDs:
 | `osx-x64` | `osx-x64` |
 | `osx-arm64` | `osx-arm64` |
 
-If you use **official release** zips, the bundled `stubs/` already contains these RIDs; you only need the commands
-below when you **publish stubs yourself** (from-source workflow or custom RIDs).
+Official CLI zips include a bundled `stubs/` directory for that zip's host RID. For other target RIDs, download the
+matching `stubs-<rid>-<tag>.zip` release asset or use the commands below to **publish stubs yourself** (from-source
+workflow or custom RIDs).
 
 For each token you support outside bundled stubs, publish the runtime once:
 

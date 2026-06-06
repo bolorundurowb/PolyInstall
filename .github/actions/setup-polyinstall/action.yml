@@ -1,0 +1,300 @@
+name: Setup PolyInstall
+description: Download, verify, extract, and add the PolyInstall CLI to PATH.
+
+inputs:
+  version:
+    description: Release version to install. Use "latest", "vX.Y.Z", or "X.Y.Z".
+    default: latest
+    required: false
+  rid:
+    description: Runtime identifier to install. Defaults from runner OS/architecture when supported.
+    required: false
+  install-dir:
+    description: Directory where the PolyInstall release archive is extracted.
+    required: false
+  github-token:
+    description: GitHub token used for release API and asset downloads.
+    default: ${{ github.token }}
+    required: false
+  repository:
+    description: Repository that owns the PolyInstall releases.
+    default: bolorundurowb/PolyInstall
+    required: false
+  asset-dir:
+    description: Optional local directory containing a release zip and SHA256SUMS.txt. Intended for tests and mirrors.
+    required: false
+
+outputs:
+  polyinstall-path:
+    description: Full path to the installed polyinstall executable.
+    value: ${{ steps.install.outputs.polyinstall-path }}
+  install-dir:
+    description: Directory containing the extracted PolyInstall release archive.
+    value: ${{ steps.install.outputs.install-dir }}
+  version:
+    description: Resolved release tag.
+    value: ${{ steps.resolve.outputs.version }}
+  rid:
+    description: Resolved runtime identifier.
+    value: ${{ steps.resolve.outputs.rid }}
+
+runs:
+  using: composite
+  steps:
+    - id: resolve
+      name: Resolve release and asset
+      shell: bash
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_RID: ${{ inputs.rid }}
+        INPUT_INSTALL_DIR: ${{ inputs.install-dir }}
+        INPUT_REPOSITORY: ${{ inputs.repository }}
+        INPUT_ASSET_DIR: ${{ inputs.asset-dir }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+        RUNNER_OS_NAME: ${{ runner.os }}
+        RUNNER_ARCH_NAME: ${{ runner.arch }}
+      run: |
+        set -euo pipefail
+
+        repository="${INPUT_REPOSITORY:-bolorundurowb/PolyInstall}"
+        version="${INPUT_VERSION:-latest}"
+        rid="${INPUT_RID:-}"
+
+        if [[ -z "${rid}" ]]; then
+          case "${RUNNER_OS_NAME}:${RUNNER_ARCH_NAME}" in
+            Windows:X64)
+              rid="win-x64"
+              ;;
+            Linux:X64)
+              rid="linux-x64"
+              ;;
+            macOS:ARM64)
+              rid="osx-arm64"
+              ;;
+            *)
+              echo "::error::Cannot infer a PolyInstall release RID for ${RUNNER_OS_NAME}/${RUNNER_ARCH_NAME}. Set the 'rid' input explicitly."
+              exit 1
+              ;;
+          esac
+        fi
+
+        case "${rid}" in
+          win-x64|linux-x64|osx-arm64)
+            ;;
+          *)
+            echo "::error::Unsupported PolyInstall release RID '${rid}'. Supported RIDs: win-x64, linux-x64, osx-arm64."
+            exit 1
+            ;;
+        esac
+
+        if [[ "${version}" == "latest" ]]; then
+          if [[ -n "${INPUT_ASSET_DIR}" ]]; then
+            echo "::error::The 'asset-dir' input requires a concrete version such as 'v0.0.0-test', not 'latest'."
+            exit 1
+          fi
+
+          curl_args=(-fsSL --retry 3 --retry-delay 2)
+          if [[ -n "${INPUT_GITHUB_TOKEN}" ]]; then
+            curl_args+=(
+              -H "Authorization: Bearer ${INPUT_GITHUB_TOKEN}"
+              -H "X-GitHub-Api-Version: 2022-11-28"
+            )
+          fi
+
+          release_json="$(curl "${curl_args[@]}" "https://api.github.com/repos/${repository}/releases/latest")"
+          tag="$(printf '%s' "${release_json}" | sed -n 's/^[[:space:]]*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)"
+          if [[ -z "${tag}" ]]; then
+            echo "::error::Could not resolve latest release tag for ${repository}."
+            exit 1
+          fi
+        else
+          tag="${version#refs/tags/}"
+          if [[ "${tag}" != v* ]]; then
+            tag="v${tag}"
+          fi
+        fi
+
+        archive_root="polyinstall-${rid}"
+        asset="${archive_root}-${tag}.zip"
+        install_dir="${INPUT_INSTALL_DIR:-${RUNNER_TEMP}/polyinstall}"
+        work_dir="${RUNNER_TEMP}/setup-polyinstall/${tag}/${rid}"
+
+        {
+          echo "version=${tag}"
+          echo "rid=${rid}"
+          echo "repository=${repository}"
+          echo "archive-root=${archive_root}"
+          echo "asset=${asset}"
+          echo "install-dir=${install_dir}"
+          echo "work-dir=${work_dir}"
+          echo "asset-dir=${INPUT_ASSET_DIR}"
+          echo "asset-url=https://github.com/${repository}/releases/download/${tag}/${asset}"
+          echo "checksums-url=https://github.com/${repository}/releases/download/${tag}/SHA256SUMS.txt"
+        } >> "${GITHUB_OUTPUT}"
+
+    - id: download
+      name: Download release assets
+      shell: bash
+      env:
+        ASSET: ${{ steps.resolve.outputs.asset }}
+        ASSET_DIR: ${{ steps.resolve.outputs.asset-dir }}
+        ASSET_URL: ${{ steps.resolve.outputs.asset-url }}
+        CHECKSUMS_URL: ${{ steps.resolve.outputs.checksums-url }}
+        GITHUB_TOKEN_INPUT: ${{ inputs.github-token }}
+        WORK_DIR: ${{ steps.resolve.outputs.work-dir }}
+      run: |
+        set -euo pipefail
+
+        to_unix_path() {
+          if command -v cygpath >/dev/null 2>&1; then
+            cygpath -u "$1"
+          else
+            printf '%s\n' "$1"
+          fi
+        }
+
+        work_dir="$(to_unix_path "${WORK_DIR}")"
+        rm -rf "${work_dir}"
+        mkdir -p "${work_dir}"
+
+        if [[ -n "${ASSET_DIR}" ]]; then
+          asset_dir="$(to_unix_path "${ASSET_DIR}")"
+          if [[ ! -f "${asset_dir}/${ASSET}" ]]; then
+            echo "::error::Local release asset not found: ${asset_dir}/${ASSET}"
+            exit 1
+          fi
+          if [[ ! -f "${asset_dir}/SHA256SUMS.txt" ]]; then
+            echo "::error::Local checksum file not found: ${asset_dir}/SHA256SUMS.txt"
+            exit 1
+          fi
+
+          cp "${asset_dir}/${ASSET}" "${work_dir}/${ASSET}"
+          cp "${asset_dir}/SHA256SUMS.txt" "${work_dir}/SHA256SUMS.txt"
+          exit 0
+        fi
+
+        curl_args=(-fsSL --retry 3 --retry-delay 2)
+        if [[ -n "${GITHUB_TOKEN_INPUT}" ]]; then
+          curl_args+=(
+            -H "Authorization: Bearer ${GITHUB_TOKEN_INPUT}"
+            -H "X-GitHub-Api-Version: 2022-11-28"
+          )
+        fi
+
+        curl "${curl_args[@]}" -o "${work_dir}/${ASSET}" "${ASSET_URL}"
+        curl "${curl_args[@]}" -o "${work_dir}/SHA256SUMS.txt" "${CHECKSUMS_URL}"
+
+    - id: verify
+      name: Verify release checksum
+      shell: bash
+      env:
+        ASSET: ${{ steps.resolve.outputs.asset }}
+        WORK_DIR: ${{ steps.resolve.outputs.work-dir }}
+      run: |
+        set -euo pipefail
+
+        to_unix_path() {
+          if command -v cygpath >/dev/null 2>&1; then
+            cygpath -u "$1"
+          else
+            printf '%s\n' "$1"
+          fi
+        }
+
+        work_dir="$(to_unix_path "${WORK_DIR}")"
+        cd "${work_dir}"
+
+        expected="$(
+          awk -v asset="${ASSET}" '($2 == asset || $2 == "*" asset) { print $1; found = 1; exit } END { if (!found) exit 1 }' SHA256SUMS.txt
+        )" || {
+          echo "::error::No checksum entry found for ${ASSET} in SHA256SUMS.txt."
+          exit 1
+        }
+
+        if command -v sha256sum >/dev/null 2>&1; then
+          printf '%s  %s\n' "${expected}" "${ASSET}" | sha256sum -c -
+        elif command -v shasum >/dev/null 2>&1; then
+          actual="$(shasum -a 256 "${ASSET}" | awk '{ print $1 }')"
+          if [[ "${actual}" != "${expected}" ]]; then
+            echo "::error::Checksum mismatch for ${ASSET}. Expected ${expected}, got ${actual}."
+            exit 1
+          fi
+          echo "${ASSET}: OK"
+        else
+          echo "::error::Neither sha256sum nor shasum is available for checksum verification."
+          exit 1
+        fi
+
+    - id: install
+      name: Extract and add to PATH
+      shell: bash
+      env:
+        ARCHIVE_ROOT: ${{ steps.resolve.outputs.archive-root }}
+        ASSET: ${{ steps.resolve.outputs.asset }}
+        INSTALL_DIR: ${{ steps.resolve.outputs.install-dir }}
+        RID: ${{ steps.resolve.outputs.rid }}
+        WORK_DIR: ${{ steps.resolve.outputs.work-dir }}
+      run: |
+        set -euo pipefail
+
+        to_unix_path() {
+          if command -v cygpath >/dev/null 2>&1; then
+            cygpath -u "$1"
+          else
+            printf '%s\n' "$1"
+          fi
+        }
+
+        to_native_path() {
+          if command -v cygpath >/dev/null 2>&1; then
+            cygpath -w "$1"
+          else
+            printf '%s\n' "$1"
+          fi
+        }
+
+        work_dir="$(to_unix_path "${WORK_DIR}")"
+        install_dir="$(to_unix_path "${INSTALL_DIR}")"
+        asset_path="${work_dir}/${ASSET}"
+
+        rm -rf "${install_dir}"
+        mkdir -p "${install_dir}"
+
+        if command -v unzip >/dev/null 2>&1; then
+          unzip -q -o "${asset_path}" -d "${install_dir}"
+        elif command -v pwsh >/dev/null 2>&1; then
+          native_asset_path="$(to_native_path "${asset_path}")"
+          native_install_dir="$(to_native_path "${install_dir}")"
+          ASSET_PATH="${native_asset_path}" INSTALL_PATH="${native_install_dir}" pwsh -NoProfile -Command 'Expand-Archive -LiteralPath $env:ASSET_PATH -DestinationPath $env:INSTALL_PATH -Force'
+        else
+          echo "::error::Neither unzip nor pwsh is available to extract ${ASSET}."
+          exit 1
+        fi
+
+        exe_name="polyinstall"
+        if [[ "${RID}" == win-* ]]; then
+          exe_name="polyinstall.exe"
+        fi
+
+        polyinstall_path="${install_dir}/${ARCHIVE_ROOT}/${exe_name}"
+        if [[ ! -f "${polyinstall_path}" ]]; then
+          echo "::error::Expected PolyInstall executable not found at ${polyinstall_path}."
+          exit 1
+        fi
+
+        if [[ "${RID}" != win-* ]]; then
+          chmod +x "${polyinstall_path}"
+        fi
+
+        exe_dir="$(cd "$(dirname "${polyinstall_path}")" && pwd -P)"
+        native_exe_dir="$(to_native_path "${exe_dir}")"
+        native_polyinstall_path="$(to_native_path "${polyinstall_path}")"
+        native_install_dir="$(to_native_path "${install_dir}")"
+
+        echo "${native_exe_dir}" >> "${GITHUB_PATH}"
+        {
+          echo "polyinstall-path=${native_polyinstall_path}"
+          echo "install-dir=${native_install_dir}"
+        } >> "${GITHUB_OUTPUT}"
+
+        "${polyinstall_path}" --version

@@ -227,6 +227,13 @@ jobs:
           path: release-zips
           merge-multiple: true
 
+      - name: Generate release checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-zips
+          sha256sum *.zip | sort -k2 > SHA256SUMS.txt
+
       - name: Compose release notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -270,6 +277,8 @@ jobs:
           draft: false
           make_latest: true
           fail_on_unmatched_files: true
-          files: release-zips/**/*.zip
+          files: |
+            release-zips/**/*.zip
+            release-zips/SHA256SUMS.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
