@@ -220,6 +220,8 @@ public static class ManifestSemanticValidator
                 ValidateSetPermissions(task, prefix, errors);
             else if (task.Action.Equals("add_to_path", StringComparison.OrdinalIgnoreCase))
                 ValidateAddToPath(task, prefix, isUserScope, errors);
+            else if (task.Action.Equals("file_association", StringComparison.OrdinalIgnoreCase))
+                ValidateFileAssociation(task, prefix, errors);
         }
     }
 
@@ -358,6 +360,31 @@ public static class ManifestSemanticValidator
                 $"{prefix}: add_to_path with scope 'machine' requires install_scope 'machine'. " +
                 "Machine-level PATH modification requires Administrator rights.");
         }
+    }
+
+    private static void ValidateFileAssociation(InstallTask task, string prefix, List<string> errors)
+    {
+        if (!HasOsPredicate(task, "windows"))
+        {
+            errors.Add(
+                $"{prefix}: file_association is Windows-only. Add require: 'os.isWindows' (or similar) to avoid runtime errors on other platforms.");
+        }
+
+        var extension = GetParamString(task, "extension");
+        if (string.IsNullOrEmpty(extension))
+        {
+            errors.Add($"{prefix}: file_association requires parameter 'extension'.");
+        }
+        else if (!extension.StartsWith('.'))
+        {
+            errors.Add($"{prefix}: file_association 'extension' must start with a dot, e.g. '.oef'.");
+        }
+
+        if (string.IsNullOrEmpty(GetParamString(task, "description")))
+            errors.Add($"{prefix}: file_association requires parameter 'description'.");
+
+        if (string.IsNullOrEmpty(GetParamString(task, "command")))
+            errors.Add($"{prefix}: file_association requires parameter 'command'.");
     }
 
     private static bool IsWindowsTask(InstallTask task)
