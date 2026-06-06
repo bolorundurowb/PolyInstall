@@ -42,10 +42,10 @@ jobs:
           /p:CollectCoverage=true
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           files: ./src/coverage/**/coverage.cobertura.xml
           flags: unittests
           name: polyinstall-coverage

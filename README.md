@@ -305,6 +305,65 @@ Optional list of file associations to register. Each entry has:
 
 These associations are registered during installation and restored or removed during uninstallation. Note: for more fine-grained control, you can also use the `file_association` task action.
 
+### `features`
+
+Optional list of installable features that the end user can toggle in the installer's
+**features** wizard step.
+
+| Field | Meaning |
+|-------|---------|
+| `id` | Unique identifier referenced by `files[].features`, `tasks.*[].features`, and `file_associations[].features`. |
+| `name` | Human-readable name shown next to the feature's checkbox. |
+| `description` | Optional short description shown alongside the checkbox. |
+| `default_selected` | When `true` (default), the feature is pre-checked on a fresh install. |
+
+`files`, `tasks`, and `file_associations` entries without a `features:` list are **core**
+— always installed regardless of selection. Entries that list one or more feature ids are
+gated: they are installed/registered/executed only when at least one of the referenced
+features is selected. The set of files that belongs to multiple features is allowed if
+**any** of them is selected.
+
+```yaml
+features:
+  - id: simulator
+    name: Simulator
+    description: Install the simulator runtime.
+    default_selected: true
+  - id: samples
+    name: Samples
+    default_selected: false
+
+files:
+  - source_dir: app
+    include: ["bin/**/*"]               # core — always installed
+  - source_dir: app
+    include: ["sim/**/*"]
+    features: [simulator]               # only installed if Simulator is selected
+
+tasks:
+  post_install:
+    - action: create_shortcut
+      require: os.isWindows
+      features: [simulator]             # only runs if Simulator is selected
+      parameters:
+        target_path: "{AppDir}/sim.exe"
+        name: "Simulator"
+        location: start_menu
+```
+
+**Wizard step.** Add `type: features` between `destination` and `progress` to expose a
+**Full install / Custom install** picker (full = all features; custom = per-feature
+checkboxes). When the manifest has no `features:` list, the step is skipped automatically.
+
+**Updates and uninstall.** `install-state.json` records the selected features. On update,
+the installer pre-selects what was previously installed; deselecting a feature on an
+update prunes its files. On uninstall, feature-gated tasks and file associations only
+run if the feature was installed. Pre-feature installs (no `selected_features` recorded)
+fall back to running every feature-gated task during uninstall.
+
+**Backward compatibility.** A manifest without a `features:` list behaves exactly like
+before this feature existed: every file/task/association is core and installed in full.
+
 ### `tasks`
 
 Optional:
@@ -459,6 +518,7 @@ The stub opens its own executable path, finds the PolyInstall footer, and reads 
 | `welcome` | `title` | Introduction text. |
 | `eula` | `title`, `source` | Loads licence text from `source` (path under extracted payload or absolute). |
 | `destination` | `title`, `default_path` | User chooses install directory; placeholders expanded (see below). If omitted on Windows, machine-scope installs default under Program Files and user-scope installs default under LocalAppData. |
+| `features` | `title` | Full/Custom picker for optional `features:` defined in the manifest. Auto-skipped when the manifest has no features. Must sit between `destination` and `progress`. |
 | `progress` | `title` | Runs **pre-install** tasks, copies extracted payload to the install directory, then **post-install** tasks. |
 | `finish` | `title` | Summary. |
 

@@ -28,6 +28,24 @@
           "$ref": "#/definitions/TasksConfiguration"
         }
       ]
+    },
+    "features": {
+      "type": ["array", "null"],
+      "description": "Optional list of installable features the user can toggle in the installer's features wizard step. Entries in files[], tasks.*[], and file_associations[] without a 'features' reference are always installed (core). Backward compatible: omit to install everything (full install).",
+      "items": {
+        "$ref": "#/definitions/FeatureDefinition"
+      }
+    },
+    "feature_index": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/definitions/PayloadFeatureIndex"
+        }
+      ],
+      "description": "Build-time index mapping payload-relative file paths to features. Produced by the CLI when 'features' is set; consumed by the runtime stub to filter extraction based on selected features."
     }
   },
   "definitions": {
@@ -369,7 +387,7 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["welcome", "eula", "destination", "progress", "finish"]
+          "enum": ["welcome", "eula", "destination", "features", "progress", "finish"]
         },
         "title": {
           "type": [
@@ -411,6 +429,58 @@
           ],
           "items": {
             "type": "string"
+          }
+        },
+        "features": {
+          "type": ["array", "null"],
+          "description": "Optional list of feature ids this entry belongs to. When null or empty the matched files are always installed (core); when set they are only installed if at least one referenced feature is selected.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "FeatureDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier referenced by files[], tasks[], and file_associations[] entries."
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable name shown in the installer's features step."
+        },
+        "description": {
+          "type": ["null", "string"],
+          "description": "Short description shown alongside the feature checkbox in the installer."
+        },
+        "default_selected": {
+          "type": "boolean",
+          "description": "Whether the feature is pre-checked on a fresh install. Defaults to true."
+        }
+      }
+    },
+    "PayloadFeatureIndex": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "core_files": {
+          "type": "array",
+          "description": "Relative payload paths that are always installed regardless of selected features.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "feature_files": {
+          "type": "object",
+          "description": "Map of feature id → list of relative payload paths that belong to that feature.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       }
@@ -484,6 +554,13 @@
           ],
           "description": "Key/value map of parameters for the chosen action. Keys are snake_case strings.",
           "additionalProperties": {}
+        },
+        "features": {
+          "type": ["array", "null"],
+          "description": "Optional list of feature ids that gate this task. When null or empty the task always runs; when set it only runs if at least one referenced feature is selected.",
+          "items": {
+            "type": "string"
+          }
         }
       }
     }

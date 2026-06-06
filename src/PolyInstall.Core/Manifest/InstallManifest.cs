@@ -11,6 +11,13 @@ public sealed class InstallManifest
     public List<FilesEntry> Files { get; set; } = [];
     public List<FileAssociation>? FileAssociations { get; set; }
     public TasksConfiguration? Tasks { get; set; }
+    public List<FeatureDefinition>? Features { get; set; }
+
+    /// <summary>
+    /// Build-time index mapping payload files to features. Produced by the build pipeline
+    /// and consumed by the runtime stub. Omitted from output when null.
+    /// </summary>
+    public PayloadFeatureIndex? FeatureIndex { get; set; }
 
     public static JsonSerializerOptions JsonOptions { get; } = new()
     {

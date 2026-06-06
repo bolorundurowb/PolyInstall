@@ -23,7 +23,7 @@ internal sealed class WindowsFileAssociationPal : IFileAssociationPal
         using (var key = Registry.ClassesRoot.CreateSubKey(association.ProgId))
         {
             key.SetValue("", association.Description);
-            
+
             if (!string.IsNullOrEmpty(association.Icon))
             {
                 using var iconKey = key.CreateSubKey("DefaultIcon");
@@ -75,7 +75,7 @@ internal sealed class WindowsFileAssociationPal : IFileAssociationPal
         {
             var state = InstallStateIo.ReadState(installDir);
             state.FileAssociationBackups ??= new List<FileAssociationBackup>();
-            
+
             if (state.FileAssociationBackups.Any(b => b.Extension.Equals(extension, StringComparison.OrdinalIgnoreCase)))
                 return; // Already backed up
 

@@ -5,6 +5,7 @@ using PolyInstall.Pal;
 
 namespace PolyInstall.Core.Tests;
 
+[Collection("Sequential")]
 public class MacOsFileAssociationPalTests
 {
     [Fact]
@@ -37,6 +38,9 @@ public class MacOsFileAssociationPalTests
     [Fact]
     public void GetInfoPlistPath_ReturnsExpectedPath()
     {
+        if (!OperatingSystem.IsMacOS())
+            return; // macOS-only path layout; on Windows Path.Combine emits backslashes.
+
         MacOsFileAssociationPal.GetInfoPlistPath("/Applications/MyApp.app")
             .Should().Be("/Applications/MyApp.app/Contents/Info.plist");
     }

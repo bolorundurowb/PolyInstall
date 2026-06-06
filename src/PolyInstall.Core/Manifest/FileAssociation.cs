@@ -9,7 +9,7 @@ public sealed class FileAssociation
 
     [Description("A brief description of the file type.")]
     public string Description { get; set; } = "";
-    
+
     [Description("Optional: The ProgID for the file association (e.g., 'MyApp.oef.1'). If omitted, one will be generated based on the application name and extension.")]
     public string? ProgId { get; set; }
 
@@ -24,4 +24,7 @@ public sealed class FileAssociation
 
     [Description("macOS only: Path to the .app bundle to register associations for.")]
     public string? BundlePath { get; set; }
+
+    [Description("Optional list of feature ids that gate this association. When null or empty, the association is always registered. When set, it is only registered if at least one referenced feature is selected.")]
+    public List<string>? Features { get; set; }
 }

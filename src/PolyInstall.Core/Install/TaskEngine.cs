@@ -9,12 +9,27 @@ namespace PolyInstall.Install;
 public static class TaskEngine
 {
     public static void RunPhase(IEnumerable<InstallTask>? tasks, IPolyInstallPal pal, bool isUninstall = false)
+        => RunPhase(tasks, pal, selectedFeatures: null, isUninstall);
+
+    /// <summary>
+    /// Runs the given task list, skipping tasks whose <see cref="InstallTask.Features"/> list
+    /// has no intersection with <paramref name="selectedFeatures"/>. Tasks without a Features
+    /// list always run (subject to <see cref="InstallTask.Require"/>).
+    /// </summary>
+    public static void RunPhase(
+        IEnumerable<InstallTask>? tasks,
+        IPolyInstallPal pal,
+        IReadOnlySet<string>? selectedFeatures,
+        bool isUninstall = false)
     {
         if (tasks is null)
             return;
+        var features = selectedFeatures ?? InstallBootstrap.SelectedFeatures;
         foreach (var task in tasks)
         {
             if (!ConditionEvaluator.Evaluate(task.Require))
+                continue;
+            if (!FeatureFilter.IsActive(task.Features, features))
                 continue;
             Dispatch(task, pal, isUninstall);
         }

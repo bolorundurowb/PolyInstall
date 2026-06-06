@@ -26,14 +26,23 @@ public static class InstallCoordinator
         options.OnInstallDirectoryPrepared?.Invoke(new InstallDirectoryPreparedInfo(dest, existedBefore, !existedBefore, mode));
         options.Progress?.Invoke(existedBefore ? $"Use existing folder: {dest}" : $"Create folder: {dest}");
 
+        var selectedFeatures = ResolveSelectedFeatures(options.Manifest);
+
         options.CancellationToken.ThrowIfCancellationRequested();
         options.Progress?.Invoke("Run pre-install tasks");
-        TaskEngine.RunPhase(options.Manifest.Tasks?.PreInstall, options.Pal);
+        TaskEngine.RunPhase(options.Manifest.Tasks?.PreInstall, options.Pal, selectedFeatures);
         options.Progress?.Invoke("Pre-install tasks completed");
 
         options.CancellationToken.ThrowIfCancellationRequested();
-        var payloadFiles = PayloadFileInventory.Enumerate(options.ExtractRoot);
-        var newPayloadSet = payloadFiles.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var allPayloadFiles = PayloadFileInventory.Enumerate(options.ExtractRoot);
+        var allowedFiles = FeatureFilter.ComputeAllowedFiles(
+            options.Manifest.FeatureIndex,
+            allPayloadFiles,
+            selectedFeatures);
+        var installedPayloadFiles = allPayloadFiles
+            .Where(f => allowedFiles.Contains(PayloadFileInventory.NormalizeRelativePath(f)))
+            .ToList();
+        var newPayloadSet = installedPayloadFiles.ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (existing?.State?.PayloadFiles is { } previousPayloadFiles)
         {
             PayloadFileInventory.DeleteFilesMissingFromNewPayload(
@@ -52,13 +61,14 @@ public static class InstallCoordinator
         DirectoryCopy.CopyRecursive(
             options.ExtractRoot,
             dest,
+            allowedFiles,
             options.CancellationToken,
             relativePath => options.Progress?.Invoke($"Copy file: {relativePath}"));
         options.Progress?.Invoke(mode == InstallMode.Install ? "Files copied" : "Files updated");
 
         options.CancellationToken.ThrowIfCancellationRequested();
         options.Progress?.Invoke("Run post-install tasks");
-        TaskEngine.RunPhase(options.Manifest.Tasks?.PostInstall, options.Pal);
+        TaskEngine.RunPhase(options.Manifest.Tasks?.PostInstall, options.Pal, selectedFeatures);
         options.Progress?.Invoke("Post-install tasks completed");
 
         if (options.Manifest.FileAssociations is { Count: > 0 } && options.Pal.FileAssociations is not null)
@@ -66,6 +76,8 @@ public static class InstallCoordinator
             options.Progress?.Invoke("Register file associations");
             foreach (var assoc in options.Manifest.FileAssociations)
             {
+                if (!FeatureFilter.IsActive(assoc.Features, selectedFeatures))
+                    continue;
                 var info = MapToFileAssociationInfo(assoc, options.Pal);
                 options.Pal.FileAssociations.Register(info);
             }
@@ -74,7 +86,11 @@ public static class InstallCoordinator
 
         options.CancellationToken.ThrowIfCancellationRequested();
         options.Progress?.Invoke("Write install metadata");
-        var state = InstallFinalizer.FinalizeInstall(options.Manifest, dest, payloadFiles);
+        var state = InstallFinalizer.FinalizeInstall(
+            options.Manifest,
+            dest,
+            installedPayloadFiles,
+            selectedFeatures);
 
         if (options.Pal.Path is { AddedPaths.Count: > 0 } pathPal)
         {
@@ -126,6 +142,29 @@ public static class InstallCoordinator
         {
             return left.Equals(right, StringComparison.OrdinalIgnoreCase);
         }
+    }
+
+    /// <summary>
+    /// Resolves the active feature set for this install run from <see cref="InstallBootstrap.SelectedFeatures"/>,
+    /// falling back to all default-selected manifest features. Returns an empty set when no features are defined.
+    /// </summary>
+    private static IReadOnlySet<string> ResolveSelectedFeatures(InstallManifest manifest)
+    {
+        var bootstrap = InstallBootstrap.SelectedFeatures;
+        if (bootstrap is { Count: > 0 })
+            return bootstrap;
+
+        var selected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (manifest.Features is { Count: > 0 } features)
+        {
+            foreach (var feat in features)
+            {
+                if (!string.IsNullOrWhiteSpace(feat.Id) && feat.DefaultSelected)
+                    selected.Add(feat.Id);
+            }
+        }
+
+        return selected;
     }
 
     internal static FileAssociationInfo MapToFileAssociationInfo(Manifest.FileAssociation assoc, IPolyInstallPal pal)
