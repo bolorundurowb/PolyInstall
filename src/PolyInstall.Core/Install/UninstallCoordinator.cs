@@ -20,8 +20,8 @@ public static class UninstallCoordinator
         InstallBootstrap.Init(manifest, state.InstallLocation, pal);
         InstallBootstrap.InstallDirectory = state.InstallLocation;
 
-        TaskEngine.RunPhase(manifest.Tasks?.PreUninstall, pal);
-        TaskEngine.RunPhase(manifest.Tasks?.PostUninstall, pal);
+        TaskEngine.RunPhase(manifest.Tasks?.PreUninstall, pal, isUninstall: true);
+        TaskEngine.RunPhase(manifest.Tasks?.PostUninstall, pal, isUninstall: true);
 
         if (state.AddedToPath is { Count: > 0 } && pal.Path is not null)
         {

@@ -9,6 +9,7 @@ public interface IPolyInstallPal : IInstallPathPal
     IDesktopEntryPal? DesktopEntries { get; }
     IFilePermissionsPal? FilePermissions { get; }
     IPathPal? Path { get; }
+    IFileAssociationPal? FileAssociations { get; }
 }
 
 public interface IPathPal

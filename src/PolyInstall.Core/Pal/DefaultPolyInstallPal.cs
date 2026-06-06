@@ -17,6 +17,7 @@ public sealed class DefaultPolyInstallPal : IPolyInstallPal
         Registry = OperatingSystem.IsWindows() ? new WindowsRegistryPal() : null;
         DesktopEntries = OperatingSystem.IsLinux() || OperatingSystem.IsMacOS() ? new UnixDesktopEntryPal() : null;
         FilePermissions = OperatingSystem.IsLinux() || OperatingSystem.IsMacOS() ? new UnixFilePermissionsPal() : null;
+        FileAssociations = OperatingSystem.IsWindows() ? new WindowsFileAssociationPal() : null;
         Path = new PathPal();
     }
 
@@ -28,5 +29,6 @@ public sealed class DefaultPolyInstallPal : IPolyInstallPal
     public IRegistryPal? Registry { get; }
     public IDesktopEntryPal? DesktopEntries { get; }
     public IFilePermissionsPal? FilePermissions { get; }
+    public IFileAssociationPal? FileAssociations { get; }
     public IPathPal? Path { get; }
 }

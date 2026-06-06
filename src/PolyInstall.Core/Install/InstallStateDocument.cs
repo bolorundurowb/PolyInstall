@@ -15,4 +15,11 @@ public sealed class InstallStateDocument
     public string RegistryUninstallKeyRelative { get; set; } = "";
     public List<string>? PayloadFiles { get; set; }
     public List<string>? AddedToPath { get; set; }
+    public List<FileAssociationBackup>? FileAssociationBackups { get; set; }
+}
+
+public sealed class FileAssociationBackup
+{
+    public string Extension { get; set; } = "";
+    public string? OriginalProgId { get; set; }
 }

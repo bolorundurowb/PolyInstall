@@ -14,6 +14,7 @@ namespace PolyInstall.Manifest;
     WriteIndented = true)]
 [JsonSerializable(typeof(InstallManifest))]
 [JsonSerializable(typeof(InstallStateDocument))]
+[JsonSerializable(typeof(FileAssociationBackup))]
 [JsonSerializable(typeof(JsonElement))]
 internal sealed partial class InstallJsonContext : JsonSerializerContext
 {

@@ -8,7 +8,7 @@ namespace PolyInstall.Install;
 
 public static class TaskEngine
 {
-    public static void RunPhase(IEnumerable<InstallTask>? tasks, IPolyInstallPal pal)
+    public static void RunPhase(IEnumerable<InstallTask>? tasks, IPolyInstallPal pal, bool isUninstall = false)
     {
         if (tasks is null)
             return;
@@ -16,11 +16,11 @@ public static class TaskEngine
         {
             if (!ConditionEvaluator.Evaluate(task.Require))
                 continue;
-            Dispatch(task, pal);
+            Dispatch(task, pal, isUninstall);
         }
     }
 
-    private static void Dispatch(InstallTask task, IPolyInstallPal pal)
+    private static void Dispatch(InstallTask task, IPolyInstallPal pal, bool isUninstall)
     {
         var action = task.Action.Trim().ToLowerInvariant();
         var p = task.Parameters ?? new Dictionary<string, object?>();
@@ -69,6 +69,38 @@ public static class TaskEngine
                 var pathValue = Expand(GetStringOrDefault(p, "path", InstallBootstrap.InstallDirectory ?? ""), pal);
                 var pathScope = GetOptionalString(p, "scope") ?? "user";
                 pal.Path.AddToPath(pathValue, pathScope);
+                break;
+            case "file_association":
+                if (pal.FileAssociations is null)
+                    throw new PlatformNotSupportedException("File association tasks are not supported on this platform.");
+
+                var extension = GetString(p, "extension");
+                var progId = GetOptionalString(p, "prog_id");
+
+                if (string.IsNullOrEmpty(progId))
+                {
+                    var appName = InstallBootstrap.Manifest.Metadata.Name;
+                    var safeAppName = new string(appName.Where(c => char.IsLetterOrDigit(c) || c == '.').ToArray());
+                    progId = $"{safeAppName}{extension}.1";
+                }
+
+                var assoc = new FileAssociationInfo
+                {
+                    Extension = extension,
+                    Description = GetString(p, "description"),
+                    ProgId = progId,
+                    Icon = ExpandOptional(GetOptionalString(p, "icon"), pal),
+                    Command = Expand(GetString(p, "command"), pal)
+                };
+
+                if (isUninstall)
+                {
+                    pal.FileAssociations.Unregister(assoc);
+                }
+                else
+                {
+                    pal.FileAssociations.Register(assoc);
+                }
                 break;
             default:
                 throw new NotSupportedException($"Unknown task action: '{task.Action}'.");
