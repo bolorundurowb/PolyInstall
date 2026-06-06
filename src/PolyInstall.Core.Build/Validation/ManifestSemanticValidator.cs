@@ -19,9 +19,11 @@ public static class ManifestSemanticValidator
     {
         var errors = new List<string>();
         ValidateBuild(manifest, errors);
+        ValidateFeatures(manifest, errors);
         ValidateFiles(manifest, errors);
         ValidateWizardSteps(manifest, errors);
         ValidateTasks(manifest, errors);
+        ValidateFileAssociations(manifest, errors);
 
         if (errors.Count == 0)
             return;
@@ -29,6 +31,106 @@ public static class ManifestSemanticValidator
         var msg = string.Join(Environment.NewLine, errors);
         throw new InvalidOperationException(
             $"Manifest semantic validation failed:{Environment.NewLine}{msg}");
+    }
+
+    private static void ValidateFeatures(InstallManifest manifest, List<string> errors)
+    {
+        var definedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (manifest.Features is { Count: > 0 } features)
+        {
+            for (int i = 0; i < features.Count; i++)
+            {
+                var feat = features[i];
+                if (string.IsNullOrWhiteSpace(feat.Id))
+                {
+                    errors.Add($"features[{i}].id must be non-empty.");
+                    continue;
+                }
+
+                if (!definedIds.Add(feat.Id))
+                {
+                    errors.Add($"features[{i}].id '{feat.Id}' is duplicated. Feature ids must be unique.");
+                }
+            }
+        }
+
+        var anyReference = false;
+
+        if (manifest.Files is { Count: > 0 })
+        {
+            for (int i = 0; i < manifest.Files.Count; i++)
+            {
+                var entry = manifest.Files[i];
+                if (entry.Features is not { Count: > 0 } refs)
+                    continue;
+                anyReference = true;
+                foreach (var fid in refs)
+                {
+                    if (!definedIds.Contains(fid))
+                        errors.Add($"files[{i}].features references unknown feature id '{fid}'.");
+                }
+            }
+        }
+
+        if (manifest.Tasks is not null)
+        {
+            CheckTaskFeatureRefs(manifest.Tasks.PreInstall, "pre_install", definedIds, errors, ref anyReference);
+            CheckTaskFeatureRefs(manifest.Tasks.PostInstall, "post_install", definedIds, errors, ref anyReference);
+            CheckTaskFeatureRefs(manifest.Tasks.PreUninstall, "pre_uninstall", definedIds, errors, ref anyReference);
+            CheckTaskFeatureRefs(manifest.Tasks.PostUninstall, "post_uninstall", definedIds, errors, ref anyReference);
+        }
+
+        if (manifest.FileAssociations is { Count: > 0 } assocs)
+        {
+            for (int i = 0; i < assocs.Count; i++)
+            {
+                var assoc = assocs[i];
+                if (assoc.Features is not { Count: > 0 } refs)
+                    continue;
+                anyReference = true;
+                foreach (var fid in refs)
+                {
+                    if (!definedIds.Contains(fid))
+                        errors.Add($"file_associations[{i}].features references unknown feature id '{fid}'.");
+                }
+            }
+        }
+
+        if (anyReference && definedIds.Count == 0)
+        {
+            errors.Add(
+                "files, tasks, or file_associations reference features, but no features are defined at the manifest level. Define a 'features' list before referencing feature ids.");
+        }
+    }
+
+    private static void CheckTaskFeatureRefs(
+        List<InstallTask>? tasks,
+        string phase,
+        HashSet<string> definedIds,
+        List<string> errors,
+        ref bool anyReference)
+    {
+        if (tasks is null) return;
+        for (int i = 0; i < tasks.Count; i++)
+        {
+            var task = tasks[i];
+            if (task.Features is not { Count: > 0 } refs)
+                continue;
+            anyReference = true;
+            foreach (var fid in refs)
+            {
+                if (!definedIds.Contains(fid))
+                    errors.Add($"tasks.{phase}[{i}].features references unknown feature id '{fid}'.");
+            }
+        }
+    }
+
+    private static void ValidateFileAssociations(InstallManifest manifest, List<string> errors)
+    {
+        // Feature reference validation lives in ValidateFeatures; keep this hook for any
+        // future cross-field association checks unrelated to features.
+        _ = manifest;
+        _ = errors;
     }
 
     private static void ValidateBuild(InstallManifest manifest, List<string> errors)
@@ -166,8 +268,10 @@ public static class ManifestSemanticValidator
 
         var hasProgress = false;
         var hasDestination = false;
+        var hasFeatures = false;
         var progressIndex = -1;
         var destinationIndex = -1;
+        var featuresIndex = -1;
 
         for (int i = 0; i < steps.Count; i++)
         {
@@ -182,12 +286,25 @@ public static class ManifestSemanticValidator
                 hasDestination = true;
                 destinationIndex = i;
             }
+            else if (type == "features")
+            {
+                hasFeatures = true;
+                featuresIndex = i;
+            }
         }
 
         if (hasProgress && !hasDestination)
             errors.Add("ui.wizard_steps contains a 'progress' step but no 'destination' step. A 'destination' step is required before 'progress' so the user can choose an install directory.");
         else if (hasProgress && hasDestination && destinationIndex > progressIndex)
             errors.Add("ui.wizard_steps has 'destination' after 'progress'. The 'destination' step must come before the 'progress' step.");
+
+        if (hasFeatures)
+        {
+            if (hasDestination && featuresIndex < destinationIndex)
+                errors.Add("ui.wizard_steps has 'features' before 'destination'. The 'features' step must come after the 'destination' step.");
+            if (hasProgress && featuresIndex > progressIndex)
+                errors.Add("ui.wizard_steps has 'features' after 'progress'. The 'features' step must come before the 'progress' step.");
+        }
     }
 
     private static void ValidateTasks(InstallManifest manifest, List<string> errors)

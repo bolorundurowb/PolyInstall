@@ -31,6 +31,7 @@ public static class ManifestYaml
             Files = dto.Files ?? [],
             FileAssociations = dto.FileAssociations,
             Tasks = dto.Tasks,
+            Features = dto.Features,
         };
         return m;
     }
@@ -43,5 +44,6 @@ public static class ManifestYaml
         public List<FilesEntry>? Files { get; set; }
         public List<FileAssociation>? FileAssociations { get; set; }
         public TasksConfiguration? Tasks { get; set; }
+        public List<FeatureDefinition>? Features { get; set; }
     }
 }
