@@ -413,6 +413,56 @@ public class TaskEngineTests
             .WithMessage("*PATH*");
     }
 
+    [Fact]
+    public void RunPhase_WhenFileAssociationInstall_CallsRegister()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "file_association",
+                Parameters = new Dictionary<string, object?>
+                {
+                    { "extension", ".oef" },
+                    { "description", "OEF File" },
+                    { "command", "open %1" }
+                }
+            }
+        };
+
+        TaskEngine.RunPhase(tasks, pal);
+
+        pal.RegisterCalls.Should().HaveCount(1);
+        pal.RegisterCalls[0].Extension.Should().Be(".oef");
+        pal.RegisterCalls[0].Description.Should().Be("OEF File");
+        pal.RegisterCalls[0].Command.Should().Be("open %1");
+    }
+
+    [Fact]
+    public void RunPhase_WhenFileAssociationUninstall_CallsUnregister()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "file_association",
+                Parameters = new Dictionary<string, object?>
+                {
+                    { "extension", ".oef" },
+                    { "description", "OEF File" },
+                    { "command", "open %1" }
+                }
+            }
+        };
+
+        TaskEngine.RunPhase(tasks, pal, isUninstall: true);
+
+        pal.UnregisterCalls.Should().HaveCount(1);
+        pal.UnregisterCalls[0].Extension.Should().Be(".oef");
+    }
+
     private sealed class RecordingPal : IPolyInstallPal
     {
         public string AppDirBacking { get; init; } = "";
@@ -430,12 +480,15 @@ public class TaskEngineTests
         public IDesktopEntryPal? DesktopEntries { get; }
         public IFilePermissionsPal? FilePermissions { get; }
         public IPathPal? Path { get; }
+        public IFileAssociationPal? FileAssociations { get; }
 
         public List<(string Target, string Shortcut, string? Description, string? Icon)> ShortcutCalls { get; } = [];
         public List<(string KeyPath, string? ValueName, string Value, string ValueKind)> RegistryCalls { get; } = [];
         public List<(string FileName, string Name, string Exec, string? Icon, string? Comment)> DesktopEntryCalls { get; } = [];
         public List<(string Path, int Mode)> PermissionCalls { get; } = [];
         public List<(string Path, string Scope)> PathCalls { get; } = [];
+        public List<FileAssociationInfo> RegisterCalls { get; } = [];
+        public List<FileAssociationInfo> UnregisterCalls { get; } = [];
 
         public RecordingPal()
         {
@@ -444,6 +497,7 @@ public class TaskEngineTests
             DesktopEntries = new RecordingDesktopEntryPal(this);
             FilePermissions = new RecordingFilePermissionsPal(this);
             Path = new RecordingPathPal(this);
+            FileAssociations = new RecordingFileAssociationPal(this);
         }
 
         private sealed class RecordingShortcutPal(RecordingPal owner) : IShortcutPal
@@ -492,6 +546,12 @@ public class TaskEngineTests
 
             public IReadOnlyList<(string Path, string Scope)> AddedPaths => _addedPaths;
         }
+
+        private sealed class RecordingFileAssociationPal(RecordingPal owner) : IFileAssociationPal
+        {
+            public void Register(FileAssociationInfo association) => owner.RegisterCalls.Add(association);
+            public void Unregister(FileAssociationInfo association) => owner.UnregisterCalls.Add(association);
+        }
     }
 
     private sealed class NoRegistryPal : IPolyInstallPal
@@ -505,6 +565,7 @@ public class TaskEngineTests
         public IDesktopEntryPal? DesktopEntries => null;
         public IFilePermissionsPal? FilePermissions => null;
         public IPathPal? Path => null;
+        public IFileAssociationPal? FileAssociations => null;
     }
 
     private sealed class NullShortcutPal : IShortcutPal

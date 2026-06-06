@@ -313,6 +313,7 @@ public class UpdateFlowTests
         public IDesktopEntryPal? DesktopEntries => null;
         public IFilePermissionsPal? FilePermissions => null;
         public IPathPal? Path => null;
+        public IFileAssociationPal? FileAssociations => null;
     }
 
     private sealed class NoOpShortcutPal : IShortcutPal

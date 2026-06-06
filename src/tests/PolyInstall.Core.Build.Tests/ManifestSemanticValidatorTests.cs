@@ -783,6 +783,99 @@ public class ManifestSemanticValidatorTests
         ex.Message.Should().Contain("'scope' must be 'user' or 'machine'");
     }
 
+    [Fact]
+    public void Validate_FileAssociationWithoutOsPredicate_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall = [
+                new()
+                {
+                    Action = "file_association",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        { "extension", ".oef" },
+                        { "description", "OEF File" },
+                        { "command", "\"app.exe\" \"%1\"" }
+                    }
+                }
+            ]
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("Windows-only");
+    }
+
+    [Fact]
+    public void Validate_FileAssociationMissingParameters_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall = [
+                new()
+                {
+                    Action = "file_association",
+                    Require = "os.is_windows",
+                    Parameters = []
+                }
+            ]
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("requires parameter 'extension'");
+    }
+
+    [Fact]
+    public void Validate_FileAssociationInvalidExtension_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall = [
+                new()
+                {
+                    Action = "file_association",
+                    Require = "os.is_windows",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        { "extension", "oef" },
+                        { "description", "OEF File" },
+                        { "command", "\"app.exe\" \"%1\"" }
+                    }
+                }
+            ]
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("must start with a dot");
+    }
+
+    [Fact]
+    public void Validate_FileAssociationValid_Passes()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall = [
+                new()
+                {
+                    Action = "file_association",
+                    Require = "os.is_windows",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        { "extension", ".oef" },
+                        { "description", "OEF File" },
+                        { "command", "\"app.exe\" \"%1\"" }
+                    }
+                }
+            ]
+        };
+
+        ManifestSemanticValidator.Validate(manifest);
+    }
+
     private static InstallManifest CreateBaseManifest(string installScope)
     {
         return new InstallManifest
