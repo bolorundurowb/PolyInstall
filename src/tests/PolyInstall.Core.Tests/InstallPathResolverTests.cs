@@ -98,6 +98,7 @@ public class InstallPathResolverTests
         public IFilePermissionsPal? FilePermissions => null;
         public IPathPal? Path => null;
         public IFileAssociationPal? FileAssociations => null;
+        public IServiceManagerPal? Services => null;
     }
 
     private sealed class NoOpShortcutPal : IShortcutPal

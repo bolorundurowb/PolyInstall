@@ -26,6 +26,7 @@ installation UI built on **Avalonia**, PolyInstall simplifies the deployment pro
 
 - YAML-Based Manifests: Define your installer metadata, files, and build configurations in a single, simple YAML file.
 - Cross-Platform Support: Generate self-extracting installers for Windows (.exe), Linux (AppImage), and macOS (DMG).
+- Service/Daemon Registration: Register Windows services, Linux systemd units, and macOS launchd jobs from the manifest.
 - Modern Avalonia UI: A clean, responsive installation interface that works across Windows, Linux, and macOS.
 
 ---
@@ -46,12 +47,17 @@ PolyInstall, need unreleased changes, or want custom stub layouts.
 | Piece                            | Role                                                                                                                                                                                                      |
 |----------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **`polyinstall` CLI**            | Parses YAML, substitutes environment variables, validates against JSON Schema, globs files, builds a zip payload, compresses it, and produces one output binary per `build.targets` entry.                |
-| **Stub (`PolyInstall.Runtime`)** | The actual installer binary you ship. It reads the bundle appended to itself, shows a wizard (`PolyInstall.UI`), copies files, and can run **tasks** (shortcuts, registry, `.desktop` files, permissions). |
+| **Stub (`PolyInstall.Runtime`)** | The actual installer binary you ship. It reads the bundle appended to itself, shows a wizard (`PolyInstall.UI`), copies files, registers services/daemons, and can run **tasks** (shortcuts, registry, `.desktop` files, permissions). |
 | **`PolyInstall.Uninstall` (Windows)** | A small, trimmed **uninstall host** published beside the stub. When Windows ARP registration is enabled, the CLI embeds it in the payload as `.polyinstall/tools/PolyInstall.Uninstall.exe`; after install it is copied to **`Uninstall.exe`** at the install root for Add/Remove Programs and command-line uninstall. |
 | **`schema/v1.json`**             | JSON Schema generated from the same C# models as the runtime. Use it in your editor for completion and diagnostics (see [Manifest and schema](#manifest-and-schema)).                                     |
 
-**Platform outputs:** On **Windows**, the installer can register **Add/Remove Programs** and deploy a dedicated **`Uninstall.exe`** (the published `PolyInstall.Uninstall` host) that runs **`--uninstall`**. Re-running a newer packaged installer for the same product detects the existing install, offers an update/repair flow, updates files in place, and refreshes stored install metadata. On **Linux**, the CLI can optionally emit an **AppImage** (requires `mksquashfs` on a Linux
-host). On **macOS**, the CLI can optionally emit a **DMG** via `hdiutil` (requires building on macOS).
+**Platform outputs:** On **Windows**, the installer can register **Add/Remove Programs**, deploy a dedicated
+**`Uninstall.exe`** (the published `PolyInstall.Uninstall` host) that runs **`--uninstall`**, and register Windows
+services. Re-running a newer packaged installer for the same product detects the existing install, offers an
+update/repair flow, updates files in place, removes stale services/daemons, and refreshes stored install metadata. On
+**Linux**, the CLI can optionally emit an **AppImage** (requires `mksquashfs` on a Linux host) and register systemd
+system/user units. On **macOS**, the CLI can optionally emit a **DMG** via `hdiutil` (requires building on macOS) and
+register launchd agents/daemons.
 See [Windows uninstall and ARP](#windows-uninstall-and-arp), [Linux AppImage](#linux-appimage),
 and [macOS DMG](#macos-dmg).
 
@@ -64,6 +70,12 @@ and [macOS DMG](#macos-dmg).
 - The **machine that runs your finished installer** must match the RID you built for (see [Build targets](#build-targets)).
 - **Windows** installers that use `create_shortcut` tasks expect **PowerShell** on the end user’s machine (COM via
   `WScript.Shell`).
+- **Windows services** require Administrator rights. PolyInstall relaunches with UAC when the manifest includes a
+  Windows service.
+- **Linux services** require `systemctl`; `scope: system` requires root, while `scope: user` runs through
+  `systemctl --user`.
+- **macOS services** require `launchctl`; `scope: system` writes a `LaunchDaemon` and requires root, while
+  `scope: user` writes a `LaunchAgent`.
 
 **Building PolyInstall from source** (optional; contributors and advanced setups)
 
@@ -189,7 +201,7 @@ If you work offline, use a **relative** or `file:` URL to `schema/v1.json` in yo
 
 
 
-## Manifest structure (six domains)
+## Manifest structure (seven domains)
 
 The manifest is grouped into six sections. All are represented in JSON Schema; only the fields you need must be set (defaults apply where defined in code).
 
@@ -305,6 +317,72 @@ Optional list of file associations to register. Each entry has:
 
 These associations are registered during installation and restored or removed during uninstallation. Note: for more fine-grained control, you can also use the `file_association` task action.
 
+### `services`
+
+Optional list of background services/daemons to register after payload files are copied. Services are recorded in
+`.polyinstall/install-state.json` so updates can remove stale registrations and uninstall can stop/disable/remove them
+before deleting installed files.
+
+| Field | Meaning |
+|-------|---------|
+| `name` | Service name. On macOS this is used as the launchd label; reverse-DNS names are recommended. |
+| `require` | Required OS predicate such as `os.isWindows`, `os.isLinux`, or `os.isMacOS`. |
+| `scope` | `system` or `user`. Windows supports `system` only. Linux/macOS support both. Defaults to `system`. |
+| `enabled` | Whether the service is enabled for startup. Defaults to `true`. |
+| `start` | Whether to start the service immediately after registration. Defaults to `false`. |
+| `display_name` | Optional Windows display name. |
+| `description` | Optional service description. |
+| `executable` | Service executable path. Supports path placeholders. |
+| `arguments` | Optional command-line arguments. |
+| `working_directory` | Optional working directory. Supports path placeholders. |
+| `restart` | Optional restart policy. Linux accepts systemd restart values; macOS maps `always` / `on-failure` to `KeepAlive`. |
+| `environment` | Optional environment variables. |
+| `features` | Optional feature ids that gate this service. |
+
+**Platform behavior:**
+- **Windows**: Uses the Service Control Manager via `sc.exe`. Services are machine-level and require Administrator rights; the installer relaunches elevated when needed.
+- **Linux**: Writes systemd unit files under `/etc/systemd/system` for `scope: system` or `~/.config/systemd/user` for `scope: user`, then runs `systemctl`.
+- **macOS**: Writes launchd plists under `/Library/LaunchDaemons` for `scope: system` or `~/Library/LaunchAgents` for `scope: user`, then runs `launchctl`.
+
+`enabled` controls startup registration and defaults to `true`. `start` controls whether the service is started immediately
+after registration and defaults to `false`. On uninstall, PolyInstall best-effort stops, disables, and removes every
+service recorded in install state before deleting installed files.
+
+```yaml
+services:
+  - name: "ExampleService"
+    require: os.isWindows
+    scope: system
+    enabled: true
+    start: false
+    display_name: "Example Service"
+    description: "MyApp background service"
+    executable: "{AppDir}\\MyApp.exe"
+    arguments: ["--service"]
+
+  - name: "com.example.myapp"
+    require: os.isLinux
+    scope: user
+    enabled: true
+    start: false
+    description: "MyApp background service"
+    executable: "{AppDir}/bin/myapp"
+    arguments: ["--service"]
+    working_directory: "{AppDir}"
+    restart: on-failure
+
+  - name: "com.example.myapp"
+    require: os.isMacOS
+    scope: user
+    enabled: true
+    start: false
+    description: "MyApp background service"
+    executable: "{AppDir}/MyApp.app/Contents/MacOS/MyApp"
+    arguments: ["--service"]
+    working_directory: "{AppDir}"
+    restart: always
+```
+
 ### `features`
 
 Optional list of installable features that the end user can toggle in the installer's
@@ -312,12 +390,12 @@ Optional list of installable features that the end user can toggle in the instal
 
 | Field | Meaning |
 |-------|---------|
-| `id` | Unique identifier referenced by `files[].features`, `tasks.*[].features`, and `file_associations[].features`. |
+| `id` | Unique identifier referenced by `files[].features`, `tasks.*[].features`, `file_associations[].features`, and `services[].features`. |
 | `name` | Human-readable name shown next to the feature's checkbox. |
 | `description` | Optional short description shown alongside the checkbox. |
 | `default_selected` | When `true` (default), the feature is pre-checked on a fresh install. |
 
-`files`, `tasks`, and `file_associations` entries without a `features:` list are **core**
+`files`, `tasks`, `file_associations`, and `services` entries without a `features:` list are **core**
 — always installed regardless of selection. Entries that list one or more feature ids are
 gated: they are installed/registered/executed only when at least one of the referenced
 features is selected. The set of files that belongs to multiple features is allowed if
@@ -357,12 +435,13 @@ checkboxes). When the manifest has no `features:` list, the step is skipped auto
 
 **Updates and uninstall.** `install-state.json` records the selected features. On update,
 the installer pre-selects what was previously installed; deselecting a feature on an
-update prunes its files. On uninstall, feature-gated tasks and file associations only
-run if the feature was installed. Pre-feature installs (no `selected_features` recorded)
-fall back to running every feature-gated task during uninstall.
+update prunes its files and removes stale services. On uninstall, feature-gated tasks,
+file associations, and services only run or clean up if the feature was installed.
+Pre-feature installs (no `selected_features` recorded) fall back to running every
+feature-gated task during uninstall.
 
 **Backward compatibility.** A manifest without a `features:` list behaves exactly like
-before this feature existed: every file/task/association is core and installed in full.
+before this feature existed: every file/task/association/service is core and installed in full.
 
 ### `tasks`
 
@@ -528,7 +607,7 @@ If `wizard_steps` is empty, the UI falls back to a minimal welcome + finish flow
 
 ## Path placeholders
 
-Wizard strings (for example `ui.wizard_steps` → `destination.default_path`) and **task string parameters** (all string fields passed to `create_shortcut`, `write_registry`, `create_desktop_entry`, `set_permissions`, and `file_association`) can include:
+Wizard strings (for example `ui.wizard_steps` → `destination.default_path`), **task string parameters**, and **service string fields** (`executable`, `arguments`, `working_directory`, and `environment` values) can include:
 
 | Placeholder | Meaning |
 |-------------|---------|
@@ -654,6 +733,9 @@ Invalid file-name characters in `metadata.name` are replaced with underscores.
 | **No files matched** | Check `source_dir` relative to `--base`, and `include` / `exclude` patterns. |
 | **Wrong OS** | The stub RID must match the machine (e.g. do not run a `win-x64` build on Linux). |
 | **Shortcut / registry tasks fail on Windows** | PowerShell execution policy, permissions, and paths in `parameters`. |
+| **Service registration fails on Windows** | Windows services require Administrator rights. Confirm the installer elevated successfully and that `sc.exe` is available. |
+| **Service registration fails on Linux** | Confirm `systemctl` exists. `scope: system` requires root; `scope: user` requires a usable user systemd session. |
+| **Service registration fails on macOS** | Confirm `launchctl` is available. `scope: system` requires root and writes `/Library/LaunchDaemons`; `scope: user` writes `~/Library/LaunchAgents`. |
 
 
 

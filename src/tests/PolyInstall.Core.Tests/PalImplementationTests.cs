@@ -110,6 +110,70 @@ public class PalImplementationTests
     }
 
     [Fact]
+    public void WindowsServiceManagerPal_BuildBinPath_QuotesExecutableAndArguments()
+    {
+        var info = new ServiceRegistrationInfo
+        {
+            Executable = @"C:\Program Files\MyApp\app.exe",
+            Arguments = ["--service", "value with spaces"],
+        };
+
+        var binPath = WindowsServiceManagerPal.BuildBinPath(info);
+
+        binPath.Should().Be("\"C:\\Program Files\\MyApp\\app.exe\" --service \"value with spaces\"");
+    }
+
+    [Fact]
+    public void LinuxSystemdServiceManagerPal_BuildUnitContent_IncludesServiceFields()
+    {
+        var info = new ServiceRegistrationInfo
+        {
+            Name = "myapp",
+            Description = "My App",
+            Scope = "user",
+            Executable = "/opt/myapp/app",
+            Arguments = ["--service"],
+            WorkingDirectory = "/opt/myapp",
+            Restart = "on-failure",
+            Environment = new Dictionary<string, string> { ["MYAPP_HOME"] = "/opt/myapp" },
+        };
+
+        var content = LinuxSystemdServiceManagerPal.BuildUnitContent(info);
+
+        content.Should().Contain("[Unit]");
+        content.Should().Contain("Description=My App");
+        content.Should().Contain("ExecStart=/opt/myapp/app --service");
+        content.Should().Contain("WorkingDirectory=/opt/myapp");
+        content.Should().Contain("Restart=on-failure");
+        content.Should().Contain("Environment=\"MYAPP_HOME=/opt/myapp\"");
+        content.Should().Contain("WantedBy=default.target");
+    }
+
+    [Fact]
+    public void MacOsLaunchdServiceManagerPal_BuildPlistContent_IncludesLaunchdFields()
+    {
+        var info = new ServiceRegistrationInfo
+        {
+            Name = "com.example.myapp",
+            Executable = "/Applications/MyApp.app/Contents/MacOS/MyApp",
+            Arguments = ["--service"],
+            WorkingDirectory = "/Applications/MyApp.app",
+            Restart = "always",
+            Environment = new Dictionary<string, string> { ["MYAPP_HOME"] = "/Applications/MyApp.app" },
+        };
+
+        var content = MacOsLaunchdServiceManagerPal.BuildPlistContent(info);
+
+        content.Should().Contain("<key>Label</key>");
+        content.Should().Contain("<string>com.example.myapp</string>");
+        content.Should().Contain("<key>ProgramArguments</key>");
+        content.Should().Contain("<string>--service</string>");
+        content.Should().Contain("<key>WorkingDirectory</key>");
+        content.Should().Contain("<key>KeepAlive</key>");
+        content.Should().Contain("<key>EnvironmentVariables</key>");
+    }
+
+    [Fact]
     public void PosixPathPal_SanitizeFileName_RemovesInvalidCharacters()
     {
         var sanitized = PosixPathPal.SanitizeFileName("/usr/local/bin/myapp");

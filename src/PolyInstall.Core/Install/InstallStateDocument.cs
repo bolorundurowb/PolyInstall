@@ -16,6 +16,7 @@ public sealed class InstallStateDocument
     public List<string>? PayloadFiles { get; set; }
     public List<string>? AddedToPath { get; set; }
     public List<FileAssociationBackup>? FileAssociationBackups { get; set; }
+    public List<RegisteredServiceInfo>? RegisteredServices { get; set; }
 
     /// <summary>
     /// Feature ids that were selected by the user at install time. Used on update/uninstall

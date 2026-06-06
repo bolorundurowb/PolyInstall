@@ -64,3 +64,36 @@ files:
     include:
       - "docs/**/*"
     features: [docs]
+# Optional background services/daemons. Services are registered after files are copied
+# and removed automatically during uninstall. Always add `require` so each entry only
+# runs on the intended platform.
+# services:
+#   - name: "ExampleService"
+#     require: os.isWindows
+#     scope: system
+#     enabled: true
+#     start: false
+#     display_name: "Example Service"
+#     description: "Runs SampleApp in the background."
+#     executable: "{AppDir}\\SampleApp.exe"
+#     arguments: ["--service"]
+#   - name: "com.example.sampleapp"
+#     require: os.isLinux
+#     scope: user
+#     enabled: true
+#     start: false
+#     description: "Runs SampleApp in the background."
+#     executable: "{AppDir}/bin/sampleapp"
+#     arguments: ["--service"]
+#     working_directory: "{AppDir}"
+#     restart: on-failure
+#   - name: "com.example.sampleapp"
+#     require: os.isMacOS
+#     scope: user
+#     enabled: true
+#     start: false
+#     description: "Runs SampleApp in the background."
+#     executable: "{AppDir}/SampleApp.app/Contents/MacOS/SampleApp"
+#     arguments: ["--service"]
+#     working_directory: "{AppDir}"
+#     restart: always

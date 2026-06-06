@@ -950,6 +950,101 @@ public class ManifestSemanticValidatorTests
         ManifestSemanticValidator.Validate(manifest);
     }
 
+    [Fact]
+    public void Validate_ServiceWithoutOsPredicate_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Services =
+        [
+            new ServiceDefinition
+            {
+                Name = "com.example.app",
+                Executable = "{AppDir}/app",
+                Scope = "user",
+            },
+        ];
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("services require an OS predicate");
+    }
+
+    [Fact]
+    public void Validate_WindowsUserService_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Services =
+        [
+            new ServiceDefinition
+            {
+                Name = "ExampleService",
+                Require = "os.isWindows",
+                Executable = "{AppDir}\\app.exe",
+                Scope = "user",
+            },
+        ];
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("Windows services support only scope 'system'");
+    }
+
+    [Fact]
+    public void Validate_MacOsServiceWithUnsupportedRestart_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Services =
+        [
+            new ServiceDefinition
+            {
+                Name = "com.example.app",
+                Require = "os.isMacOS",
+                Executable = "{AppDir}/app",
+                Scope = "user",
+                Restart = "on-success",
+            },
+        ];
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("cannot be mapped to launchd");
+    }
+
+    [Fact]
+    public void Validate_LinuxUserService_Passes()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Services =
+        [
+            new ServiceDefinition
+            {
+                Name = "com.example.app",
+                Require = "os.isLinux",
+                Executable = "{AppDir}/app",
+                Scope = "user",
+                Restart = "on-failure",
+            },
+        ];
+
+        ManifestSemanticValidator.Validate(manifest);
+    }
+
+    [Fact]
+    public void Validate_MacOsUserService_Passes()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Services =
+        [
+            new ServiceDefinition
+            {
+                Name = "com.example.app",
+                Require = "os.isMacOS",
+                Executable = "{AppDir}/app",
+                Scope = "user",
+                Restart = "always",
+            },
+        ];
+
+        ManifestSemanticValidator.Validate(manifest);
+    }
+
     private static InstallManifest CreateBaseManifest(string installScope)
     {
         return new InstallManifest

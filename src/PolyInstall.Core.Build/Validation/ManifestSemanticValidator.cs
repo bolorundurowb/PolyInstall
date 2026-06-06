@@ -23,6 +23,7 @@ public static class ManifestSemanticValidator
         ValidateFiles(manifest, errors);
         ValidateWizardSteps(manifest, errors);
         ValidateTasks(manifest, errors);
+        ValidateServices(manifest, errors);
         ValidateFileAssociations(manifest, errors);
 
         if (errors.Count == 0)
@@ -92,6 +93,22 @@ public static class ManifestSemanticValidator
                 {
                     if (!definedIds.Contains(fid))
                         errors.Add($"file_associations[{i}].features references unknown feature id '{fid}'.");
+                }
+            }
+        }
+
+        if (manifest.Services is { Count: > 0 } services)
+        {
+            for (int i = 0; i < services.Count; i++)
+            {
+                var service = services[i];
+                if (service.Features is not { Count: > 0 } refs)
+                    continue;
+                anyReference = true;
+                foreach (var fid in refs)
+                {
+                    if (!definedIds.Contains(fid))
+                        errors.Add($"services[{i}].features references unknown feature id '{fid}'.");
                 }
             }
         }
@@ -339,6 +356,67 @@ public static class ManifestSemanticValidator
                 ValidateAddToPath(task, prefix, isUserScope, errors);
             else if (task.Action.Equals("file_association", StringComparison.OrdinalIgnoreCase))
                 ValidateFileAssociation(task, prefix, errors);
+            else
+                errors.Add($"{prefix}: unknown task action '{task.Action}'.");
+        }
+    }
+
+    private static void ValidateServices(InstallManifest manifest, List<string> errors)
+    {
+        if (manifest.Services is not { Count: > 0 } services)
+            return;
+
+        for (int i = 0; i < services.Count; i++)
+        {
+            var service = services[i];
+            var prefix = $"services[{i}]";
+
+            if (string.IsNullOrWhiteSpace(service.Name))
+                errors.Add($"{prefix}.name is required.");
+            else if (!IsValidServiceName(service.Name))
+                errors.Add($"{prefix}.name '{service.Name}' contains unsupported characters. Use letters, digits, '.', '_', or '-'.");
+
+            if (string.IsNullOrWhiteSpace(service.Executable))
+                errors.Add($"{prefix}.executable is required.");
+
+            var scope = string.IsNullOrWhiteSpace(service.Scope) ? "system" : service.Scope;
+            if (!IsOneOf(scope, "system", "user", "machine"))
+                errors.Add($"{prefix}.scope must be 'system' or 'user', got '{service.Scope}'.");
+
+            var isWindows = HasOsPredicate(service.Require, "windows") || HasOsPredicate(service.Require, "win");
+            var isLinux = HasOsPredicate(service.Require, "linux");
+            var isMacOs = HasOsPredicate(service.Require, "macos") || HasOsPredicate(service.Require, "osx");
+            var isUnix = HasOsPredicate(service.Require, "unix");
+
+            if (!isWindows && !isLinux && !isMacOs && !isUnix)
+            {
+                errors.Add(
+                    $"{prefix}: services require an OS predicate (e.g., 'os.isWindows', 'os.isLinux', or 'os.isMacOS') to avoid runtime errors on unsupported platforms.");
+            }
+
+            if (isWindows && scope.Equals("user", StringComparison.OrdinalIgnoreCase))
+                errors.Add($"{prefix}: Windows services support only scope 'system'.");
+
+            if ((isMacOs || isUnix) && !IsValidLaunchdRestart(service.Restart))
+            {
+                errors.Add(
+                    $"{prefix}.restart '{service.Restart}' cannot be mapped to launchd. Supported for macOS: always, on-failure.");
+            }
+
+            if (!IsValidSystemdRestart(service.Restart))
+            {
+                errors.Add(
+                    $"{prefix}.restart '{service.Restart}' is not a supported systemd restart policy. Supported: no, always, on-success, on-failure, on-abnormal, on-watchdog, on-abort.");
+            }
+
+            if (service.Environment is { Count: > 0 })
+            {
+                foreach (var key in service.Environment.Keys)
+                {
+                    if (string.IsNullOrWhiteSpace(key) || key.Any(c => !(char.IsLetterOrDigit(c) || c == '_')) || char.IsDigit(key[0]))
+                        errors.Add($"{prefix}.environment contains invalid variable name '{key}'. Use shell-style names such as MY_APP_HOME.");
+                }
+            }
         }
     }
 
@@ -530,6 +608,29 @@ public static class ManifestSemanticValidator
         var r = req.Trim().ToLowerInvariant();
         return r.Contains(osKeyword);
     }
+
+    private static bool HasOsPredicate(string? require, string osKeyword)
+    {
+        if (string.IsNullOrWhiteSpace(require))
+            return false;
+
+        var r = require.Trim().ToLowerInvariant();
+        return r.Contains(osKeyword);
+    }
+
+    private static bool IsValidServiceName(string name) =>
+        name.All(c => char.IsLetterOrDigit(c) || c is '.' or '_' or '-')
+        && !name.Contains("..", StringComparison.Ordinal)
+        && !name.Contains(Path.DirectorySeparatorChar)
+        && !name.Contains(Path.AltDirectorySeparatorChar);
+
+    private static bool IsValidSystemdRestart(string? restart) =>
+        string.IsNullOrWhiteSpace(restart)
+        || IsOneOf(restart, "no", "always", "on-success", "on-failure", "on-abnormal", "on-watchdog", "on-abort");
+
+    private static bool IsValidLaunchdRestart(string? restart) =>
+        string.IsNullOrWhiteSpace(restart)
+        || IsOneOf(restart, "always", "on-failure");
 
     private static bool HasTargetPrefix(InstallManifest manifest, string prefix)
     {
