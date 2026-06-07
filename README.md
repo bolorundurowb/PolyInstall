@@ -601,7 +601,7 @@ The stub opens its own executable path, finds the PolyInstall footer, and reads 
 | `progress` | `title` | Runs **pre-install** tasks, copies extracted payload to the install directory, then **post-install** tasks. |
 | `finish` | `title` | Summary. |
 
-If `wizard_steps` is empty, the UI falls back to a minimal welcome + finish flow.
+If `wizard_steps` is empty, the UI falls back to a standard welcome + destination + progress + finish flow.
 
 
 
@@ -645,6 +645,7 @@ String parameter values are passed through [path placeholder](#path-placeholders
 | `write_registry` | Windows only | `key_path` (e.g. `HKCU\Software\Vendor\App`), `value_name`, `value`, `value_kind` (`string`, `reg_sz`, `dword`, …) |
 | `create_desktop_entry` | Linux only (Freedesktop-style) | `file_name`, `name`, `exec`, optional `icon`, `comment` |
 | `set_permissions` | Linux / macOS | `path`, `mode` (integer, e.g. octal `755` as decimal or use the value your pipeline expects — the PAL passes through to `chmod`) |
+| `add_to_path` | Windows / Linux / macOS | optional `path` (defaults to install directory), optional `scope` (`user` or `machine`; machine requires `build.windows.install_scope: machine` on Windows) |
 | `file_association` | All platforms | `extension`, `description`, optional `prog_id`, optional `icon`, `command`, optional `mime_type` (Linux), optional `bundle_path` (macOS, required) |
 
 If an action is not supported on the current OS, the runtime throws a clear **platform not supported** error for that task.
@@ -771,20 +772,20 @@ jobs:
           unzip polyinstall.zip
           chmod +x polyinstall-linux-x64/polyinstall
 
-      - name: Build installer
+      - id: build
+        name: Build installer
         run: |
           ./polyinstall-linux-x64/polyinstall build \
             manifest.yaml \
             --base . \
-            --json \
             --output-manifest build-manifest.json
+          echo "artifact_path=$(jq -r '.artifacts[0].path' build-manifest.json)" >> "$GITHUB_OUTPUT"
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v6
         with:
           name: installer
-          path: |
-            ${{ fromJson(steps.build.outputs.manifest).artifacts[0].path }}
+          path: ${{ steps.build.outputs.artifact_path }}
 ```
 
 > **Tip:** Pipe `--json` output directly to `jq` to extract paths in shell scripts:
