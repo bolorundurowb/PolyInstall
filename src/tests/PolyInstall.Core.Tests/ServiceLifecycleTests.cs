@@ -10,6 +10,7 @@ public class ServiceLifecycleTests
     public void InstallCoordinator_Run_RegistersServicesAndPersistsState()
     {
         var manifest = TestHelpers.Manifest("SampleApp", "2.0.0");
+        manifest.Build.InstallerTarget = "linux-x64";
         manifest.Services =
         [
             new ServiceDefinition
