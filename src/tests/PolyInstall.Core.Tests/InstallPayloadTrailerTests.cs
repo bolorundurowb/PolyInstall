@@ -21,20 +21,20 @@ public class InstallPayloadTrailerTests
         ms.Position = 0;
 
         var (manifestLen, payloadLen) = InstallPayloadTrailer.ReadFooter(ms);
-        manifestLen.Should().Be(manifestBytes.Length);
-        payloadLen.Should().Be(innerZip.Length);
+        manifestLen.Verify().ToBe(manifestBytes.Length);
+        payloadLen.Verify().ToBe(innerZip.Length);
 
         var (manifestStart, payloadStart) = InstallPayloadTrailer.GetBlobOffsets(ms.Length, manifestLen, payloadLen);
-        manifestStart.Should().Be(stub.Length);
-        payloadStart.Should().Be(stub.Length + manifestLen);
+        manifestStart.Verify().ToBe(stub.Length);
+        payloadStart.Verify().ToBe(stub.Length + manifestLen);
 
         var json = InstallPayloadTrailer.ReadManifestUtf8(ms, manifestStart, manifestLen);
-        json.Should().Contain("\"name\":\"T\"");
+        json.Verify().ToContain("\"name\":\"T\"");
 
         ms.Seek(payloadStart, SeekOrigin.Begin);
         var payload = new byte[payloadLen];
         ms.ReadExactly(payload, 0, (int)payloadLen);
-        payload.Should().Equal(innerZip);
+        payload.Verify().ToBeEquivalentTo(innerZip);
     }
 
     [Fact]
@@ -55,13 +55,13 @@ public class InstallPayloadTrailerTests
 
         var (manifestLen, payloadLen, actualFooterStart) = InstallPayloadTrailer.ReadFooterWithOffset(ms);
 
-        manifestLen.Should().Be(manifestBytes.Length);
-        payloadLen.Should().Be(innerZip.Length);
-        actualFooterStart.Should().Be(footerStart);
+        manifestLen.Verify().ToBe(manifestBytes.Length);
+        payloadLen.Verify().ToBe(innerZip.Length);
+        actualFooterStart.Verify().ToBe(footerStart);
         var (manifestStart, payloadStart) =
             InstallPayloadTrailer.GetBlobOffsetsFromFooter(actualFooterStart, manifestLen, payloadLen);
-        manifestStart.Should().Be(stub.Length);
-        payloadStart.Should().Be(stub.Length + manifestLen);
+        manifestStart.Verify().ToBe(stub.Length);
+        payloadStart.Verify().ToBe(stub.Length + manifestLen);
     }
 
     [Fact]
@@ -82,17 +82,16 @@ public class InstallPayloadTrailerTests
 
         var (manifestLen, payloadLen, actualFooterStart) = InstallPayloadTrailer.ReadFooterWithOffset(ms);
 
-        manifestLen.Should().Be(manifestBytes.Length);
-        payloadLen.Should().Be(innerZip.Length);
-        actualFooterStart.Should().Be(footerStart);
+        manifestLen.Verify().ToBe(manifestBytes.Length);
+        payloadLen.Verify().ToBe(innerZip.Length);
+        actualFooterStart.Verify().ToBe(footerStart);
     }
 
     [Fact]
     public void GetBlobOffsets_WithInvalidLengths_ThrowsInvalidOperationException()
     {
-        FluentActions.Invoking(() => InstallPayloadTrailer.GetBlobOffsets(10, 100, 100))
-            .Should().Throw<InvalidOperationException>()
-            .WithMessage("*Invalid trailer lengths*");
+        ((Action)(() => InstallPayloadTrailer.GetBlobOffsets(10, 100, 100))).Throws<InvalidOperationException>()
+            .WithMessageContaining("Invalid trailer lengths");
     }
 
     private static byte[] CreateMinimalZip(string entryName, string content)

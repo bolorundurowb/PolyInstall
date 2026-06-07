@@ -16,8 +16,8 @@ public class ZipPayloadExtractorTests
 
             ZipPayloadExtractor.ExtractToDirectory(zip, dest);
 
-            File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be("hello");
-            File.ReadAllText(Path.Combine(dest, "sub", "b.txt")).Should().Be("world");
+            File.ReadAllText(Path.Combine(dest, "a.txt")).Verify().ToBe("hello");
+            File.ReadAllText(Path.Combine(dest, "sub", "b.txt")).Verify().ToBe("world");
         }
         finally
         {
@@ -36,7 +36,7 @@ public class ZipPayloadExtractorTests
 
             ZipPayloadExtractor.ExtractToDirectory(zip, dest);
 
-            File.Exists(Path.Combine(dest, "a.txt")).Should().BeTrue();
+            File.Exists(Path.Combine(dest, "a.txt")).Verify().ToBeTrue();
         }
         finally
         {
@@ -52,9 +52,8 @@ public class ZipPayloadExtractorTests
         {
             var zip = CreateZipWithTraversalEntry();
 
-            FluentActions.Invoking(() => ZipPayloadExtractor.ExtractToDirectory(zip, dest))
-                .Should().Throw<InvalidOperationException>()
-                .WithMessage("*escapes destination*");
+            ((Action)(() => ZipPayloadExtractor.ExtractToDirectory(zip, dest))).Throws<InvalidOperationException>()
+                .WithMessageContaining("escapes destination");
         }
         finally
         {

@@ -13,7 +13,7 @@ public class RidMappingTests
     [InlineData("osx-arm64", "osx-arm64")]
     public void ToDotNetRid_WithKnownToken_ReturnsExpectedRid(string token, string expected)
     {
-        RidMapping.ToDotNetRid(token).Should().Be(expected);
+        RidMapping.ToDotNetRid(token).Verify().ToBe(expected);
     }
 
     [Theory]
@@ -21,14 +21,13 @@ public class RidMappingTests
     [InlineData("  linux-x64  ")]
     public void ToDotNetRid_WithCasingOrWhitespace_IsCaseInsensitiveAndTrimmed(string token)
     {
-        RidMapping.ToDotNetRid(token).Should().BeOneOf("win-x64", "linux-x64");
+        RidMapping.ToDotNetRid(token).Verify().ToBeOneOf("win-x64", "linux-x64");
     }
 
     [Fact]
     public void ToDotNetRid_WithUnknownToken_ThrowsArgumentException()
     {
-        FluentActions.Invoking(() => RidMapping.ToDotNetRid("unknown"))
-            .Should().Throw<ArgumentException>()
-            .WithMessage("*Unknown build target RID token*");
+        ((Action)(() => RidMapping.ToDotNetRid("unknown"))).Throws<ArgumentException>()
+            .WithMessageContaining("Unknown build target RID token");
     }
 }

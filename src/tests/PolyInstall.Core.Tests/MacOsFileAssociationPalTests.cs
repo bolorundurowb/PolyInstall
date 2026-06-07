@@ -19,7 +19,7 @@ public class MacOsFileAssociationPalTests
 
         var result = MacOsFileAssociationPal.ResolveUti(assoc);
 
-        result.Should().Be("com.example.custom");
+        result.Verify().ToBe("com.example.custom");
     }
 
     [Fact]
@@ -32,7 +32,7 @@ public class MacOsFileAssociationPalTests
 
         var result = MacOsFileAssociationPal.ResolveUti(assoc);
 
-        result.Should().Be("myapp-v1.0");
+        result.Verify().ToBe("myapp-v1.0");
     }
 
     [Fact]
@@ -42,7 +42,7 @@ public class MacOsFileAssociationPalTests
             return; // macOS-only path layout; on Windows Path.Combine emits backslashes.
 
         MacOsFileAssociationPal.GetInfoPlistPath("/Applications/MyApp.app")
-            .Should().Be("/Applications/MyApp.app/Contents/Info.plist");
+            .Verify().ToBe("/Applications/MyApp.app/Contents/Info.plist");
     }
 
     [Fact]
@@ -55,9 +55,10 @@ public class MacOsFileAssociationPalTests
 
         var result = MacOsFileAssociationPal.GetOrCreateArray(dict, "MyKey");
 
-        result.Should().NotBeNull();
-        result.Elements("string").Select(e => e.Value).Should().ContainSingle()
-            .Which.Should().Be("existing");
+        result.Verify().NotToBeNull();
+        var values = result.Elements("string").Select(e => e.Value).ToList();
+        values.Verify().ToHaveCount(1);
+        values[0].Verify().ToBe("existing");
     }
 
     [Fact]
@@ -67,9 +68,9 @@ public class MacOsFileAssociationPalTests
 
         var result = MacOsFileAssociationPal.GetOrCreateArray(dict, "NewKey");
 
-        result.Should().NotBeNull();
-        result.Name.LocalName.Should().Be("array");
-        dict.Elements("key").Select(e => e.Value).Should().Contain("NewKey");
+        result.Verify().NotToBeNull();
+        result.Name.LocalName.Verify().ToBe("array");
+        dict.Elements("key").Select(e => e.Value).Verify().ToContain("NewKey");
     }
 
     [Fact]
@@ -82,7 +83,7 @@ public class MacOsFileAssociationPalTests
 
         var result = MacOsFileAssociationPal.FindDictInArray(array, "CFBundleTypeName", "MyApp");
 
-        result.Should().NotBeNull();
+        result.Verify().NotToBeNull();
     }
 
     [Fact]
@@ -95,7 +96,7 @@ public class MacOsFileAssociationPalTests
 
         var result = MacOsFileAssociationPal.FindDictInArray(array, "CFBundleTypeName", "MyApp");
 
-        result.Should().BeNull();
+        result.Verify().ToBeNull();
     }
 
     [Fact]
@@ -107,8 +108,9 @@ public class MacOsFileAssociationPalTests
 
         MacOsFileAssociationPal.UpdateStringInDict(dict, "Name", "New", append: false);
 
-        dict.Elements("string").Select(e => e.Value).Should().ContainSingle()
-            .Which.Should().Be("New");
+        var values = dict.Elements("string").Select(e => e.Value).ToList();
+        values.Verify().ToHaveCount(1);
+        values[0].Verify().ToBe("New");
     }
 
     [Fact]
@@ -118,8 +120,8 @@ public class MacOsFileAssociationPalTests
 
         MacOsFileAssociationPal.UpdateStringInDict(dict, "Name", "New", append: false);
 
-        dict.Elements("key").Select(e => e.Value).Should().Contain("Name");
-        dict.Elements("string").Select(e => e.Value).Should().Contain("New");
+        dict.Elements("key").Select(e => e.Value).Verify().ToContain("Name");
+        dict.Elements("string").Select(e => e.Value).Verify().ToContain("New");
     }
 
     [Fact]
@@ -133,8 +135,8 @@ public class MacOsFileAssociationPalTests
         MacOsFileAssociationPal.UpdateStringInDict(dict, "Exts", "new", append: true);
 
         var values = dict.Elements("array").Elements("string").Select(e => e.Value).ToList();
-        values.Should().Contain("old");
-        values.Should().Contain("new");
+        values.Verify().ToContain("old");
+        values.Verify().ToContain("new");
     }
 
     [Fact]
@@ -145,9 +147,10 @@ public class MacOsFileAssociationPalTests
         MacOsFileAssociationPal.UpdateStringInDict(dict, "Exts", "new", append: true);
 
         var array = dict.Elements("array").FirstOrDefault();
-        array.Should().NotBeNull();
-        array!.Elements("string").Select(e => e.Value).Should().ContainSingle()
-            .Which.Should().Be("new");
+        array.Verify().NotToBeNull();
+        var values = array!.Elements("string").Select(e => e.Value).ToList();
+        values.Verify().ToHaveCount(1);
+        values[0].Verify().ToBe("new");
     }
 
     [Fact]
@@ -155,9 +158,9 @@ public class MacOsFileAssociationPalTests
     {
         var result = MacOsFileAssociationPal.CreateStringElement("MyKey", "MyValue");
 
-        result.Name.LocalName.Should().Be("dict");
-        result.Elements("key").Select(e => e.Value).Should().Contain("MyKey");
-        result.Elements("string").Select(e => e.Value).Should().Contain("MyValue");
+        result.Name.LocalName.Verify().ToBe("dict");
+        result.Elements("key").Select(e => e.Value).Verify().ToContain("MyKey");
+        result.Elements("string").Select(e => e.Value).Verify().ToContain("MyValue");
     }
 
     [Fact]
@@ -165,10 +168,11 @@ public class MacOsFileAssociationPalTests
     {
         var result = MacOsFileAssociationPal.CreateArrayElement("MyKey", "MyValue");
 
-        result.Name.LocalName.Should().Be("placeholder");
-        result.Elements("key").Select(e => e.Value).Should().Contain("MyKey");
-        result.Elements("array").Elements("string").Select(e => e.Value).Should().ContainSingle()
-            .Which.Should().Be("MyValue");
+        result.Name.LocalName.Verify().ToBe("placeholder");
+        result.Elements("key").Select(e => e.Value).Verify().ToContain("MyKey");
+        var values = result.Elements("array").Elements("string").Select(e => e.Value).ToList();
+        values.Verify().ToHaveCount(1);
+        values[0].Verify().ToBe("MyValue");
     }
 
     [Fact]
@@ -176,7 +180,7 @@ public class MacOsFileAssociationPalTests
     {
         var key = new XElement("key", "UTTypeIdentifier");
 
-        MacOsFileAssociationPal.IsKeyBefore(key, "UTTypeIdentifier").Should().BeTrue();
+        MacOsFileAssociationPal.IsKeyBefore(key, "UTTypeIdentifier").Verify().ToBeTrue();
     }
 
     [Fact]
@@ -184,7 +188,7 @@ public class MacOsFileAssociationPalTests
     {
         var key = new XElement("key", "UTTypeIdentifier");
 
-        MacOsFileAssociationPal.IsKeyBefore(key, "OtherKey").Should().BeFalse();
+        MacOsFileAssociationPal.IsKeyBefore(key, "OtherKey").Verify().ToBeFalse();
     }
 
     [Fact]
@@ -192,7 +196,7 @@ public class MacOsFileAssociationPalTests
     {
         var element = new XElement("string", "UTTypeIdentifier");
 
-        MacOsFileAssociationPal.IsKeyBefore(element, "UTTypeIdentifier").Should().BeFalse();
+        MacOsFileAssociationPal.IsKeyBefore(element, "UTTypeIdentifier").Verify().ToBeFalse();
     }
 
     [Fact]
@@ -208,7 +212,7 @@ public class MacOsFileAssociationPalTests
         MacOsFileAssociationPal.AddOrUpdateDocumentType(rootDict, assoc, "com.example.myapp", "myext");
 
         var array = MacOsFileAssociationPal.GetOrCreateArray(rootDict, "CFBundleDocumentTypes");
-        array.Elements("dict").Should().ContainSingle();
+        array.Elements("dict").Verify().ToHaveCount(1);
     }
 
     [Fact]
@@ -230,13 +234,13 @@ public class MacOsFileAssociationPalTests
 
         var array = MacOsFileAssociationPal.GetOrCreateArray(rootDict, "CFBundleDocumentTypes");
         var entry = MacOsFileAssociationPal.FindDictInArray(array, "CFBundleTypeName", "MyApp");
-        entry.Should().NotBeNull();
+        entry.Verify().NotToBeNull();
         var extArray = entry!.Elements()
             .FirstOrDefault(e => e.Name == "key" && e.Value == "CFBundleTypeExtensions")
             ?.ElementsAfterSelf("array").FirstOrDefault();
-        extArray.Should().NotBeNull();
-        extArray!.Elements("string").Select(e => e.Value).Should().Contain("old");
-        extArray.Elements("string").Select(e => e.Value).Should().Contain("new");
+        extArray.Verify().NotToBeNull();
+        extArray!.Elements("string").Select(e => e.Value).Verify().ToContain("old");
+        extArray.Elements("string").Select(e => e.Value).Verify().ToContain("new");
     }
 
     [Fact]
@@ -252,7 +256,7 @@ public class MacOsFileAssociationPalTests
         MacOsFileAssociationPal.AddOrUpdateTypeDeclaration(rootDict, assoc, "com.example.myapp", "myext");
 
         var array = MacOsFileAssociationPal.GetOrCreateArray(rootDict, "UTExportedTypeDeclarations");
-        array.Elements("dict").Should().ContainSingle();
+        array.Elements("dict").Verify().ToHaveCount(1);
     }
 
     [Fact]
@@ -276,7 +280,7 @@ public class MacOsFileAssociationPalTests
 
         var array = MacOsFileAssociationPal.GetOrCreateArray(rootDict, "UTExportedTypeDeclarations");
         var entry = MacOsFileAssociationPal.FindDictInArray(array, "UTTypeIdentifier", "com.example.myapp");
-        entry.Should().NotBeNull();
+        entry.Verify().NotToBeNull();
     }
 
     [Fact]
@@ -287,7 +291,7 @@ public class MacOsFileAssociationPalTests
         {
             InstallBootstrap.InstallDirectory = null;
             var result = MacOsFileAssociationPal.GetBackup(".test");
-            result.Should().BeNull();
+            result.Verify().ToBeNull();
         }
         finally
         {

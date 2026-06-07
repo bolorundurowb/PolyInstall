@@ -4,6 +4,7 @@ using PolyInstall.Pal;
 
 namespace PolyInstall.Core.Tests;
 
+[Collection("Sequential")]
 public class ServiceLifecycleTests
 {
     [Fact]
@@ -40,11 +41,11 @@ public class ServiceLifecycleTests
                 Pal = new TestPal(installRoot, servicePal),
             });
 
-            servicePal.Installed.Should().ContainSingle();
-            servicePal.Installed[0].Executable.Should().Be(Path.Combine(installRoot, "app"));
-            servicePal.Installed[0].Arguments.Should().Equal("--service");
-            result.State.RegisteredServices.Should().ContainSingle();
-            InstallStateIo.ReadState(installRoot).RegisteredServices.Should().ContainSingle();
+            servicePal.Installed.Verify().ToHaveCount(1);
+            servicePal.Installed[0].Executable.Verify().ToBe(Path.Combine(installRoot, "app"));
+            servicePal.Installed[0].Arguments.SequenceEqual(new[] { "--service" }).Verify().ToBeTrue();
+            result.State.RegisteredServices.Verify().ToHaveCount(1);
+            InstallStateIo.ReadState(installRoot).RegisteredServices.Verify().ToHaveCount(1);
         }
         finally
         {
@@ -87,8 +88,8 @@ public class ServiceLifecycleTests
                 ExistingInstall = existing,
             });
 
-            servicePal.Removed.Should().ContainSingle();
-            servicePal.Removed[0].Name.Should().Be("com.example.old");
+            servicePal.Removed.Verify().ToHaveCount(1);
+            servicePal.Removed[0].Name.Verify().ToBe("com.example.old");
         }
         finally
         {

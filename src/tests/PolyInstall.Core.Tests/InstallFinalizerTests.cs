@@ -26,14 +26,14 @@ public class InstallFinalizerTests
 
         var state = InstallFinalizer.CreateState(manifest, installDir, payloadFiles);
 
-        state.DisplayName.Should().Be("MyApp");
-        state.DisplayVersion.Should().Be("1.2.3");
-        state.Publisher.Should().Be("Contoso");
-        state.InstallLocation.Should().Be(installDir);
-        state.InstallScope.Should().Be("user");
-        state.PayloadFiles.Should().BeEquivalentTo("app.exe", "config.json");
-        state.ProductId.Should().NotBeNullOrWhiteSpace();
-        state.RegistryUninstallKeyRelative.Should().NotBeNullOrWhiteSpace();
+        state.DisplayName.Verify().ToBe("MyApp");
+        state.DisplayVersion.Verify().ToBe("1.2.3");
+        state.Publisher.Verify().ToBe("Contoso");
+        state.InstallLocation.Verify().ToBe(installDir);
+        state.InstallScope.Verify().ToBe("user");
+        state.PayloadFiles.Verify().ToBeEquivalentTo(new[] { "app.exe", "config.json" });
+        state.ProductId.Verify().NotToBeNullOrWhiteSpace();
+        state.RegistryUninstallKeyRelative.Verify().NotToBeNullOrWhiteSpace();
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public class InstallFinalizerTests
 
         var state = InstallFinalizer.CreateState(manifest, @"C:\App", []);
 
-        state.InstallScope.Should().Be("machine");
+        state.InstallScope.Verify().ToBe("machine");
     }
 
     [Fact]
@@ -64,6 +64,6 @@ public class InstallFinalizerTests
 
         var state = InstallFinalizer.CreateState(manifest, "C:\\App", files);
 
-        state.PayloadFiles.Should().Equal(new[] { "a.exe", "M.exe", "Z.exe" });
+        state.PayloadFiles!.SequenceEqual(new[] { "a.exe", "M.exe", "Z.exe" }).Verify().ToBeTrue();
     }
 }

@@ -17,21 +17,23 @@ public class InstallerSignerTests
             },
             "pfx-secret");
 
-        command.FileName.Should().Be("signtool");
-        command.Arguments.Should().Equal(
-            "sign",
-            "/fd",
-            "sha256",
-            "/tr",
-            "http://timestamp.example.test",
-            "/td",
-            "sha256",
-            "/f",
-            "certs/app.pfx",
-            "/p",
-            "pfx-secret",
-            "dist/App-windows-x64.exe");
-        command.SecretArguments.Should().Contain("pfx-secret");
+        command.FileName.Verify().ToBe("signtool");
+        command.Arguments.SequenceEqual(
+            [
+                "sign",
+                "/fd",
+                "sha256",
+                "/tr",
+                "http://timestamp.example.test",
+                "/td",
+                "sha256",
+                "/f",
+                "certs/app.pfx",
+                "/p",
+                "pfx-secret",
+                "dist/App-windows-x64.exe",
+            ]).Verify().ToBeTrue();
+        command.SecretArguments.Verify().ToContain("pfx-secret");
     }
 
     [Fact]
@@ -47,7 +49,7 @@ public class InstallerSignerTests
             },
             null);
 
-        command.Arguments.Should().ContainInOrder("/sha1", "abcdef", "/s", "My", "/sm");
+        ContainsInOrder(command.Arguments, "/sha1", "abcdef", "/s", "My", "/sm").Verify().ToBeTrue();
     }
 
     [Fact]
@@ -62,17 +64,19 @@ public class InstallerSignerTests
             },
             "Signing macOS executable");
 
-        command.FileName.Should().Be("codesign");
-        command.Arguments.Should().Equal(
-            "--force",
-            "--sign",
-            "Developer ID Application: Example",
-            "--timestamp",
-            "--options",
-            "runtime",
-            "--keychain",
-            "build.keychain-db",
-            "dist/App-osx-arm64");
+        command.FileName.Verify().ToBe("codesign");
+        command.Arguments.SequenceEqual(
+            [
+                "--force",
+                "--sign",
+                "Developer ID Application: Example",
+                "--timestamp",
+                "--options",
+                "runtime",
+                "--keychain",
+                "build.keychain-db",
+                "dist/App-osx-arm64",
+            ]).Verify().ToBeTrue();
     }
 
     [Fact]
@@ -85,14 +89,16 @@ public class InstallerSignerTests
                 NotarizationProfile = "polyinstall-notary",
             });
 
-        command.FileName.Should().Be("xcrun");
-        command.Arguments.Should().Equal(
-            "notarytool",
-            "submit",
-            "dist/App-osx-arm64.dmg",
-            "--keychain-profile",
-            "polyinstall-notary",
-            "--wait");
+        command.FileName.Verify().ToBe("xcrun");
+        command.Arguments.SequenceEqual(
+            [
+                "notarytool",
+                "submit",
+                "dist/App-osx-arm64.dmg",
+                "--keychain-profile",
+                "polyinstall-notary",
+                "--wait",
+            ]).Verify().ToBeTrue();
     }
 
     [Fact]
@@ -114,10 +120,10 @@ public class InstallerSignerTests
                 CancellationToken.None,
                 runner);
 
-            runner.Commands.Should().ContainSingle();
+            runner.Commands.Verify().ToHaveCount(1);
             var command = runner.Commands[0];
-            command.Arguments.Should().ContainInOrder("/p", "env-secret");
-            command.SecretArguments.Should().Contain("env-secret");
+            ContainsInOrder(command.Arguments, "/p", "env-secret").Verify().ToBeTrue();
+            command.SecretArguments.Verify().ToContain("env-secret");
         }
         finally
         {
@@ -141,9 +147,10 @@ public class InstallerSignerTests
             CancellationToken.None,
             runner);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage($"*'{envName}'*not set*");
-        runner.Commands.Should().BeEmpty();
+        (await act.ThrowsAsync<InvalidOperationException>())
+            .WithMessageContaining($"'{envName}'")
+            .WithMessageContaining("not set");
+        runner.Commands.Verify().ToBeEmpty();
     }
 
     [Fact]
@@ -161,13 +168,15 @@ public class InstallerSignerTests
             CancellationToken.None,
             runner);
 
-        runner.Commands.Should().HaveCount(3);
-        runner.Commands[0].Description.Should().Be("Signing macOS DMG");
-        runner.Commands[0].FileName.Should().Be("codesign");
-        runner.Commands[1].Description.Should().Be("Notarizing macOS DMG");
-        runner.Commands[1].Arguments.Should().ContainInOrder("notarytool", "submit", "dist/App-osx-arm64.dmg");
-        runner.Commands[2].Description.Should().Be("Stapling macOS notarization ticket");
-        runner.Commands[2].Arguments.Should().Equal("stapler", "staple", "dist/App-osx-arm64.dmg");
+        runner.Commands.Verify().ToHaveCount(3);
+        runner.Commands[0].Description.Verify().ToBe("Signing macOS DMG");
+        runner.Commands[0].FileName.Verify().ToBe("codesign");
+        runner.Commands[1].Description.Verify().ToBe("Notarizing macOS DMG");
+        ContainsInOrder(runner.Commands[1].Arguments, "notarytool", "submit", "dist/App-osx-arm64.dmg")
+            .Verify().ToBeTrue();
+        runner.Commands[2].Description.Verify().ToBe("Stapling macOS notarization ticket");
+        runner.Commands[2].Arguments.SequenceEqual(["stapler", "staple", "dist/App-osx-arm64.dmg"])
+            .Verify().ToBeTrue();
     }
 
     [Fact]
@@ -184,8 +193,24 @@ public class InstallerSignerTests
             CancellationToken.None,
             runner);
 
-        runner.Commands.Should().ContainSingle();
-        runner.Commands[0].Description.Should().Be("Signing macOS DMG");
+        runner.Commands.Verify().ToHaveCount(1);
+        runner.Commands[0].Description.Verify().ToBe("Signing macOS DMG");
+    }
+
+    private static bool ContainsInOrder<T>(IEnumerable<T> actual, params T[] expected)
+    {
+        var expectedIndex = 0;
+        foreach (var item in actual)
+        {
+            if (EqualityComparer<T>.Default.Equals(item, expected[expectedIndex]))
+            {
+                expectedIndex++;
+                if (expectedIndex == expected.Length)
+                    return true;
+            }
+        }
+
+        return false;
     }
 
     private sealed class RecordingSigningProcessRunner : ISigningProcessRunner

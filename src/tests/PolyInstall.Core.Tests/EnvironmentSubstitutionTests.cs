@@ -13,8 +13,8 @@ public class EnvironmentSubstitutionTests
         try
         {
             var s = EnvironmentSubstitution.ApplyToJson(json);
-            s.Should().Contain("\"a\": \"xdy\"");
-            s.Should().Contain("\"c\": \"bar\"");
+            s.Verify().ToContain("\"a\": \"xdy\"");
+            s.Verify().ToContain("\"c\": \"bar\"");
         }
         finally
         {
@@ -29,7 +29,7 @@ public class EnvironmentSubstitutionTests
         Environment.SetEnvironmentVariable(name, null);
         var input = $"pre${{{name}}}post";
         EnvironmentSubstitution.Substitute(input, ReadOnlyDictionary<string, string>.Empty)
-            .Should().Be(input);
+            .Verify().ToBe(input);
     }
 
     [Fact]
@@ -40,7 +40,7 @@ public class EnvironmentSubstitutionTests
         try
         {
             var extra = new Dictionary<string, string> { [name] = "from-extra" };
-            EnvironmentSubstitution.Substitute($"${{{name}}}", extra).Should().Be("from-extra");
+            EnvironmentSubstitution.Substitute($"${{{name}}}", extra).Verify().ToBe("from-extra");
         }
         finally
         {
@@ -58,6 +58,6 @@ public class EnvironmentSubstitutionTests
         };
         var extra = new Dictionary<string, string> { ["OUT_DIR"] = "dist" };
         var applied = EnvironmentSubstitution.ApplyToManifest(manifest, extra);
-        applied.Build.OutputDir.Should().Be("dist");
+        applied.Build.OutputDir.Verify().ToBe("dist");
     }
 }

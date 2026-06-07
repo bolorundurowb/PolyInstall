@@ -31,13 +31,13 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.ShortcutCalls.Should().ContainSingle();
+        pal.ShortcutCalls.Verify().ToHaveCount(1);
         var c = pal.ShortcutCalls[0];
-        c.Target.Should().Be($"C:{s}app{s}app.exe");
+        c.Target.Verify().ToBe($"C:{s}app{s}app.exe");
         var expectedName = OperatingSystem.IsWindows() ? "app.lnk" : "app";
-        c.Shortcut.Should().EndWith(expectedName);
-        c.Description.Should().Be("App");
-        c.Icon.Should().Be($"C:{s}app{s}app.ico");
+        c.Shortcut.Verify().ToEndWith(expectedName);
+        c.Description.Verify().ToBe("App");
+        c.Icon.Verify().ToBe($"C:{s}app{s}app.ico");
     }
 
     [Fact]
@@ -61,18 +61,17 @@ public class TaskEngineTests
         };
 
         TaskEngine.RunPhase(tasks, pal);
-        pal.ShortcutCalls.Should().BeEmpty();
+        pal.ShortcutCalls.Verify().ToBeEmpty();
     }
 
     [Fact]
     public void RunPhase_WhenActionUnknown_ThrowsNotSupportedException()
     {
         var pal = new RecordingPal();
-        FluentActions.Invoking(() => TaskEngine.RunPhase(
+        ((Action)(() => TaskEngine.RunPhase(
                 [new InstallTask { Action = "unknown_action" }],
-                pal))
-            .Should().Throw<NotSupportedException>()
-            .WithMessage("*Unknown task action*");
+                pal))).Throws<NotSupportedException>()
+            .WithMessageContaining("Unknown task action");
     }
 
     [Fact]
@@ -94,8 +93,7 @@ public class TaskEngineTests
             },
         };
 
-        FluentActions.Invoking(() => TaskEngine.RunPhase(tasks, pal))
-            .Should().Throw<PlatformNotSupportedException>();
+        ((Action)(() => TaskEngine.RunPhase(tasks, pal))).Throws<PlatformNotSupportedException>();
     }
 
     [Fact]
@@ -103,7 +101,7 @@ public class TaskEngineTests
     {
         var pal = new RecordingPal();
         TaskEngine.RunPhase(null, pal);
-        pal.ShortcutCalls.Should().BeEmpty();
+        pal.ShortcutCalls.Verify().ToBeEmpty();
     }
 
     [Fact]
@@ -131,11 +129,11 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.ShortcutCalls.Should().ContainSingle();
+        pal.ShortcutCalls.Verify().ToHaveCount(1);
         var c = pal.ShortcutCalls[0];
-        c.Target.Should().Be($"C:{s}Install{s}Open Exam Suite{s}Simulator{s}app.exe");
+        c.Target.Verify().ToBe($"C:{s}Install{s}Open Exam Suite{s}Simulator{s}app.exe");
         var expectedName = OperatingSystem.IsWindows() ? "Sim.lnk" : "Sim";
-        c.Shortcut.Should().EndWith(expectedName);
+        c.Shortcut.Verify().ToEndWith(expectedName);
     }
 
     [Fact]
@@ -159,10 +157,10 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.ShortcutCalls.Should().ContainSingle();
+        pal.ShortcutCalls.Verify().ToHaveCount(1);
         var c = pal.ShortcutCalls[0];
         var expectedName = OperatingSystem.IsWindows() ? "MyApp.lnk" : "MyApp";
-        c.Shortcut.Should().EndWith($"MyVendor{Path.DirectorySeparatorChar}{expectedName}");
+        c.Shortcut.Verify().ToEndWith($"MyVendor{Path.DirectorySeparatorChar}{expectedName}");
     }
 
     [Fact]
@@ -185,10 +183,10 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.ShortcutCalls.Should().ContainSingle();
+        pal.ShortcutCalls.Verify().ToHaveCount(1);
         var c = pal.ShortcutCalls[0];
-        c.Shortcut.Should().EndWith("app.lnk");
-        c.Shortcut.Should().NotEndWith("app.lnk.lnk");
+        c.Shortcut.Verify().ToEndWith("app.lnk");
+        c.Shortcut.EndsWith("app.lnk.lnk", StringComparison.Ordinal).Verify().ToBeFalse();
     }
 
     [Fact]
@@ -212,12 +210,12 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.RegistryCalls.Should().ContainSingle();
+        pal.RegistryCalls.Verify().ToHaveCount(1);
         var r = pal.RegistryCalls[0];
-        r.KeyPath.Should().Be(@"HKCU\Software\Test");
-        r.ValueName.Should().Be("x");
-        r.Value.Should().Be("1");
-        r.ValueKind.Should().Be("string");
+        r.KeyPath.Verify().ToBe(@"HKCU\Software\Test");
+        r.ValueName.Verify().ToBe("x");
+        r.Value.Verify().ToBe("1");
+        r.ValueKind.Verify().ToBe("string");
     }
 
     [Fact]
@@ -243,13 +241,13 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.DesktopEntryCalls.Should().ContainSingle();
+        pal.DesktopEntryCalls.Verify().ToHaveCount(1);
         var d = pal.DesktopEntryCalls[0];
-        d.FileName.Should().Be("app.desktop");
-        d.Name.Should().Be("App");
-        d.Exec.Should().Be($"{s}usr{s}bin{s}app");
-        d.Icon.Should().Be($"{s}usr{s}share{s}icons{s}app.png");
-        d.Comment.Should().Be("My app");
+        d.FileName.Verify().ToBe("app.desktop");
+        d.Name.Verify().ToBe("App");
+        d.Exec.Verify().ToBe($"{s}usr{s}bin{s}app");
+        d.Icon.Verify().ToBe($"{s}usr{s}share{s}icons{s}app.png");
+        d.Comment.Verify().ToBe("My app");
     }
 
     [Fact]
@@ -272,10 +270,10 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.PermissionCalls.Should().ContainSingle();
+        pal.PermissionCalls.Verify().ToHaveCount(1);
         var p = pal.PermissionCalls[0];
-        p.Path.Should().Be($"{s}usr{s}bin{s}app");
-        p.Mode.Should().Be(755);
+        p.Path.Verify().ToBe($"{s}usr{s}bin{s}app");
+        p.Mode.Verify().ToBe(755);
     }
 
     [Fact]
@@ -298,7 +296,7 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.ShortcutCalls.Should().ContainSingle();
+        pal.ShortcutCalls.Verify().ToHaveCount(1);
     }
 
     [Fact]
@@ -329,9 +327,9 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.ShortcutCalls.Should().ContainSingle();
+        pal.ShortcutCalls.Verify().ToHaveCount(1);
         var expectedName = OperatingSystem.IsWindows() ? "MyApp.lnk" : "MyApp";
-        pal.ShortcutCalls[0].Shortcut.Should().EndWith(expectedName);
+        pal.ShortcutCalls[0].Shortcut.Verify().ToEndWith(expectedName);
     }
 
     [Fact]
@@ -357,9 +355,9 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.PathCalls.Should().ContainSingle();
-        pal.PathCalls[0].Path.Should().Be(installDir);
-        pal.PathCalls[0].Scope.Should().Be("user");
+        pal.PathCalls.Verify().ToHaveCount(1);
+        pal.PathCalls[0].Path.Verify().ToBe(installDir);
+        pal.PathCalls[0].Scope.Verify().ToBe("user");
     }
 
     [Fact]
@@ -392,9 +390,9 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.PathCalls.Should().ContainSingle();
-        pal.PathCalls[0].Path.Should().Be($"C:{s}Program Files{s}MyApp{s}bin");
-        pal.PathCalls[0].Scope.Should().Be("machine");
+        pal.PathCalls.Verify().ToHaveCount(1);
+        pal.PathCalls[0].Path.Verify().ToBe($"C:{s}Program Files{s}MyApp{s}bin");
+        pal.PathCalls[0].Scope.Verify().ToBe("machine");
     }
 
     [Fact]
@@ -409,9 +407,8 @@ public class TaskEngineTests
             },
         };
 
-        FluentActions.Invoking(() => TaskEngine.RunPhase(tasks, pal))
-            .Should().Throw<PlatformNotSupportedException>()
-            .WithMessage("*PATH*");
+        ((Action)(() => TaskEngine.RunPhase(tasks, pal))).Throws<PlatformNotSupportedException>()
+            .WithMessageContaining("PATH");
     }
 
     [Fact]
@@ -434,10 +431,10 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.RegisterCalls.Should().HaveCount(1);
-        pal.RegisterCalls[0].Extension.Should().Be(".oef");
-        pal.RegisterCalls[0].Description.Should().Be("OEF File");
-        pal.RegisterCalls[0].Command.Should().Be("open %1");
+        pal.RegisterCalls.Verify().ToHaveCount(1);
+        pal.RegisterCalls[0].Extension.Verify().ToBe(".oef");
+        pal.RegisterCalls[0].Description.Verify().ToBe("OEF File");
+        pal.RegisterCalls[0].Command.Verify().ToBe("open %1");
     }
 
     [Fact]
@@ -460,8 +457,8 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal, isUninstall: true);
 
-        pal.UnregisterCalls.Should().HaveCount(1);
-        pal.UnregisterCalls[0].Extension.Should().Be(".oef");
+        pal.UnregisterCalls.Verify().ToHaveCount(1);
+        pal.UnregisterCalls[0].Extension.Verify().ToBe(".oef");
     }
 
     [Fact]
@@ -485,8 +482,8 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.RegisterCalls.Should().HaveCount(1);
-        pal.RegisterCalls[0].MimeType.Should().Be("application/x-custom");
+        pal.RegisterCalls.Verify().ToHaveCount(1);
+        pal.RegisterCalls[0].MimeType.Verify().ToBe("application/x-custom");
     }
 
     [Fact]
@@ -515,8 +512,8 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.RegisterCalls.Should().HaveCount(1);
-        pal.RegisterCalls[0].BundlePath.Should().Be("/Applications/MyApp.app");
+        pal.RegisterCalls.Verify().ToHaveCount(1);
+        pal.RegisterCalls[0].BundlePath.Verify().ToBe("/Applications/MyApp.app");
     }
 
     [Fact]
@@ -545,8 +542,8 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.RegisterCalls.Should().HaveCount(1);
-        pal.RegisterCalls[0].ProgId.Should().Be("MyCoolApp.oef.1");
+        pal.RegisterCalls.Verify().ToHaveCount(1);
+        pal.RegisterCalls[0].ProgId.Verify().ToBe("MyCoolApp.oef.1");
     }
 
     [Fact]
@@ -570,7 +567,7 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal, new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "simulator" });
 
-        pal.ShortcutCalls.Should().BeEmpty();
+        pal.ShortcutCalls.Verify().ToBeEmpty();
     }
 
     [Fact]
@@ -594,7 +591,7 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal, new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "simulator" });
 
-        pal.ShortcutCalls.Should().ContainSingle();
+        pal.ShortcutCalls.Verify().ToHaveCount(1);
     }
 
     [Fact]
@@ -617,7 +614,7 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
 
-        pal.ShortcutCalls.Should().ContainSingle();
+        pal.ShortcutCalls.Verify().ToHaveCount(1);
     }
 
     [Fact]
@@ -638,9 +635,8 @@ public class TaskEngineTests
             }
         };
 
-        FluentActions.Invoking(() => TaskEngine.RunPhase(tasks, pal))
-            .Should().Throw<PlatformNotSupportedException>()
-            .WithMessage("*File association tasks are not supported*");
+        ((Action)(() => TaskEngine.RunPhase(tasks, pal))).Throws<PlatformNotSupportedException>()
+            .WithMessageContaining("File association tasks are not supported");
     }
 
     [Fact]
@@ -661,9 +657,8 @@ public class TaskEngineTests
             }
         };
 
-        FluentActions.Invoking(() => TaskEngine.RunPhase(tasks, pal))
-            .Should().Throw<PlatformNotSupportedException>()
-            .WithMessage("*Desktop entry tasks are not supported*");
+        ((Action)(() => TaskEngine.RunPhase(tasks, pal))).Throws<PlatformNotSupportedException>()
+            .WithMessageContaining("Desktop entry tasks are not supported");
     }
 
     [Fact]
@@ -683,9 +678,8 @@ public class TaskEngineTests
             }
         };
 
-        FluentActions.Invoking(() => TaskEngine.RunPhase(tasks, pal))
-            .Should().Throw<PlatformNotSupportedException>()
-            .WithMessage("*Permission tasks are not supported*");
+        ((Action)(() => TaskEngine.RunPhase(tasks, pal))).Throws<PlatformNotSupportedException>()
+            .WithMessageContaining("Permission tasks are not supported");
     }
 
     [Fact]
@@ -706,9 +700,8 @@ public class TaskEngineTests
             },
         };
 
-        FluentActions.Invoking(() => TaskEngine.RunPhase(tasks, pal))
-            .Should().Throw<NotSupportedException>()
-            .WithMessage("*Unsupported shortcut location*");
+        ((Action)(() => TaskEngine.RunPhase(tasks, pal))).Throws<NotSupportedException>()
+            .WithMessageContaining("Unsupported shortcut location");
     }
 
     [Fact]
@@ -734,8 +727,8 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.ShortcutCalls.Should().ContainSingle();
-        pal.ShortcutCalls[0].Shortcut.Should().EndWith("app");
+        pal.ShortcutCalls.Verify().ToHaveCount(1);
+        pal.ShortcutCalls[0].Shortcut.Verify().ToEndWith("app");
     }
 
     private sealed class RecordingPal : IPolyInstallPal

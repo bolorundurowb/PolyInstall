@@ -1,6 +1,7 @@
 using PolyInstall.Core.Build.Manifest;
 using PolyInstall.Core.Build.Validation;
 using PolyInstall.Manifest;
+using Assert = Xunit.Assert;
 
 namespace PolyInstall.Core.Build.Tests;
 
@@ -55,17 +56,17 @@ public class FeatureManifestTests
 
         var m = ManifestYaml.Parse(yaml);
 
-        m.Features.Should().HaveCount(2);
-        m.Features![0].Id.Should().Be("simulator");
-        m.Features[0].Name.Should().Be("Simulator");
-        m.Features[0].DefaultSelected.Should().BeTrue();
-        m.Features[1].Id.Should().Be("samples");
-        m.Features[1].DefaultSelected.Should().BeFalse();
+        m.Features.Verify().ToHaveCount(2);
+        m.Features![0].Id.Verify().ToBe("simulator");
+        m.Features[0].Name.Verify().ToBe("Simulator");
+        m.Features[0].DefaultSelected.Verify().ToBeTrue();
+        m.Features[1].Id.Verify().ToBe("samples");
+        m.Features[1].DefaultSelected.Verify().ToBeFalse();
 
-        m.Files[1].Features.Should().BeEquivalentTo("simulator");
-        m.Files[2].Features.Should().BeEquivalentTo("samples");
-        m.Tasks!.PostInstall![0].Features.Should().BeEquivalentTo("simulator");
-        m.FileAssociations![0].Features.Should().BeEquivalentTo("simulator");
+        m.Files[1].Features.Verify().ToBeEquivalentTo(new[] { "simulator" });
+        m.Files[2].Features.Verify().ToBeEquivalentTo(new[] { "samples" });
+        m.Tasks!.PostInstall![0].Features.Verify().ToBeEquivalentTo(new[] { "simulator" });
+        m.FileAssociations![0].Features.Verify().ToBeEquivalentTo(new[] { "simulator" });
     }
 
     [Fact]
@@ -79,7 +80,7 @@ public class FeatureManifestTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Should().Contain("duplicated");
+        ex.Message.Verify().ToContain("duplicated");
     }
 
     [Fact]
@@ -92,7 +93,7 @@ public class FeatureManifestTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Should().Contain("features[0].id");
+        ex.Message.Verify().ToContain("features[0].id");
     }
 
     [Fact]
@@ -107,7 +108,7 @@ public class FeatureManifestTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Should().Contain("files[1].features references unknown feature id 'ghost'");
+        ex.Message.Verify().ToContain("files[1].features references unknown feature id 'ghost'");
     }
 
     [Fact]
@@ -134,7 +135,7 @@ public class FeatureManifestTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Should().Contain("tasks.post_install[0].features references unknown feature id 'ghost'");
+        ex.Message.Verify().ToContain("tasks.post_install[0].features references unknown feature id 'ghost'");
     }
 
     [Fact]
@@ -154,7 +155,7 @@ public class FeatureManifestTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Should().Contain("file_associations[0].features references unknown feature id 'ghost'");
+        ex.Message.Verify().ToContain("file_associations[0].features references unknown feature id 'ghost'");
     }
 
     [Fact]
@@ -168,7 +169,7 @@ public class FeatureManifestTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Should().Contain("no features are defined");
+        ex.Message.Verify().ToContain("no features are defined");
     }
 
     [Fact]
@@ -185,7 +186,7 @@ public class FeatureManifestTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Should().Contain("'features' before 'destination'");
+        ex.Message.Verify().ToContain("'features' before 'destination'");
     }
 
     [Fact]
@@ -202,7 +203,7 @@ public class FeatureManifestTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Should().Contain("'features' after 'progress'");
+        ex.Message.Verify().ToContain("'features' after 'progress'");
     }
 
     [Fact]

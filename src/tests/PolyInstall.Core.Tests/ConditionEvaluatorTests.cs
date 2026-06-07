@@ -10,15 +10,14 @@ public class ConditionEvaluatorTests
     [InlineData("   ")]
     public void Evaluate_WithNullOrWhitespaceRequire_ReturnsTrue(string? require)
     {
-        ConditionEvaluator.Evaluate(require).Should().BeTrue();
+        ConditionEvaluator.Evaluate(require).Verify().ToBeTrue();
     }
 
     [Fact]
     public void Evaluate_WithUnknownCondition_ThrowsNotSupportedException()
     {
-        FluentActions.Invoking(() => ConditionEvaluator.Evaluate("custom.script()"))
-            .Should().Throw<NotSupportedException>()
-            .WithMessage("*Unknown require condition*");
+        ((Action)(() => ConditionEvaluator.Evaluate("custom.script()"))).Throws<NotSupportedException>()
+            .WithMessageContaining("Unknown require condition");
     }
 
     [Theory]
@@ -32,7 +31,11 @@ public class ConditionEvaluatorTests
             "linux" => OperatingSystem.IsLinux(),
             _ => throw new ArgumentOutOfRangeException(nameof(osFamily), osFamily, null),
         };
-        ConditionEvaluator.Evaluate(require).Should().Be(expected);
+        var actual = ConditionEvaluator.Evaluate(require);
+        if (expected)
+            actual.Verify().ToBeTrue();
+        else
+            actual.Verify().ToBeFalse();
     }
 
     [Theory]
@@ -52,6 +55,10 @@ public class ConditionEvaluatorTests
             "unix" => OperatingSystem.IsLinux() || OperatingSystem.IsMacOS(),
             _ => throw new ArgumentOutOfRangeException(nameof(osFamily), osFamily, null),
         };
-        ConditionEvaluator.Evaluate(require).Should().Be(expected);
+        var actual = ConditionEvaluator.Evaluate(require);
+        if (expected)
+            actual.Verify().ToBeTrue();
+        else
+            actual.Verify().ToBeFalse();
     }
 }

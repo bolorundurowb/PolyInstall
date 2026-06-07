@@ -12,9 +12,9 @@ public class PayloadArchiveTests
     [InlineData("deflate")]
     public void ParseCompression_WithUnsupportedName_ThrowsArgumentException(string name)
     {
-        FluentActions.Invoking(() => PayloadArchive.ParseCompression(name))
-            .Should().Throw<ArgumentException>()
-            .WithMessage("*brotli*gzip*");
+        ((Action)(() => PayloadArchive.ParseCompression(name))).Throws<ArgumentException>()
+            .WithMessageContaining("brotli")
+            .WithMessageContaining("gzip");
     }
 
     [Theory]
@@ -23,7 +23,7 @@ public class PayloadArchiveTests
     [InlineData("Brotli")]
     public void ParseCompression_WithSupportedName_DoesNotThrow(string name)
     {
-        FluentActions.Invoking(() => PayloadArchive.ParseCompression(name)).Should().NotThrow();
+        ((Action)(() => PayloadArchive.ParseCompression(name))).NotThrow();
     }
 
     [Theory]
@@ -44,9 +44,9 @@ public class PayloadArchiveTests
             using var ms = new MemoryStream(decompressed);
             using var zip = new ZipArchive(ms, ZipArchiveMode.Read);
             var entry = zip.GetEntry("files/test.txt");
-            entry.Should().NotBeNull();
+            entry.Verify().NotToBeNull();
             using var sr = new StreamReader(entry!.Open());
-            sr.ReadToEnd().Should().Be("hello world");
+            sr.ReadToEnd().Verify().ToBe("hello world");
         }
         finally
         {
@@ -72,7 +72,7 @@ public class PayloadArchiveTests
             var decompressed = PayloadArchive.Decompress(compressed, compression);
             using var ms = new MemoryStream(decompressed);
             using var zip = new ZipArchive(ms, ZipArchiveMode.Read);
-            zip.Entries.Select(e => e.FullName).Should().BeEquivalentTo("a.txt", "b.txt");
+            zip.Entries.Select(e => e.FullName).Verify().ToBeEquivalentTo(new[] { "a.txt", "b.txt" });
         }
         finally
         {
@@ -94,7 +94,7 @@ public class PayloadArchiveTests
             var decompressed = PayloadArchive.Decompress(compressed, PayloadCompression.GZip);
             using var ms = new MemoryStream(decompressed);
             using var zip = new ZipArchive(ms, ZipArchiveMode.Read);
-            zip.Entries.Select(e => e.FullName).Should().Contain("dir/file.txt");
+            zip.Entries.Select(e => e.FullName).Verify().ToContain("dir/file.txt");
         }
         finally
         {
@@ -119,14 +119,14 @@ public class PayloadArchiveTests
                 compression,
                 payloadPath);
 
-            length.Should().BeGreaterThan(0);
-            new FileInfo(payloadPath).Length.Should().Be(length);
+            length.Verify().ToBeGreaterThan(0);
+            new FileInfo(payloadPath).Length.Verify().ToBe(length);
 
             var decompressed = PayloadArchive.Decompress(File.ReadAllBytes(payloadPath), compression);
             using var ms = new MemoryStream(decompressed);
             using var zip = new ZipArchive(ms, ZipArchiveMode.Read);
             using var sr = new StreamReader(zip.GetEntry("app.txt")!.Open());
-            sr.ReadToEnd().Should().Be("streamed payload");
+            sr.ReadToEnd().Verify().ToBe("streamed payload");
         }
         finally
         {

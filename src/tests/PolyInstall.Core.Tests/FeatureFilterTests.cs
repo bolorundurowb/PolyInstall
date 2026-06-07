@@ -13,7 +13,7 @@ public class FeatureFilterTests
             payloadFiles: ["a.txt", "b/c.txt"],
             selectedFeatures: new HashSet<string>(StringComparer.OrdinalIgnoreCase));
 
-        allowed.Should().BeEquivalentTo("a.txt", "b/c.txt");
+        allowed.Verify().ToBeEquivalentTo(new[] { "a.txt", "b/c.txt" });
     }
 
     [Fact]
@@ -33,8 +33,8 @@ public class FeatureFilterTests
             ["core.txt", "sim.txt"],
             new HashSet<string>(StringComparer.OrdinalIgnoreCase));
 
-        allowed.Should().Contain("core.txt");
-        allowed.Should().NotContain("sim.txt");
+        allowed.Verify().ToContain("core.txt");
+        allowed.Verify().NotToContain("sim.txt");
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public class FeatureFilterTests
             ["core.txt", "sim.txt", "samples/s.txt"],
             new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "sim" });
 
-        allowed.Should().BeEquivalentTo("core.txt", "sim.txt");
+        allowed.Verify().ToBeEquivalentTo(new[] { "core.txt", "sim.txt" });
     }
 
     [Fact]
@@ -74,8 +74,8 @@ public class FeatureFilterTests
             ["sim.txt", ".polyinstall/tools/PolyInstall.Uninstall.exe"],
             new HashSet<string>(StringComparer.OrdinalIgnoreCase));
 
-        allowed.Should().Contain(".polyinstall/tools/PolyInstall.Uninstall.exe");
-        allowed.Should().NotContain("sim.txt");
+        allowed.Verify().ToContain(".polyinstall/tools/PolyInstall.Uninstall.exe");
+        allowed.Verify().NotToContain("sim.txt");
     }
 
     [Fact]
@@ -95,28 +95,28 @@ public class FeatureFilterTests
             ["shared.txt"],
             new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "b" });
 
-        allowed.Should().Contain("shared.txt");
+        allowed.Verify().ToContain("shared.txt");
     }
 
     [Fact]
     public void IsActive_EmptyOrNullList_AlwaysActive()
     {
         var selected = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "x" };
-        FeatureFilter.IsActive(null, selected).Should().BeTrue();
-        FeatureFilter.IsActive([], selected).Should().BeTrue();
+        FeatureFilter.IsActive(null, selected).Verify().ToBeTrue();
+        FeatureFilter.IsActive([], selected).Verify().ToBeTrue();
     }
 
     [Fact]
     public void IsActive_WithIntersection_ReturnsTrue()
     {
         var selected = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "x", "y" };
-        FeatureFilter.IsActive(["y"], selected).Should().BeTrue();
+        FeatureFilter.IsActive(["y"], selected).Verify().ToBeTrue();
     }
 
     [Fact]
     public void IsActive_WithoutIntersection_ReturnsFalse()
     {
         var selected = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "x" };
-        FeatureFilter.IsActive(["y"], selected).Should().BeFalse();
+        FeatureFilter.IsActive(["y"], selected).Verify().ToBeFalse();
     }
 }

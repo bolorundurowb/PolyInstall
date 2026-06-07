@@ -3,6 +3,7 @@ using PolyInstall.Pal;
 
 namespace PolyInstall.Core.Tests;
 
+[Collection("Sequential")]
 public class UpdateFlowTests
 {
     [Fact]
@@ -16,9 +17,9 @@ public class UpdateFlowTests
 
             var existing = InstalledProductLocator.TryReadFromInstallDirectory(manifest, installRoot);
 
-            existing.Should().NotBeNull();
-            existing!.DisplayVersion.Should().Be("1.0.0");
-            existing.InstallLocation.Should().Be(installRoot);
+            existing.Verify().NotToBeNull();
+            existing!.DisplayVersion.Verify().ToBe("1.0.0");
+            existing.InstallLocation.Verify().ToBe(installRoot);
         }
         finally
         {
@@ -36,7 +37,7 @@ public class UpdateFlowTests
         {
             InstallStateIo.WriteState(installRoot, TestHelpers.StateFor(otherManifest, installRoot, "1.0.0"));
 
-            InstalledProductLocator.TryReadFromInstallDirectory(manifest, installRoot).Should().BeNull();
+            InstalledProductLocator.TryReadFromInstallDirectory(manifest, installRoot).Verify().ToBeNull();
         }
         finally
         {
@@ -54,7 +55,7 @@ public class UpdateFlowTests
             Directory.CreateDirectory(InstallStatePaths.PolyDir(installRoot));
             File.WriteAllText(InstallStatePaths.InstallStatePath(installRoot), "{not-json");
 
-            InstalledProductLocator.TryReadFromInstallDirectory(manifest, installRoot).Should().BeNull();
+            InstalledProductLocator.TryReadFromInstallDirectory(manifest, installRoot).Verify().ToBeNull();
         }
         finally
         {
@@ -73,8 +74,8 @@ public class UpdateFlowTests
 
             var existing = InstalledProductLocator.Find(manifest, new TestPal(installRoot), installRoot);
 
-            existing.Should().NotBeNull();
-            existing!.InstallLocation.Should().Be(installRoot);
+            existing.Verify().NotToBeNull();
+            existing!.InstallLocation.Verify().ToBe(installRoot);
         }
         finally
         {
@@ -91,11 +92,11 @@ public class UpdateFlowTests
         {
             var state = InstallFinalizer.FinalizeInstall(manifest, installRoot, ["app.txt"]);
 
-            File.Exists(InstallStatePaths.InstallStatePath(installRoot)).Should().BeTrue();
-            File.Exists(InstallStatePaths.EmbeddedManifestPath(installRoot)).Should().BeTrue();
-            state.DisplayVersion.Should().Be("2.0.0");
-            state.PayloadFiles.Should().BeEquivalentTo("app.txt");
-            InstallStateIo.ReadEmbeddedManifest(installRoot).Metadata.Name.Should().Be("SampleApp");
+            File.Exists(InstallStatePaths.InstallStatePath(installRoot)).Verify().ToBeTrue();
+            File.Exists(InstallStatePaths.EmbeddedManifestPath(installRoot)).Verify().ToBeTrue();
+            state.DisplayVersion.Verify().ToBe("2.0.0");
+            state.PayloadFiles.Verify().ToBeEquivalentTo(new[] { "app.txt" });
+            InstallStateIo.ReadEmbeddedManifest(installRoot).Metadata.Name.Verify().ToBe("SampleApp");
         }
         finally
         {
@@ -119,9 +120,9 @@ public class UpdateFlowTests
                 ["stale.txt", "keep.txt"],
                 newPayloadFiles);
 
-            File.Exists(Path.Combine(installRoot, "stale.txt")).Should().BeFalse();
-            File.Exists(Path.Combine(installRoot, "keep.txt")).Should().BeTrue();
-            File.Exists(Path.Combine(installRoot, "user.txt")).Should().BeTrue();
+            File.Exists(Path.Combine(installRoot, "stale.txt")).Verify().ToBeFalse();
+            File.Exists(Path.Combine(installRoot, "keep.txt")).Verify().ToBeTrue();
+            File.Exists(Path.Combine(installRoot, "user.txt")).Verify().ToBeTrue();
         }
         finally
         {
@@ -152,10 +153,10 @@ public class UpdateFlowTests
                 ],
                 new HashSet<string>(StringComparer.OrdinalIgnoreCase));
 
-            File.Exists(InstallStatePaths.InstallStatePath(installRoot)).Should().BeTrue();
-            File.Exists(InstallStatePaths.EmbeddedManifestPath(installRoot)).Should().BeTrue();
-            File.Exists(Path.Combine(installRoot, InstallStatePaths.UninstallExeFileName)).Should().BeTrue();
-            File.Exists(parentFile).Should().BeTrue();
+            File.Exists(InstallStatePaths.InstallStatePath(installRoot)).Verify().ToBeTrue();
+            File.Exists(InstallStatePaths.EmbeddedManifestPath(installRoot)).Verify().ToBeTrue();
+            File.Exists(Path.Combine(installRoot, InstallStatePaths.UninstallExeFileName)).Verify().ToBeTrue();
+            File.Exists(parentFile).Verify().ToBeTrue();
         }
         finally
         {
@@ -190,14 +191,14 @@ public class UpdateFlowTests
                 ExistingInstall = existing,
             });
 
-            result.Mode.Should().Be(InstallMode.Update);
-            File.ReadAllText(Path.Combine(installRoot, "app.txt")).Should().Be("new");
-            File.Exists(Path.Combine(installRoot, "stale.txt")).Should().BeFalse();
-            File.Exists(Path.Combine(installRoot, "user.txt")).Should().BeTrue();
+            result.Mode.Verify().ToBe(InstallMode.Update);
+            File.ReadAllText(Path.Combine(installRoot, "app.txt")).Verify().ToBe("new");
+            File.Exists(Path.Combine(installRoot, "stale.txt")).Verify().ToBeFalse();
+            File.Exists(Path.Combine(installRoot, "user.txt")).Verify().ToBeTrue();
 
             var updatedState = InstallStateIo.ReadState(installRoot);
-            updatedState.DisplayVersion.Should().Be("2.0.0");
-            updatedState.PayloadFiles.Should().BeEquivalentTo("app.txt");
+            updatedState.DisplayVersion.Verify().ToBe("2.0.0");
+            updatedState.PayloadFiles.Verify().ToBeEquivalentTo(new[] { "app.txt" });
         }
         finally
         {
@@ -230,9 +231,9 @@ public class UpdateFlowTests
                 Progress = progress.Add,
             });
 
-            result.Mode.Should().Be(InstallMode.Update);
-            File.Exists(Path.Combine(installRoot, "stale.txt")).Should().BeTrue();
-            progress.Should().Contain("No previous file inventory found; obsolete payload cleanup skipped");
+            result.Mode.Verify().ToBe(InstallMode.Update);
+            File.Exists(Path.Combine(installRoot, "stale.txt")).Verify().ToBeTrue();
+            progress.Verify().ToContain("No previous file inventory found; obsolete payload cleanup skipped");
         }
         finally
         {
@@ -262,8 +263,8 @@ public class UpdateFlowTests
                 ExistingInstall = existing,
             });
 
-            result.Mode.Should().Be(InstallMode.Repair);
-            File.ReadAllText(Path.Combine(installRoot, "app.txt")).Should().Be("repaired");
+            result.Mode.Verify().ToBe(InstallMode.Repair);
+            File.ReadAllText(Path.Combine(installRoot, "app.txt")).Verify().ToBe("repaired");
         }
         finally
         {
@@ -290,10 +291,10 @@ public class UpdateFlowTests
                 Pal = new TestPal(installRoot),
             });
 
-            result.Mode.Should().Be(InstallMode.Install);
-            result.CreatedInstallDirectory.Should().BeTrue();
-            File.ReadAllText(Path.Combine(installRoot, "app.txt")).Should().Be("fresh");
-            InstallStateIo.ReadState(installRoot).PayloadFiles.Should().BeEquivalentTo("app.txt");
+            result.Mode.Verify().ToBe(InstallMode.Install);
+            result.CreatedInstallDirectory.Verify().ToBeTrue();
+            File.ReadAllText(Path.Combine(installRoot, "app.txt")).Verify().ToBe("fresh");
+            InstallStateIo.ReadState(installRoot).PayloadFiles.Verify().ToBeEquivalentTo(new[] { "app.txt" });
         }
         finally
         {
@@ -319,10 +320,10 @@ public class UpdateFlowTests
                 Path.Combine(requestedRoot, InstallStatePaths.UninstallExeFileName),
                 requestedRoot);
 
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage("*does not match the requested install directory*");
-            Directory.Exists(stateRoot).Should().BeTrue();
-            Directory.Exists(requestedRoot).Should().BeTrue();
+            act.Throws<InvalidOperationException>()
+                .WithMessageContaining("does not match the requested install directory");
+            Directory.Exists(stateRoot).Verify().ToBeTrue();
+            Directory.Exists(requestedRoot).Verify().ToBeTrue();
         }
         finally
         {
@@ -348,9 +349,9 @@ public class UpdateFlowTests
                 Path.Combine(installRoot, InstallStatePaths.UninstallExeFileName),
                 installRoot);
 
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage("*product id does not match*");
-            Directory.Exists(installRoot).Should().BeTrue();
+            act.Throws<InvalidOperationException>()
+                .WithMessageContaining("product id does not match");
+            Directory.Exists(installRoot).Verify().ToBeTrue();
         }
         finally
         {
@@ -376,8 +377,8 @@ public class UpdateFlowTests
             Path.Combine(installRoot, InstallStatePaths.UninstallExeFileName),
             installRoot);
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*unsafe install root*");
+        act.Throws<InvalidOperationException>()
+            .WithMessageContaining("unsafe install root");
     }
 
     private sealed class TestPal(string appDir) : IPolyInstallPal

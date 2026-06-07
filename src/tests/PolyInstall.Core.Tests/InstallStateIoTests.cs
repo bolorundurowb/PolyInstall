@@ -25,10 +25,10 @@ public class InstallStateIoTests
         {
             InstallStateIo.WriteState(installRoot, state);
             var json = File.ReadAllText(InstallStatePaths.InstallStatePath(installRoot));
-            json.Should().Contain("selected_features");
+            json.Verify().ToContain("selected_features");
 
             var read = InstallStateIo.ReadState(installRoot);
-            read.SelectedFeatures.Should().BeEquivalentTo("samples", "simulator");
+            read.SelectedFeatures.Verify().ToBeEquivalentTo(new[] { "samples", "simulator" });
         }
         finally
         {
@@ -55,13 +55,13 @@ public class InstallStateIoTests
         {
             InstallStateIo.WriteState(installRoot, state);
             var path = InstallStatePaths.InstallStatePath(installRoot);
-            File.Exists(path).Should().BeTrue();
+            File.Exists(path).Verify().ToBeTrue();
             var json = File.ReadAllText(path);
-            json.Should().Contain("registry_uninstall_key_relative");
+            json.Verify().ToContain("registry_uninstall_key_relative");
 
             var read = InstallStateIo.ReadState(installRoot);
-            read.DisplayName.Should().Be("Test");
-            read.InstallScope.Should().Be("user");
+            read.DisplayName.Verify().ToBe("Test");
+            read.InstallScope.Verify().ToBe("user");
         }
         finally
         {
@@ -101,13 +101,14 @@ public class InstallStateIoTests
             InstallStateIo.WriteEmbeddedManifest(installRoot, manifest);
             var read = InstallStateIo.ReadEmbeddedManifest(installRoot);
 
-            read.Metadata.Name.Should().Be("Test");
-            read.Tasks.Should().NotBeNull();
-            read.Tasks!.PostInstall.Should().ContainSingle();
-            var task = read.Tasks.PostInstall[0];
-            task.Action.Should().Be("create_shortcut");
-            task.Parameters.Should().NotBeNull();
-            task.Parameters!.Should().ContainKey("target_path");
+            read.Metadata.Name.Verify().ToBe("Test");
+            read.Tasks.Verify().NotToBeNull();
+            var postInstall = read.Tasks!.PostInstall!;
+            postInstall.Verify().ToHaveCount(1);
+            var task = postInstall[0];
+            task.Action.Verify().ToBe("create_shortcut");
+            task.Parameters.Verify().NotToBeNull();
+            task.Parameters!.Verify().ContainKey("target_path");
         }
         finally
         {
@@ -148,10 +149,10 @@ public class InstallStateIoTests
             var path = InstallStatePaths.EmbeddedManifestPath(installRoot);
             var json = File.ReadAllText(path);
 
-            json.Should().Contain("\"action\": \"create_shortcut\"");
-            json.Should().Contain("\"target_path\"");
-            json.Should().Contain("\"name\"");
-            json.Should().Contain("\"location\"");
+            json.Verify().ToContain("\"action\": \"create_shortcut\"");
+            json.Verify().ToContain("\"target_path\"");
+            json.Verify().ToContain("\"name\"");
+            json.Verify().ToContain("\"location\"");
         }
         finally
         {

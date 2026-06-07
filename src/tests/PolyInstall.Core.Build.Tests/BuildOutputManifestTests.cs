@@ -22,14 +22,14 @@ public class BuildOutputManifestTests
         };
         var json = JsonSerializer.Serialize(manifest, options);
 
-        json.Should().Contain(""""product_name": "SampleApp"""");
-        json.Should().Contain(""""version": "1.0.0"""");
-        json.Should().Contain(""""artifacts"""");
-        json.Should().Contain(""""target": "windows-x64"""");
-        json.Should().Contain(""""rid": "win-x64"""");
-        json.Should().Contain(""""type": "installer"""");
-        json.Should().Contain(""""path": "/dist/SampleApp-windows-x64.exe"""");
-        json.Should().Contain(""""size": 12345678"""");
+        json.Verify().ToContain(""""product_name": "SampleApp"""");
+        json.Verify().ToContain(""""version": "1.0.0"""");
+        json.Verify().ToContain(""""artifacts"""");
+        json.Verify().ToContain(""""target": "windows-x64"""");
+        json.Verify().ToContain(""""rid": "win-x64"""");
+        json.Verify().ToContain(""""type": "installer"""");
+        json.Verify().ToContain(""""path": "/dist/SampleApp-windows-x64.exe"""");
+        json.Verify().ToContain(""""size": 12345678"""");
     }
 
     [Fact]
@@ -51,8 +51,8 @@ public class BuildOutputManifestTests
         };
         var json = JsonSerializer.Serialize(manifest, options);
 
-        json.Should().Contain(""""type": "installer"""");
-        json.Should().Contain(""""type": "appimage"""");
-        json.Should().Contain(""""type": "dmg"""");
+        json.Verify().ToContain(""""type": "installer"""");
+        json.Verify().ToContain(""""type": "appimage"""");
+        json.Verify().ToContain(""""type": "dmg"""");
     }
 }

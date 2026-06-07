@@ -18,7 +18,7 @@ public class BuildLogTests
             BuildLog.Info("should not appear");
             BuildLog.VerboseLine("also should not appear");
 
-            sw.ToString().Should().BeEmpty();
+            sw.ToString().Verify().ToBeEmpty();
         }
         finally
         {
@@ -40,7 +40,7 @@ public class BuildLogTests
             BuildLog.Verbose = false;
             BuildLog.Info("hello");
 
-            sw.ToString().Should().Contain("hello");
+            sw.ToString().Verify().ToContain("hello");
         }
         finally
         {

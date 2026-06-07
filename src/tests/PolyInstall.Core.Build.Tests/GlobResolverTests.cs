@@ -29,8 +29,8 @@ public class GlobResolverTests
         try
         {
             var results = GlobResolver.Collect(root, ".", ["**/*.txt"], null);
-            results.Should().HaveCount(2);
-            results.Select(f => f.RelativePath).Should().BeEquivalentTo("a.txt", "sub/b.txt");
+            results.Verify().ToHaveCount(2);
+            results.Select(f => f.RelativePath).Verify().ToBeEquivalentTo(new[] { "a.txt", "sub/b.txt" });
         }
         finally { DeleteTree(root); }
     }
@@ -42,8 +42,8 @@ public class GlobResolverTests
         try
         {
             var results = GlobResolver.Collect(root, ".", ["**/*.txt"], null);
-            results.Select(f => f.RelativePath).Should().BeEquivalentTo(
-                "a.txt", "sub/b.txt", "sub/deep/c.txt");
+            results.Select(f => f.RelativePath).Verify().ToBeEquivalentTo(
+                new[] { "a.txt", "sub/b.txt", "sub/deep/c.txt" });
         }
         finally { DeleteTree(root); }
     }
@@ -55,9 +55,9 @@ public class GlobResolverTests
         try
         {
             var results = GlobResolver.Collect(root, ".", ["**/*.dat"], null);
-            results.Should().ContainSingle();
-            results[0].RelativePath.Should().Be("dir/nested/file.dat");
-            results[0].RelativePath.Should().NotContain("\\");
+            results.Verify().ToHaveCount(1);
+            results[0].RelativePath.Verify().ToBe("dir/nested/file.dat");
+            results[0].RelativePath.Contains('\\', StringComparison.Ordinal).Verify().ToBeFalse();
         }
         finally { DeleteTree(root); }
     }
@@ -69,8 +69,8 @@ public class GlobResolverTests
         try
         {
             var results = GlobResolver.Collect(root, ".", ["**/*"], null);
-            results.Should().ContainSingle();
-            File.Exists(results[0].FullPath).Should().BeTrue();
+            results.Verify().ToHaveCount(1);
+            File.Exists(results[0].FullPath).Verify().ToBeTrue();
         }
         finally { DeleteTree(root); }
     }
@@ -82,7 +82,7 @@ public class GlobResolverTests
         try
         {
             var results = GlobResolver.Collect(root, ".", ["**/*"], ["**/*.log"]);
-            results.Select(f => f.RelativePath).Should().BeEquivalentTo("keep.txt", "sub/keep2.txt");
+            results.Select(f => f.RelativePath).Verify().ToBeEquivalentTo(new[] { "keep.txt", "sub/keep2.txt" });
         }
         finally { DeleteTree(root); }
     }
@@ -94,8 +94,8 @@ public class GlobResolverTests
         try
         {
             var results = GlobResolver.Collect(root, ".", ["**/*"], ["excluded/**"]);
-            results.Should().HaveCount(1);
-            results[0].RelativePath.Should().Be("include.txt");
+            results.Verify().ToHaveCount(1);
+            results[0].RelativePath.Verify().ToBe("include.txt");
         }
         finally { DeleteTree(root); }
     }
@@ -109,7 +109,7 @@ public class GlobResolverTests
             var results = GlobResolver.Collect(root, ".", ["**/*.txt"], null);
             var paths = results.Select(f => f.RelativePath).ToList();
             var sorted = paths.OrderBy(p => p, StringComparer.Ordinal).ToList();
-            paths.Should().Equal(sorted, "results must be sorted in ordinal ascending order");
+            paths.SequenceEqual(sorted).Verify().ToBeTrue();
         }
         finally { DeleteTree(root); }
     }
@@ -121,8 +121,8 @@ public class GlobResolverTests
         try
         {
             var results = GlobResolver.Collect(root, "src", ["**/*.cs"], null);
-            results.Should().ContainSingle();
-            results[0].RelativePath.Should().Be("app.cs");
+            results.Verify().ToHaveCount(1);
+            results[0].RelativePath.Verify().ToBe("app.cs");
         }
         finally { DeleteTree(root); }
     }
@@ -134,7 +134,7 @@ public class GlobResolverTests
         try
         {
             var results = GlobResolver.Collect(root, ".", ["**/*"], null);
-            results.Should().BeEmpty();
+            results.Verify().ToBeEmpty();
         }
         finally { DeleteTree(root); }
     }
@@ -146,7 +146,7 @@ public class GlobResolverTests
         try
         {
             var results = GlobResolver.Collect(root, ".", ["**/*.exe"], null);
-            results.Should().BeEmpty();
+            results.Verify().ToBeEmpty();
         }
         finally { DeleteTree(root); }
     }
@@ -158,7 +158,7 @@ public class GlobResolverTests
         try
         {
             var results = GlobResolver.Collect(root, ".", ["**/*.txt", "**/*.dll"], null);
-            results.Select(f => f.RelativePath).Should().BeEquivalentTo("a.txt", "b.dll");
+            results.Select(f => f.RelativePath).Verify().ToBeEquivalentTo(new[] { "a.txt", "b.dll" });
         }
         finally { DeleteTree(root); }
     }
@@ -169,9 +169,9 @@ public class GlobResolverTests
         var root = MakeTempTree("dummy.txt");
         try
         {
-            var act = () => GlobResolver.Collect(root, "does-not-exist", ["**/*"], null);
-            act.Should().Throw<DirectoryNotFoundException>()
-                .WithMessage("*does-not-exist*");
+            Action act = () => GlobResolver.Collect(root, "does-not-exist", ["**/*"], null);
+            act.Throws<DirectoryNotFoundException>()
+                .WithMessageContaining("does-not-exist");
         }
         finally { DeleteTree(root); }
     }
@@ -183,7 +183,7 @@ public class GlobResolverTests
         try
         {
             var results = GlobResolver.Collect(root, ".", [], null);
-            results.Should().BeEmpty();
+            results.Verify().ToBeEmpty();
         }
         finally { DeleteTree(root); }
     }
@@ -195,8 +195,8 @@ public class GlobResolverTests
         try
         {
             var results = GlobResolver.Collect(root, ".", ["**/*.txt", "../*.txt"], null);
-            results.Should().ContainSingle();
-            results[0].RelativePath.Should().Be("inside.txt");
+            results.Verify().ToHaveCount(1);
+            results[0].RelativePath.Verify().ToBe("inside.txt");
         }
         finally { DeleteTree(root); }
     }

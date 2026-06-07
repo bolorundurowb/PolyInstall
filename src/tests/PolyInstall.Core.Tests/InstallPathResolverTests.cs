@@ -5,6 +5,7 @@ using PolyInstall.Pal;
 
 namespace PolyInstall.Core.Tests;
 
+[Collection("Sequential")]
 public class InstallPathResolverTests
 {
     [Theory]
@@ -20,7 +21,7 @@ public class InstallPathResolverTests
 
         var result = InstallPathResolver.Expand("{UserHome}/SampleApp", pal, targetOs);
 
-        result.Should().Be(expected);
+        result.Verify().ToBe(expected);
     }
 
     [Theory]
@@ -36,7 +37,7 @@ public class InstallPathResolverTests
 
         var result = InstallPathResolver.Expand(@"{UserHome}\SampleApp", pal, targetOs);
 
-        result.Should().Be(expected);
+        result.Verify().ToBe(expected);
     }
 
     [Theory]
@@ -55,9 +56,12 @@ public class InstallPathResolverTests
         TargetOperatingSystem expectedOs)
     {
         var ok = InstallPathResolver.TryParseInstallerTargetOperatingSystem(token, out var os);
-        ok.Should().Be(expectedOk);
         if (expectedOk)
-            os.Should().Be(expectedOs);
+            ok.Verify().ToBeTrue();
+        else
+            ok.Verify().ToBeFalse();
+        if (expectedOk)
+            os.Verify().ToBe(expectedOs);
     }
 
     [Fact]
@@ -75,7 +79,7 @@ public class InstallPathResolverTests
 
         var result = InstallPathResolver.Expand("{UserHome}\\SampleApp", pal);
 
-        result.Should().Be("C:/Users/bolorundurowb/SampleApp");
+        result.Verify().ToBe("C:/Users/bolorundurowb/SampleApp");
     }
 
     private sealed class TestInstallPathPal(string userHome) : IInstallPathPal
