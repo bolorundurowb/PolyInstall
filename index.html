@@ -722,6 +722,7 @@
         <a href="#installation">Install</a>
         <a href="#quick-start">Quick start</a>
         <a href="#advanced">Advanced</a>
+        <a href="#github-actions">GitHub Actions</a>
         <a href="#schema-reference">Schema</a>
         <a href="#faq">FAQ</a>
         <a href="#contributing">Contribute</a>
@@ -789,9 +790,10 @@ polyinstall validate manifest.yaml</code></pre>
         <a href="#installation">3. Installation guide</a>
         <a href="#quick-start">4. Quick start</a>
         <a href="#advanced">5. Advanced usage</a>
-        <a href="#schema-reference">6. Schema reference</a>
-        <a href="#faq">7. Troubleshooting and FAQ</a>
-        <a href="#contributing">8. Contributing and support</a>
+        <a href="#github-actions">6. GitHub Actions</a>
+        <a href="#schema-reference">7. Schema reference</a>
+        <a href="#faq">8. Troubleshooting and FAQ</a>
+        <a href="#contributing">9. Contributing and support</a>
       </aside>
 
       <main>
@@ -1178,6 +1180,15 @@ files:
       - "branding/**"
       - "legal/**"
 
+file_associations:
+  - extension: ".cstudio"
+    description: "Contoso Studio project"
+    prog_id: "ContosoStudio.Project.1"
+    icon: "{AppDir}\\branding\\contoso.ico"
+    command: '"{AppDir}\\ContosoStudio.exe" "%1"'
+    mime_type: "application/x-contoso-studio"
+    bundle_path: "{AppDir}/Contoso Studio.app"
+
 tasks:
   pre_install:
     - require: os.isWindows
@@ -1222,6 +1233,58 @@ tasks:
         value_name: UninstallStarted
         value: "true"
         value_kind: string</code></pre>
+
+          <h3 style="margin-top: 1.6rem;">Shortcut and file association behaviour</h3>
+          <p>
+            Shortcut names are display names, not full destination paths. PolyInstall chooses the correct desktop or
+            Start Menu directory from <code>location</code> and optional <code>subfolder</code>, then combines it with
+            <code>name</code>. On Windows, <code>.lnk</code> is appended automatically when <code>name</code> does not
+            already end with it; <code>name: "Contoso Studio"</code> and <code>name: "Contoso Studio.lnk"</code> both
+            produce a single <code>Contoso Studio.lnk</code> file. Prefer omitting <code>.lnk</code> in manifests so the
+            same task reads naturally on Linux and macOS.
+          </p>
+          <pre><code class="language-yaml">tasks:
+  post_install:
+    - require: os.isWindows
+      action: create_shortcut
+      parameters:
+        target_path: "{AppDir}\\ContosoStudio.exe"
+        name: "Contoso Studio"        # Do not include .lnk unless you need to be explicit.
+        location: start_menu          # start_menu or desktop
+        subfolder: "Contoso"
+        description: "Launch Contoso Studio"
+        icon_path: "{AppDir}\\branding\\contoso.ico"</code></pre>
+
+          <div class="callout">
+            <strong>Do not package generated shortcuts</strong>
+            Do not include <code>.lnk</code>, <code>.desktop</code>, or symlink shortcut files in your
+            <code>files</code> payload just to place launchers on the user's machine. Include the real executable and
+            icon assets, then create launchers with <code>create_shortcut</code> or
+            <code>create_desktop_entry</code>. This keeps uninstall state accurate and lets PolyInstall place shortcuts
+            in the correct per-user or machine-wide location.
+          </div>
+
+          <p>
+            File associations should normally be declared with top-level <code>file_associations</code> entries. Use a
+            leading dot in <code>extension</code>, choose a stable <code>prog_id</code> that will not change between
+            releases, include the icon file in your payload, and quote <code>%1</code> in the open command so paths with
+            spaces work correctly. If <code>prog_id</code> is omitted, PolyInstall derives one from the app name and
+            extension, but explicit values are clearer for long-lived products.
+          </p>
+          <pre><code class="language-yaml">file_associations:
+  - extension: ".cstudio"
+    description: "Contoso Studio project"
+    prog_id: "ContosoStudio.Project.1"
+    icon: "{AppDir}\\branding\\contoso.ico"
+    command: '"{AppDir}\\ContosoStudio.exe" "%1"'
+    mime_type: "application/x-contoso-studio"     # Linux; optional if the derived type is fine.
+    bundle_path: "{AppDir}/Contoso Studio.app"    # macOS; required for macOS associations.</code></pre>
+
+          <p>
+            Use the <code>file_association</code> task action only when an association must be created conditionally in a
+            lifecycle phase. Top-level associations are easier to read, participate in feature selection, and are
+            registered after files are copied.
+          </p>
 
           <div class="grid two" style="margin-top: 1rem;">
             <div class="card">
@@ -1414,8 +1477,132 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
           </table>
         </section>
 
+        <section class="section" id="github-actions">
+          <span class="eyebrow">6. GitHub Actions</span>
+          <h2>Build installers in CI</h2>
+          <p class="section-intro">
+            Use GitHub Actions to validate manifests on pull requests and build release installers from the same YAML
+            file you use locally. The project includes a reusable setup action that downloads a PolyInstall release,
+            verifies its checksum, extracts it, and adds <code>polyinstall</code> to <code>PATH</code>.
+          </p>
+
+          <div class="callout">
+            <strong>Choose a runner that matches the output you need</strong>
+            The release CLI archive includes the stub for its own RID. A Linux runner is the easiest path for
+            <code>linux-x64</code> output and AppImage packaging, a Windows runner for <code>windows-x64</code>, and a
+            macOS ARM64 runner for <code>osx-arm64</code> and DMG packaging. Cross-target raw installer builds are
+            possible when you also provide the matching <code>stubs-&lt;rid&gt;</code> archive or custom stubs directory.
+          </div>
+
+          <h3 style="margin-top: 1.6rem;">Validate manifests on pull requests</h3>
+          <p>
+            A lightweight validation workflow catches schema mistakes, missing payload paths, invalid shortcut parameters,
+            and incompatible task/platform settings before a release job tries to package artifacts.
+          </p>
+          <pre><code class="language-yaml">name: Validate installer manifest
+
+on:
+  pull_request:
+    paths:
+      - "installer/**"
+      - ".github/workflows/installer.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: bolorundurowb/PolyInstall/.github/actions/setup-polyinstall@v1.0.0
+        with:
+          version: v1.0.0
+
+      - name: Validate manifest
+        run: polyinstall validate installer/manifest.yaml --base installer</code></pre>
+
+          <h3 style="margin-top: 1.6rem;">Build and upload installers</h3>
+          <p>
+            Use a matrix when you want separate artifacts per target. The example below sets
+            <code>APP_VERSION</code> from the tag name so manifests can use
+            <code>${APP_VERSION:-0.0.0-local}</code> without hard-coding release versions. For per-target matrix builds,
+            set <code>build.targets</code> in the manifest to a substituted value such as
+            <code>"${POLYINSTALL_TARGET:-windows-x64}"</code>.
+          </p>
+          <pre><code class="language-yaml">name: Build installers
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            rid: win-x64
+            target: windows-x64
+            artifact: installer-windows-x64
+          - runner: ubuntu-latest
+            rid: linux-x64
+            target: linux-x64
+            artifact: installer-linux-x64
+          - runner: macos-14
+            rid: osx-arm64
+            target: osx-arm64
+            artifact: installer-osx-arm64
+
+    runs-on: $&#123;&#123; matrix.runner &#125;&#125;
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: bolorundurowb/PolyInstall/.github/actions/setup-polyinstall@v1.0.0
+        with:
+          version: v1.0.0
+          rid: $&#123;&#123; matrix.rid &#125;&#125;
+
+      - name: Validate manifest
+        env:
+          POLYINSTALL_TARGET: $&#123;&#123; matrix.target &#125;&#125;
+        run: polyinstall validate installer/manifest.yaml --base installer
+
+      - name: Build installer
+        env:
+          APP_VERSION: $&#123;&#123; github.ref_name &#125;&#125;
+          POLYINSTALL_TARGET: $&#123;&#123; matrix.target &#125;&#125;
+        run: polyinstall build installer/manifest.yaml --base installer
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: $&#123;&#123; matrix.artifact &#125;&#125;
+          path: installer/dist/**</code></pre>
+
+          <div class="grid two" style="margin-top: 1rem;">
+            <div class="card">
+              <h3>Use secrets carefully</h3>
+              <p>
+                Store signing passwords and keychain material in GitHub secrets, then reference them through environment
+                variables such as <code>WINDOWS_CERT_PASSWORD</code>. Do not substitute runtime secrets into the manifest
+                because the resolved manifest is embedded in the installer.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Keep output predictable</h3>
+              <p>
+                Set <code>build.output_name</code> to a template such as
+                <code>{name}-{version}-{target}</code> so artifact upload patterns and release automation do not depend
+                on display-name formatting.
+              </p>
+            </div>
+          </div>
+        </section>
+
         <section class="section" id="schema-reference">
-          <span class="eyebrow">6. Schema reference</span>
+          <span class="eyebrow">7. Schema reference</span>
           <h2>Manifest options in detail</h2>
           <p class="section-intro">
             PolyInstall manifests are YAML documents that validate against the published schema at
@@ -1467,8 +1654,9 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
 
           <h3 id="schema-root" style="margin-top: 1.6rem;">Root object</h3>
           <p>
-            The root object has five top-level sections. Use these links when you see a field in a sample manifest and
-            want to understand what it controls.
+            The root object groups product metadata, build settings, UI flow, payload selection, optional integrations,
+            and lifecycle behaviour. Use these links when you see a field in a sample manifest and want to understand
+            what it controls.
           </p>
           <table>
             <thead>
@@ -1505,10 +1693,28 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
                 <td>This is what actually gets copied to the user's install folder. Start with <code>"**/*"</code>.</td>
               </tr>
               <tr>
+                <td><a href="#schema-file-associations"><code>file_associations</code></a></td>
+                <td>array or null</td>
+                <td>Registers document extensions with the installed app after files are copied.</td>
+                <td>Use for open-with behaviour. Prefer this over ad hoc registry tasks for normal file associations.</td>
+              </tr>
+              <tr>
                 <td><a href="#schema-tasks"><code>tasks</code></a></td>
                 <td>object or null</td>
                 <td>Optional lifecycle actions that run before or after install and uninstall phases.</td>
                 <td>Use only when copying files is not enough, for example creating a desktop shortcut.</td>
+              </tr>
+              <tr>
+                <td><code>features</code></td>
+                <td>array or null</td>
+                <td>Optional user-selectable feature list used by <code>files</code>, <code>tasks</code>, and <code>file_associations</code>.</td>
+                <td>Add a <code>features</code> wizard step when users should choose optional components.</td>
+              </tr>
+              <tr>
+                <td><code>services</code></td>
+                <td>array or null</td>
+                <td>Optional background service or daemon registrations.</td>
+                <td>Always include an OS <code>require</code> predicate so each service uses the right platform manager.</td>
               </tr>
             </tbody>
           </table>
@@ -1775,6 +1981,12 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
                 <td>Use when the user should choose where the app is installed.</td>
               </tr>
               <tr>
+                <td><code>features</code></td>
+                <td>A full/custom install screen with checkboxes for optional features.</td>
+                <td><code>title</code></td>
+                <td>Use when the manifest defines top-level <code>features</code>. It is skipped when no features exist.</td>
+              </tr>
+              <tr>
                 <td><code>progress</code></td>
                 <td>A progress screen while tasks run and files are copied.</td>
                 <td><code>title</code></td>
@@ -1822,6 +2034,12 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
                 <td>Optional glob patterns removed from the included set.</td>
                 <td>Use <code>"**/*.pdb"</code>, <code>"**/*.map"</code>, or <code>"**/tmp/**"</code> to skip files you do not want to ship.</td>
               </tr>
+              <tr>
+                <td><code>features</code></td>
+                <td>array or null</td>
+                <td>Optional feature ids that gate the matched files.</td>
+                <td>Omit for core files that are always installed. Set only when users can choose optional components.</td>
+              </tr>
             </tbody>
           </table>
 
@@ -1831,6 +2049,80 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
             <code>source_dir: app</code>, PolyInstall scans <code>./release-input/app</code>. Files are stored in the
             payload relative to that source directory.
           </div>
+
+          <h3 id="schema-file-associations" style="margin-top: 1.6rem;">file_associations entries</h3>
+          <p>
+            Top-level <code>file_associations</code> entries register document extensions after installation. They are
+            easier to maintain than platform-specific registry or desktop-database tasks, and they can be gated by
+            optional features in the same way as file groups and tasks.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>What it does</th>
+                <th>Best practice</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>extension</code></td>
+                <td>string</td>
+                <td>Document extension to register.</td>
+                <td>Include the leading dot, for example <code>.cstudio</code>.</td>
+              </tr>
+              <tr>
+                <td><code>description</code></td>
+                <td>string</td>
+                <td>User-facing file type description.</td>
+                <td>Use a readable name such as <code>Contoso Studio project</code>.</td>
+              </tr>
+              <tr>
+                <td><code>prog_id</code></td>
+                <td>string or null</td>
+                <td>Stable programmatic identifier for the association.</td>
+                <td>Set an explicit value such as <code>ContosoStudio.Project.1</code> for shipped apps.</td>
+              </tr>
+              <tr>
+                <td><code>icon</code></td>
+                <td>string or null</td>
+                <td>Icon file for the associated document type.</td>
+                <td>Include the icon in your payload and reference it with <code>{AppDir}</code> or a relative path.</td>
+              </tr>
+              <tr>
+                <td><code>command</code></td>
+                <td>string</td>
+                <td>Command used when the OS opens a matching file.</td>
+                <td>Quote both the executable path and <code>%1</code>, for example <code>"{AppDir}\App.exe" "%1"</code>.</td>
+              </tr>
+              <tr>
+                <td><code>mime_type</code></td>
+                <td>string or null</td>
+                <td>Linux MIME type.</td>
+                <td>Optional on Linux. If omitted, PolyInstall derives <code>application/x-&lt;extension&gt;</code>.</td>
+              </tr>
+              <tr>
+                <td><code>bundle_path</code></td>
+                <td>string or null</td>
+                <td>macOS app bundle to update for document support.</td>
+                <td>Required for macOS associations, for example <code>{AppDir}/Contoso.app</code>.</td>
+              </tr>
+              <tr>
+                <td><code>features</code></td>
+                <td>array or null</td>
+                <td>Optional feature ids that gate the association.</td>
+                <td>Use only when the associated executable or plugin is optional.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <pre><code class="language-yaml">file_associations:
+  - extension: ".cstudio"
+    description: "Contoso Studio project"
+    prog_id: "ContosoStudio.Project.1"
+    icon: "{AppDir}\\branding\\contoso.ico"
+    command: '"{AppDir}\\ContosoStudio.exe" "%1"'</code></pre>
 
           <h3 id="schema-tasks" style="margin-top: 1.6rem;">tasks</h3>
           <p>
@@ -1891,7 +2183,7 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
               <tr>
                 <td><code>action</code></td>
                 <td>string</td>
-                <td>Task action to run. Supported actions are <code>create_shortcut</code>, <code>write_registry</code>, <code>create_desktop_entry</code>, <code>set_permissions</code>, and <code>add_to_path</code>.</td>
+                <td>Task action to run. Supported actions are <code>create_shortcut</code>, <code>write_registry</code>, <code>create_desktop_entry</code>, <code>set_permissions</code>, <code>add_to_path</code>, and <code>file_association</code>.</td>
                 <td>Choose the action first, then fill <code>parameters</code> with the keys that action expects.</td>
               </tr>
               <tr>
@@ -1899,6 +2191,12 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
                 <td>object or null</td>
                 <td>Action-specific key/value map. String values can use path placeholders such as <code>{AppDir}</code>, <code>{Desktop}</code>, and <code>{ProgramFiles}</code>.</td>
                 <td>Parameter names are snake_case. The required keys depend on the selected <code>action</code>.</td>
+              </tr>
+              <tr>
+                <td><code>features</code></td>
+                <td>array or null</td>
+                <td>Optional feature ids that gate this task.</td>
+                <td>Omit for tasks that always run. Set only when the task belongs to an optional feature.</td>
               </tr>
             </tbody>
           </table>
@@ -1944,6 +2242,12 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
                 <td>Optional <code>path</code> (defaults to install directory), optional <code>scope</code> (<code>user</code> or <code>machine</code>).</td>
                 <td>Add an installed CLI or tool directory to PATH. Machine scope requires <code>build.windows.install_scope: machine</code>.</td>
               </tr>
+              <tr>
+                <td><code>file_association</code></td>
+                <td>Windows, Linux, macOS</td>
+                <td><code>extension</code>, <code>description</code>, <code>command</code>, optional <code>prog_id</code>, <code>icon</code>, <code>mime_type</code>, and macOS <code>bundle_path</code>.</td>
+                <td>Register or unregister an association during a lifecycle phase. Prefer top-level <code>file_associations</code> for normal app associations.</td>
+              </tr>
             </tbody>
           </table>
 
@@ -1956,7 +2260,7 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
         </section>
 
         <section class="section" id="faq">
-          <span class="eyebrow">7. Troubleshooting and FAQ</span>
+          <span class="eyebrow">8. Troubleshooting and FAQ</span>
           <h2>Common issues</h2>
           <p class="section-intro">
             Most build failures come from missing stubs, schema mismatches, host-specific packaging tools, or file globs
@@ -2041,7 +2345,7 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
         </section>
 
         <section class="section" id="contributing">
-          <span class="eyebrow">8. Contributing and support</span>
+          <span class="eyebrow">9. Contributing and support</span>
           <h2>Help improve PolyInstall</h2>
           <p class="section-intro">
             PolyInstall welcomes focused issues, documentation improvements, tests, and implementation changes that keep
