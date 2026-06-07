@@ -69,19 +69,10 @@ jobs:
             10.0.x
       - run: dotnet restore src/PolyInstall.slnx
       - run: dotnet build src/PolyInstall.slnx -c Release --no-restore
-      - name: Test with coverage
+      - name: Test
         run: >
           dotnet test src/PolyInstall.slnx
           -c Release --no-build --verbosity normal
-          /p:CollectCoverage=true
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true
-          files: ./src/coverage/**/coverage.cobertura.xml
-          flags: unittests-${{ matrix.os }}
-          name: polyinstall-coverage-${{ matrix.os }}
 
   publish:
     needs: [version-check, test]
