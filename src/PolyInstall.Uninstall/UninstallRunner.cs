@@ -68,7 +68,7 @@ internal static class UninstallRunner
             return 1;
 
         var pal = new DefaultPolyInstallPal();
-        UninstallCoordinator.Run(state, manifest, pal, exe);
+        UninstallCoordinator.Run(state, manifest, pal, exe, installRoot);
         return 0;
     }
 

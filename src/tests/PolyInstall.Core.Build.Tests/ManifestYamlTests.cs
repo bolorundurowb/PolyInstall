@@ -148,4 +148,22 @@ public class ManifestYamlTests
         m.FileAssociations![0].MimeType.Should().Be("application/x-oef");
         m.FileAssociations[0].BundlePath.Should().Be("/Applications/MyApp.app");
     }
+
+    [Fact]
+    public void Parse_WithUnknownProperty_Throws()
+    {
+        var yaml = """
+            metadata:
+              name: T
+              version: 1.0.0
+            typo_section:
+              enabled: true
+            files:
+              - source_dir: .
+            """;
+
+        FluentActions.Invoking(() => ManifestYaml.Parse(yaml))
+            .Should().Throw<Exception>()
+            .WithMessage("*typo_section*");
+    }
 }

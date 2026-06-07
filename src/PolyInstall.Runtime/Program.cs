@@ -18,24 +18,59 @@ internal static class Program
     private static void Main(string[] args)
     {
         var exe = Environment.ProcessPath ?? throw new InvalidOperationException("Cannot resolve host executable path.");
-        var (manifest, compressed) = InstallBundleReader.ReadFromSeekableFile(exe);
+        var manifest = InstallBundleReader.ReadManifestFromSeekableFile(exe);
         var pal = new DefaultPolyInstallPal();
         var existingInstall = InstalledProductLocator.Find(manifest, pal);
         if (RelaunchElevatedForMachineInstall(exe, args, manifest, existingInstall))
             return;
 
-        var raw = InstallBundleReader.DecompressPayload(manifest, compressed);
         var extract = Path.Combine(Path.GetTempPath(), "polyinstall-" + Guid.NewGuid().ToString("n"));
-        Directory.CreateDirectory(extract);
-        ZipPayloadExtractor.ExtractToDirectory(raw, extract);
-        InstallBootstrap.Init(manifest, extract, pal, existingInstall);
-        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        var zipPath = Path.Combine(Path.GetTempPath(), "polyinstall-payload-" + Guid.NewGuid().ToString("n") + ".zip");
+        try
+        {
+            Directory.CreateDirectory(extract);
+            InstallBundleReader.DecompressPayloadToFile(exe, manifest, zipPath);
+            ZipPayloadExtractor.ExtractFileToDirectory(zipPath, extract);
+            InstallBootstrap.Init(manifest, extract, pal, existingInstall);
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        }
+        finally
+        {
+            TryDeleteFile(zipPath);
+            TryDeleteDirectory(extract);
+        }
     }
 
     private static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .LogToTrace();
+
+    private static void TryDeleteFile(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+        catch
+        {
+            // best-effort cleanup
+        }
+    }
+
+    private static void TryDeleteDirectory(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path))
+                Directory.Delete(path, recursive: true);
+        }
+        catch
+        {
+            // best-effort cleanup
+        }
+    }
 
     private static bool RelaunchElevatedForMachineInstall(
         string exe,

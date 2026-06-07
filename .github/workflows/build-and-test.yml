@@ -21,7 +21,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+            artifact: polyinstall-linux-x64
+          - os: windows-latest
+            rid: win-x64
+            artifact: polyinstall-win-x64
+          - os: macos-latest
+            rid: osx-arm64
+            artifact: polyinstall-osx-arm64
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -57,40 +66,46 @@ jobs:
           name: polyinstall-coverage
 
       - name: Publish CLI fixture for setup action
-        if: runner.os == 'Linux'
+        if: runner.os != 'macOS'
         run: >
           dotnet publish src/PolyInstall.Cli/PolyInstall.Cli.csproj
           --configuration Release
-          --runtime linux-x64
+          --runtime ${{ matrix.rid }}
           --self-contained true
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
           -p:DebugType=embedded
-          --output ./setup-action-smoke/polyinstall-linux-x64
+          --output ./setup-action-smoke/${{ matrix.artifact }}
 
       - name: Package setup action fixture
-        if: runner.os == 'Linux'
-        shell: bash
+        if: runner.os != 'macOS'
+        shell: pwsh
+        working-directory: setup-action-smoke
         run: |
-          set -euo pipefail
-          cd setup-action-smoke
-          zip -r polyinstall-linux-x64-v0.0.0-test.zip polyinstall-linux-x64
-          sha256sum polyinstall-linux-x64-v0.0.0-test.zip > SHA256SUMS.txt
+          $ErrorActionPreference = 'Stop'
+          $zip = '${{ matrix.artifact }}-v0.0.0-test.zip'
+          Compress-Archive -Path '${{ matrix.artifact }}' -DestinationPath $zip -Force
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash.ToLowerInvariant()
+          "$hash  $zip" | Set-Content -NoNewline -Path SHA256SUMS.txt
 
       - id: setup-polyinstall-smoke
         name: Smoke test setup-polyinstall action
-        if: runner.os == 'Linux'
+        if: runner.os != 'macOS'
         uses: ./.github/actions/setup-polyinstall
         with:
           version: v0.0.0-test
-          rid: linux-x64
+          rid: ${{ matrix.rid }}
           asset-dir: setup-action-smoke
           install-dir: ${{ runner.temp }}/setup-polyinstall-smoke
 
       - name: Verify setup action PATH
-        if: runner.os == 'Linux'
-        shell: bash
+        if: runner.os != 'macOS'
+        shell: pwsh
         run: |
-          set -euo pipefail
-          test -x "${{ steps.setup-polyinstall-smoke.outputs.polyinstall-path }}"
+          $ErrorActionPreference = 'Stop'
+          $polyinstall = '${{ steps.setup-polyinstall-smoke.outputs.polyinstall-path }}'
+          if (!(Test-Path -LiteralPath $polyinstall)) {
+            throw "polyinstall executable not found: $polyinstall"
+          }
+          & $polyinstall --version
           polyinstall --version

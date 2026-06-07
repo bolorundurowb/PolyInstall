@@ -212,8 +212,90 @@ jobs:
           name: stubs-${{ matrix.rid }}
           path: stubs-${{ matrix.rid }}-${{ needs.version-check.outputs.tag }}.zip
 
-  release:
+  smoke-release-artifacts:
     needs: [version-check, publish, publish-stubs]
+    if: needs.version-check.outputs.should_release == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            artifact: polyinstall-win-x64
+            exe: polyinstall.exe
+            runtime: PolyInstall.Runtime.exe
+          - os: ubuntu-latest
+            rid: linux-x64
+            artifact: polyinstall-linux-x64
+            exe: polyinstall
+            runtime: PolyInstall.Runtime
+          - os: macos-latest
+            rid: osx-arm64
+            artifact: polyinstall-osx-arm64
+            exe: polyinstall
+            runtime: PolyInstall.Runtime
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Download CLI artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: cli-artifact
+
+      - name: Download stub artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: stubs-${{ matrix.rid }}
+          path: stub-artifact
+
+      - name: Smoke test release zips
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = '${{ needs.version-check.outputs.tag }}'
+          $rid = '${{ matrix.rid }}'
+          $artifact = '${{ matrix.artifact }}'
+          $exeName = '${{ matrix.exe }}'
+          $runtimeName = '${{ matrix.runtime }}'
+
+          $cliZip = Join-Path 'cli-artifact' "$artifact-$tag.zip"
+          $stubZip = Join-Path 'stub-artifact' "stubs-$rid-$tag.zip"
+          if (!(Test-Path -LiteralPath $cliZip)) { throw "CLI zip not found: $cliZip" }
+          if (!(Test-Path -LiteralPath $stubZip)) { throw "Stub zip not found: $stubZip" }
+
+          Expand-Archive -LiteralPath $cliZip -DestinationPath 'cli-extract' -Force
+          Expand-Archive -LiteralPath $stubZip -DestinationPath 'stub-extract' -Force
+
+          $exePath = Join-Path (Join-Path 'cli-extract' $artifact) $exeName
+          $bundledRuntime = Join-Path (Join-Path (Join-Path (Join-Path 'cli-extract' $artifact) 'stubs') $rid) $runtimeName
+          $stubRuntime = Join-Path (Join-Path 'stub-extract' $rid) $runtimeName
+          if (!(Test-Path -LiteralPath $exePath)) { throw "polyinstall executable not found: $exePath" }
+          if (!(Test-Path -LiteralPath $bundledRuntime)) { throw "bundled runtime stub not found: $bundledRuntime" }
+          if (!(Test-Path -LiteralPath $stubRuntime)) { throw "standalone runtime stub not found: $stubRuntime" }
+
+          if ($rid -eq 'win-x64') {
+            $bundledUninstall = Join-Path (Split-Path -Parent $bundledRuntime) 'PolyInstall.Uninstall.exe'
+            $stubUninstall = Join-Path (Split-Path -Parent $stubRuntime) 'PolyInstall.Uninstall.exe'
+            if (!(Test-Path -LiteralPath $bundledUninstall)) { throw "bundled uninstall stub not found: $bundledUninstall" }
+            if (!(Test-Path -LiteralPath $stubUninstall)) { throw "standalone uninstall stub not found: $stubUninstall" }
+          }
+
+          if ($IsLinux -or $IsMacOS) {
+            chmod +x $exePath
+          }
+
+          if ($rid -eq 'osx-arm64') {
+            $arch = (& uname -m).Trim()
+            if ($arch -ne 'arm64') {
+              Write-Host "Skipping osx-arm64 execution on $arch runner after layout verification."
+              exit 0
+            }
+          }
+
+          & $exePath --version
+
+  release:
+    needs: [version-check, publish, publish-stubs, smoke-release-artifacts]
     if: needs.version-check.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:

@@ -6,9 +6,20 @@ public static class ZipPayloadExtractor
 {
     public static void ExtractToDirectory(byte[] zipBytes, string destinationDirectory, CancellationToken ct = default)
     {
-        Directory.CreateDirectory(destinationDirectory);
         using var ms = new MemoryStream(zipBytes);
-        using var zip = new ZipArchive(ms, ZipArchiveMode.Read);
+        ExtractStreamToDirectory(ms, destinationDirectory, ct);
+    }
+
+    public static void ExtractFileToDirectory(string zipFilePath, string destinationDirectory, CancellationToken ct = default)
+    {
+        using var fs = File.OpenRead(zipFilePath);
+        ExtractStreamToDirectory(fs, destinationDirectory, ct);
+    }
+
+    public static void ExtractStreamToDirectory(Stream zipStream, string destinationDirectory, CancellationToken ct = default)
+    {
+        Directory.CreateDirectory(destinationDirectory);
+        using var zip = new ZipArchive(zipStream, ZipArchiveMode.Read);
         foreach (var entry in zip.Entries)
         {
             ct.ThrowIfCancellationRequested();

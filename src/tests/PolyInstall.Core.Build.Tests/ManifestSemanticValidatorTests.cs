@@ -1045,6 +1045,73 @@ public class ManifestSemanticValidatorTests
         ManifestSemanticValidator.Validate(manifest);
     }
 
+    [Fact]
+    public void Validate_EmptyMetadata_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Metadata.Name = "";
+        manifest.Metadata.Version = "";
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("metadata.name");
+        ex.Message.Should().Contain("metadata.version");
+    }
+
+    [Fact]
+    public void Validate_TopLevelFileAssociationWithoutDotExtension_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.FileAssociations =
+        [
+            new FileAssociation
+            {
+                Extension = "oef",
+                Description = "OEF File",
+                Command = "\"app.exe\" \"%1\"",
+            },
+        ];
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("file_associations[0].extension");
+        ex.Message.Should().Contain("must start with a dot");
+    }
+
+    [Fact]
+    public void Validate_TopLevelMacOsFileAssociationWithoutBundlePath_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Build.Targets = ["osx-arm64"];
+        manifest.FileAssociations =
+        [
+            new FileAssociation
+            {
+                Extension = ".oef",
+                Description = "OEF File",
+                Command = "open %1",
+            },
+        ];
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Should().Contain("file_associations[0].bundle_path");
+    }
+
+    [Fact]
+    public void Validate_TopLevelFileAssociationValid_Passes()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.FileAssociations =
+        [
+            new FileAssociation
+            {
+                Extension = ".oef",
+                Description = "OEF File",
+                Command = "\"app.exe\" \"%1\"",
+            },
+        ];
+
+        ManifestSemanticValidator.Validate(manifest);
+    }
+
     private static InstallManifest CreateBaseManifest(string installScope)
     {
         return new InstallManifest

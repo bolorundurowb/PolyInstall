@@ -302,6 +302,84 @@ public class UpdateFlowTests
         }
     }
 
+    [Fact]
+    public void UninstallCoordinator_Run_WhenStateLocationDoesNotMatchRequestedRoot_ThrowsBeforeDelete()
+    {
+        var manifest = TestHelpers.Manifest("SampleApp", "2.0.0");
+        var stateRoot = TestHelpers.NewTempDir();
+        var requestedRoot = TestHelpers.NewTempDir();
+        try
+        {
+            var state = TestHelpers.StateFor(manifest, stateRoot, "2.0.0");
+
+            var act = () => UninstallCoordinator.Run(
+                state,
+                manifest,
+                new TestPal(stateRoot),
+                Path.Combine(requestedRoot, InstallStatePaths.UninstallExeFileName),
+                requestedRoot);
+
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("*does not match the requested install directory*");
+            Directory.Exists(stateRoot).Should().BeTrue();
+            Directory.Exists(requestedRoot).Should().BeTrue();
+        }
+        finally
+        {
+            TestHelpers.TryDeleteDirectory(stateRoot);
+            TestHelpers.TryDeleteDirectory(requestedRoot);
+        }
+    }
+
+    [Fact]
+    public void UninstallCoordinator_Run_WhenStateProductDoesNotMatchManifest_ThrowsBeforeDelete()
+    {
+        var manifest = TestHelpers.Manifest("SampleApp", "2.0.0");
+        var otherManifest = TestHelpers.Manifest("OtherApp", "2.0.0");
+        var installRoot = TestHelpers.NewTempDir();
+        try
+        {
+            var state = TestHelpers.StateFor(otherManifest, installRoot, "2.0.0");
+
+            var act = () => UninstallCoordinator.Run(
+                state,
+                manifest,
+                new TestPal(installRoot),
+                Path.Combine(installRoot, InstallStatePaths.UninstallExeFileName),
+                installRoot);
+
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("*product id does not match*");
+            Directory.Exists(installRoot).Should().BeTrue();
+        }
+        finally
+        {
+            TestHelpers.TryDeleteDirectory(installRoot);
+        }
+    }
+
+    [Fact]
+    public void UninstallCoordinator_Run_WhenInstallRootIsVolumeRoot_ThrowsBeforeDelete()
+    {
+        var manifest = TestHelpers.Manifest("SampleApp", "2.0.0");
+        var volumeRoot = Path.GetPathRoot(Path.GetTempPath());
+        if (string.IsNullOrWhiteSpace(volumeRoot))
+            return;
+
+        var installRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(volumeRoot));
+        var state = TestHelpers.StateFor(manifest, installRoot, "2.0.0");
+
+        var act = () => UninstallCoordinator.Run(
+            state,
+            manifest,
+            new TestPal(installRoot),
+            Path.Combine(installRoot, InstallStatePaths.UninstallExeFileName),
+            installRoot);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*unsafe install root*");
+    }
+
     private sealed class TestPal(string appDir) : IPolyInstallPal
     {
         public string AppDir { get; } = appDir;

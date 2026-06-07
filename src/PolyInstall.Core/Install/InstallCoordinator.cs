@@ -234,6 +234,13 @@ public static class InstallCoordinator
 
     internal static ServiceRegistrationInfo MapToServiceRegistrationInfo(ServiceDefinition service, IPolyInstallPal pal)
     {
+        var hostOs = OperatingSystem.IsWindows()
+            ? TargetOperatingSystem.Windows
+            : OperatingSystem.IsMacOS()
+                ? TargetOperatingSystem.MacOs
+                : TargetOperatingSystem.Linux;
+        string ExpandForHost(string value) => InstallPathResolver.Expand(value, pal, hostOs);
+
         return new ServiceRegistrationInfo
         {
             Name = service.Name,
@@ -242,15 +249,15 @@ public static class InstallCoordinator
             Scope = NormalizeServiceScope(service.Scope),
             Enabled = service.Enabled,
             Start = service.Start,
-            Executable = InstallPathResolver.Expand(service.Executable, pal),
-            Arguments = service.Arguments?.Select(a => InstallPathResolver.Expand(a, pal)).ToList() ?? [],
+            Executable = ExpandForHost(service.Executable),
+            Arguments = service.Arguments?.Select(ExpandForHost).ToList() ?? [],
             WorkingDirectory = string.IsNullOrWhiteSpace(service.WorkingDirectory)
                 ? null
-                : InstallPathResolver.Expand(service.WorkingDirectory, pal),
+                : ExpandForHost(service.WorkingDirectory),
             Restart = service.Restart,
             Environment = service.Environment?.ToDictionary(
                 e => e.Key,
-                e => InstallPathResolver.Expand(e.Value, pal),
+                e => ExpandForHost(e.Value),
                 StringComparer.Ordinal),
         };
     }

@@ -101,4 +101,36 @@ public class PayloadArchiveTests
             File.Delete(tempFile);
         }
     }
+
+    [Theory]
+    [InlineData(PayloadCompression.Brotli)]
+    [InlineData(PayloadCompression.GZip)]
+    public void PackAndCompressToFile_WithSingleFile_WritesCompressedPayload(PayloadCompression compression)
+    {
+        var dir = TestHelpers.NewTempDir();
+        var payloadPath = Path.Combine(dir, "payload.bin");
+        try
+        {
+            var sourcePath = Path.Combine(dir, "app.txt");
+            File.WriteAllText(sourcePath, "streamed payload");
+
+            var length = PayloadArchive.PackAndCompressToFile(
+                [("app.txt", sourcePath)],
+                compression,
+                payloadPath);
+
+            length.Should().BeGreaterThan(0);
+            new FileInfo(payloadPath).Length.Should().Be(length);
+
+            var decompressed = PayloadArchive.Decompress(File.ReadAllBytes(payloadPath), compression);
+            using var ms = new MemoryStream(decompressed);
+            using var zip = new ZipArchive(ms, ZipArchiveMode.Read);
+            using var sr = new StreamReader(zip.GetEntry("app.txt")!.Open());
+            sr.ReadToEnd().Should().Be("streamed payload");
+        }
+        finally
+        {
+            TestHelpers.TryDeleteDirectory(dir);
+        }
+    }
 }
