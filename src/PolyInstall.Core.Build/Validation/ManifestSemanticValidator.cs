@@ -18,6 +18,7 @@ public static class ManifestSemanticValidator
     public static void Validate(InstallManifest manifest)
     {
         var errors = new List<string>();
+        ValidateMetadata(manifest, errors);
         ValidateBuild(manifest, errors);
         ValidateFeatures(manifest, errors);
         ValidateFiles(manifest, errors);
@@ -120,6 +121,14 @@ public static class ManifestSemanticValidator
         }
     }
 
+    private static void ValidateMetadata(InstallManifest manifest, List<string> errors)
+    {
+        if (string.IsNullOrWhiteSpace(manifest.Metadata.Name))
+            errors.Add("metadata.name must be non-empty.");
+        if (string.IsNullOrWhiteSpace(manifest.Metadata.Version))
+            errors.Add("metadata.version must be non-empty.");
+    }
+
     private static void CheckTaskFeatureRefs(
         List<InstallTask>? tasks,
         string phase,
@@ -144,10 +153,29 @@ public static class ManifestSemanticValidator
 
     private static void ValidateFileAssociations(InstallManifest manifest, List<string> errors)
     {
-        // Feature reference validation lives in ValidateFeatures; keep this hook for any
-        // future cross-field association checks unrelated to features.
-        _ = manifest;
-        _ = errors;
+        if (manifest.FileAssociations is not { Count: > 0 } assocs)
+            return;
+
+        var hasMacOsTarget = HasTargetPrefix(manifest, "osx-");
+        for (int i = 0; i < assocs.Count; i++)
+        {
+            var assoc = assocs[i];
+            var prefix = $"file_associations[{i}]";
+
+            if (string.IsNullOrWhiteSpace(assoc.Extension))
+                errors.Add($"{prefix}.extension is required.");
+            else if (!assoc.Extension.StartsWith('.'))
+                errors.Add($"{prefix}.extension must start with a dot, e.g. '.oef'.");
+
+            if (string.IsNullOrWhiteSpace(assoc.Description))
+                errors.Add($"{prefix}.description is required.");
+
+            if (string.IsNullOrWhiteSpace(assoc.Command))
+                errors.Add($"{prefix}.command is required.");
+
+            if (hasMacOsTarget && string.IsNullOrWhiteSpace(assoc.BundlePath))
+                errors.Add($"{prefix}.bundle_path is required for macOS targets.");
+        }
     }
 
     private static void ValidateBuild(InstallManifest manifest, List<string> errors)
