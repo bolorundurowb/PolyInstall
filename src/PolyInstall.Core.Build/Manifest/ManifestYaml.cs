@@ -7,7 +7,6 @@ namespace PolyInstall.Core.Build.Manifest;
 public static class ManifestYaml
 {
     private static readonly IDeserializer Deserializer = new DeserializerBuilder()
-        .IgnoreUnmatchedProperties()
         .WithNamingConvention(UnderscoredNamingConvention.Instance)
         .Build();
 

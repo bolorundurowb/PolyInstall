@@ -146,18 +146,23 @@ public static class InstallerBuildPipeline
             {
                 await AddTargetSpecificFilesAsync(targetFiles, manifest, stubRoot, rid, temporaryPaths, ct);
                 BuildLog.Info($"Packing {targetFiles.Count} file(s) into zip payload…");
-                var compressed = await Task.Run(() => PayloadArchive.PackAndCompress(targetFiles, compression, ct), ct);
-                BuildLog.Info($"Compressed payload: {BuildLog.FormatBytes(compressed.LongLength)}");
+                var compressedPayloadPath = Path.Combine(Path.GetTempPath(), "polyinstall-payload-" + Guid.NewGuid().ToString("n") + ".bin");
+                temporaryPaths.Add(compressedPayloadPath);
+                var compressedPayloadLength = await Task.Run(
+                    () => PayloadArchive.PackAndCompressToFile(targetFiles, compression, compressedPayloadPath, ct),
+                    ct);
+                BuildLog.Info($"Compressed payload: {BuildLog.FormatBytes(compressedPayloadLength)}");
 
                 BuildLog.Info($"Writing installer: {outPath}");
                 await using (var stubFs = File.OpenRead(stubPath))
+                await using (var payloadFs = File.OpenRead(compressedPayloadPath))
                 await using (var outFs = File.Create(outPath))
                 {
                     await stubFs.CopyToAsync(outFs, ct);
                     var mBytes = Encoding.UTF8.GetBytes(manifestJson);
                     await outFs.WriteAsync(mBytes, ct);
-                    await outFs.WriteAsync(compressed, ct);
-                    InstallPayloadTrailer.WriteFooter(outFs, mBytes.Length, compressed.LongLength);
+                    await payloadFs.CopyToAsync(outFs, ct);
+                    InstallPayloadTrailer.WriteFooter(outFs, mBytes.Length, compressedPayloadLength);
                 }
 
                 var totalSize = new FileInfo(outPath).Length;

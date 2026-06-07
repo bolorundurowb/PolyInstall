@@ -22,6 +22,7 @@ public static class PayloadArchive
 
     /// <summary>
     /// Builds a zip in memory from files, then compresses with Brotli or GZip.
+    /// Prefer <see cref="PackAndCompressToFile"/> for production builds.
     /// </summary>
     public static byte[] PackAndCompress(IEnumerable<(string EntryName, string FullPath)> files, PayloadCompression compression, CancellationToken ct = default)
     {
@@ -45,6 +46,33 @@ public static class PayloadArchive
             PayloadCompression.GZip => CompressGZip(raw, ct),
             _ => throw new ArgumentOutOfRangeException(nameof(compression)),
         };
+    }
+
+    /// <summary>
+    /// Streams a zipped payload through the configured compression into <paramref name="outputPath"/>.
+    /// </summary>
+    public static long PackAndCompressToFile(
+        IEnumerable<(string EntryName, string FullPath)> files,
+        PayloadCompression compression,
+        string outputPath,
+        CancellationToken ct = default)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(outputPath))!);
+        using (var output = File.Create(outputPath))
+        using (var compressed = CreateCompressionStream(output, compression))
+        using (var zip = new ZipArchive(compressed, ZipArchiveMode.Create))
+        {
+            foreach (var (entryName, fullPath) in files)
+            {
+                ct.ThrowIfCancellationRequested();
+                var e = zip.CreateEntry(entryName.Replace('\\', '/'), CompressionLevel.Optimal);
+                using var dest = e.Open();
+                using var src = File.OpenRead(fullPath);
+                CopyToWithCancellation(src, dest, ct);
+            }
+        }
+
+        return new FileInfo(outputPath).Length;
     }
 
     public static byte[] Decompress(byte[] compressed, PayloadCompression compression, CancellationToken ct = default)
@@ -94,5 +122,26 @@ public static class PayloadArchive
         gz.CopyTo(output);
         ct.ThrowIfCancellationRequested();
         return output.ToArray();
+    }
+
+    private static Stream CreateCompressionStream(Stream output, PayloadCompression compression)
+    {
+        return compression switch
+        {
+            PayloadCompression.Brotli => new BrotliStream(output, CompressionLevel.Optimal, leaveOpen: true),
+            PayloadCompression.GZip => new GZipStream(output, CompressionLevel.SmallestSize, leaveOpen: true),
+            _ => throw new ArgumentOutOfRangeException(nameof(compression)),
+        };
+    }
+
+    private static void CopyToWithCancellation(Stream source, Stream destination, CancellationToken ct)
+    {
+        var buffer = new byte[1024 * 128];
+        int read;
+        while ((read = source.Read(buffer, 0, buffer.Length)) > 0)
+        {
+            ct.ThrowIfCancellationRequested();
+            destination.Write(buffer, 0, read);
+        }
     }
 }

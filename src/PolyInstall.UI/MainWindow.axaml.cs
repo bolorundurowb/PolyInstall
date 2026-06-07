@@ -182,6 +182,8 @@ public partial class MainWindow : Window
     private static List<WizardStep> DefaultSteps() =>
     [
         new WizardStep { Type = "welcome", Title = "Welcome" },
+        new WizardStep { Type = "destination", Title = "Install location" },
+        new WizardStep { Type = "progress", Title = "Installing" },
         new WizardStep { Type = "finish", Title = "Done" },
     ];
 

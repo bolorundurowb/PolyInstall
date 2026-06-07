@@ -3,6 +3,7 @@ using System.Text.Json;
 using PolyInstall.Cli.Build;
 using PolyInstall.Cli.Validation;
 using PolyInstall.Core.Build.Manifest;
+using PolyInstall.Core.Build.Validation;
 using PolyInstall.Manifest;
 
 static void Usage()
@@ -32,20 +33,32 @@ static string? Take(ref int i, string[] args)
 
 try
 {
-    if (args.Length > 0 && args[0].Equals("--version", StringComparison.OrdinalIgnoreCase))
-    {
-        Console.WriteLine(GetCliVersion());
-        return 0;
-    }
-
-    if (args.Length < 2)
+    if (args.Length == 0)
     {
         Usage();
         return 1;
     }
 
+    if (args[0].Equals("--version", StringComparison.OrdinalIgnoreCase))
+    {
+        Console.WriteLine(GetCliVersion());
+        return 0;
+    }
+
     var verb = args[0].ToLowerInvariant();
     if (verb is "-h" or "--help")
+    {
+        Usage();
+        return 0;
+    }
+
+    if (args.Length == 1)
+    {
+        Usage();
+        return 1;
+    }
+
+    if (args[1] is "-h" or "--help")
     {
         Usage();
         return 0;
@@ -111,6 +124,7 @@ try
                     throw new FileNotFoundException("Could not find schema/v1.json (looked next to CLI and parent directories).");
                 var json = JsonSerializer.Serialize(m, InstallManifest.JsonOptions);
                 ManifestJsonValidator.Validate(json, schemaPath);
+                ManifestSemanticValidator.Validate(m);
                 Console.WriteLine("Manifest is valid.");
                 return 0;
             }

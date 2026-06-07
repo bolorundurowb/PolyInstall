@@ -15,10 +15,13 @@ public static class UninstallCoordinator
         InstallStateDocument state,
         InstallManifest manifest,
         IPolyInstallPal pal,
-        string runningExePath)
+        string runningExePath,
+        string? expectedInstallRoot = null)
     {
-        InstallBootstrap.Init(manifest, state.InstallLocation, pal);
-        InstallBootstrap.InstallDirectory = state.InstallLocation;
+        var installRoot = ValidateAndResolveInstallRoot(state, manifest, expectedInstallRoot);
+
+        InstallBootstrap.Init(manifest, installRoot, pal);
+        InstallBootstrap.InstallDirectory = installRoot;
 
         var installedFeatures = ResolveInstalledFeatures(manifest, state);
         InstallBootstrap.SelectedFeatures = new HashSet<string>(installedFeatures, StringComparer.OrdinalIgnoreCase);
@@ -51,12 +54,87 @@ public static class UninstallCoordinator
         if (OperatingSystem.IsWindows())
             WindowsArpRegistration.Unregister(state);
 
-        DeleteAllFilesExcept(runningExePath, state.InstallLocation);
+        DeleteAllFilesExcept(runningExePath, installRoot);
 
         if (OperatingSystem.IsWindows())
-            ScheduleWindowsDeleteInstallRoot(state.InstallLocation);
+            ScheduleWindowsDeleteInstallRoot(installRoot);
         else
-            TryDeleteDirectoryRecursive(state.InstallLocation);
+            TryDeleteDirectoryRecursive(installRoot);
+    }
+
+    private static string ValidateAndResolveInstallRoot(
+        InstallStateDocument state,
+        InstallManifest manifest,
+        string? expectedInstallRoot)
+    {
+        if (string.IsNullOrWhiteSpace(state.InstallLocation))
+            throw new InvalidOperationException("Install state does not contain an install location.");
+
+        var installRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(state.InstallLocation));
+
+        if (!string.IsNullOrWhiteSpace(expectedInstallRoot)
+            && !SamePath(installRoot, expectedInstallRoot))
+        {
+            throw new InvalidOperationException(
+                "Install state location does not match the requested install directory.");
+        }
+
+        var expectedProductId = ProductIdHelper.StableProductGuidString(manifest.Metadata);
+        if (!state.ProductId.Equals(expectedProductId, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "Install state product id does not match the embedded manifest.");
+        }
+
+        if (IsDangerousInstallRoot(installRoot))
+        {
+            throw new InvalidOperationException(
+                $"Refusing to uninstall from unsafe install root: {installRoot}");
+        }
+
+        return installRoot;
+    }
+
+    private static bool SamePath(string left, string right)
+    {
+        try
+        {
+            return Path.TrimEndingDirectorySeparator(Path.GetFullPath(left))
+                .Equals(Path.TrimEndingDirectorySeparator(Path.GetFullPath(right)), StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return left.Equals(right, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    private static bool IsDangerousInstallRoot(string installRoot)
+    {
+        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(installRoot));
+        var volumeRoot = Path.TrimEndingDirectorySeparator(Path.GetPathRoot(root) ?? "");
+        if (!string.IsNullOrEmpty(volumeRoot)
+            && root.Equals(volumeRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return DangerousRoots()
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Select(path => Path.TrimEndingDirectorySeparator(Path.GetFullPath(path)))
+            .Any(path => root.Equals(path, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static IEnumerable<string> DangerousRoots()
+    {
+        yield return Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        yield return Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        yield return Environment.GetFolderPath(Environment.SpecialFolder.System);
+        yield return Environment.GetFolderPath(Environment.SpecialFolder.SystemX86);
+        yield return Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        yield return Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+        yield return Environment.GetFolderPath(Environment.SpecialFolder.CommonProgramFiles);
+        yield return Environment.GetFolderPath(Environment.SpecialFolder.CommonProgramFilesX86);
+        yield return Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
     }
 
     /// <summary>

@@ -61,4 +61,57 @@ public class InstallBundleReaderTests
             try { Directory.Delete(root, true); } catch { }
         }
     }
+
+    [Fact]
+    public void DecompressPayloadToFile_WritesZipWithoutReadingPayloadBytes()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "polyinstall-bundle-" + Guid.NewGuid().ToString("n"));
+        Directory.CreateDirectory(root);
+        var sourcePath = Path.Combine(root, "source.txt");
+        var bundlePath = Path.Combine(root, "installer.bin");
+        var zipPath = Path.Combine(root, "payload.zip");
+        File.WriteAllText(sourcePath, "payload-body");
+        try
+        {
+            var manifest = new InstallManifest
+            {
+                Metadata = new ManifestMetadata { Name = "App", Version = "1.0.0" },
+                Build = new BuildConfiguration
+                {
+                    OutputDir = "out",
+                    Compression = "gzip",
+                    Targets = ["linux-x64"],
+                },
+                Ui = new UiConfiguration { Theme = "dark", WizardSteps = [] },
+                Files = [],
+            };
+            var manifestJson = JsonSerializer.Serialize(manifest, InstallManifest.JsonOptions);
+            var manifestBytes = Encoding.UTF8.GetBytes(manifestJson);
+            var compressed = PayloadArchive.PackAndCompress(
+                [("files/source.txt", sourcePath)],
+                PayloadCompression.GZip);
+
+            using (var bundle = File.Create(bundlePath))
+            {
+                bundle.Write(new byte[] { 0x4D, 0x5A });
+                bundle.Write(manifestBytes);
+                bundle.Write(compressed);
+                InstallPayloadTrailer.WriteFooter(bundle, manifestBytes.Length, compressed.Length);
+            }
+
+            var readManifest = InstallBundleReader.ReadManifestFromSeekableFile(bundlePath);
+            InstallBundleReader.DecompressPayloadToFile(bundlePath, readManifest, zipPath);
+
+            using var zipFs = File.OpenRead(zipPath);
+            using var zip = new ZipArchive(zipFs, ZipArchiveMode.Read);
+            var entry = zip.GetEntry("files/source.txt");
+            entry.Should().NotBeNull();
+            using var sr = new StreamReader(entry!.Open());
+            sr.ReadToEnd().Should().Be("payload-body");
+        }
+        finally
+        {
+            try { Directory.Delete(root, true); } catch { }
+        }
+    }
 }
