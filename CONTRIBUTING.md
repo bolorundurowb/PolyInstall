@@ -2,7 +2,7 @@
 
 Thanks for contributing to PolyInstall.
 
-This guide is for engineers working on the source repository (features, bug fixes, tests, docs, and release prep). If you only want to use PolyInstall to build installers, use the usage guide in `README.md`.
+This guide covers contributor workflow: prerequisites, build, test, and pull requests. For system design and component boundaries, see [ARCHITECTURE.md](ARCHITECTURE.md). If you only want to use PolyInstall to build installers, see the [documentation](https://bolorundurowb.github.io/PolyInstall/).
 
 ## Development prerequisites
 
@@ -52,36 +52,7 @@ Commit `schema/v1.json` updates alongside the related code changes.
 
 ## Validate a sample installer flow
 
-Quick smoke test loop:
-
-1. Publish a runtime stub for your target RID (and on **Windows** with `register_arp: true`, publish **`PolyInstall.Uninstall`** into the same `stubs/<rid>/` folder so the CLI can embed it).
-2. Build an installer from `examples/polyinstall.sample.yaml`.
-3. Run the produced installer on a matching OS.
-
-Example commands (Windows x64):
-
-```bash
-dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r win-x64 -o stubs/win-x64
-dotnet publish src/PolyInstall.Uninstall/PolyInstall.Uninstall.csproj -c Release -r win-x64 -o stubs/win-x64
-dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj -- build examples/polyinstall.sample.yaml --base examples --stubs stubs
-```
-
-For cross-platform smoke tests, publish the runtime stub for the matching RID. Linux and macOS
-targets do not need `PolyInstall.Uninstall` (Windows-only).
-
-```bash
-# Linux x64 (AppImage requires squashfs-tools: apt-get install squashfs-tools)
-dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r linux-x64 -o stubs/linux-x64
-dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj -- build examples/polyinstall.sample.yaml --base examples --stubs stubs
-
-# macOS arm64 (Apple Silicon, DMG requires hdiutil on macOS)
-dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r osx-arm64 -o stubs/osx-arm64
-dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj -- build examples/polyinstall.sample.yaml --base examples --stubs stubs
-
-# macOS x64 (Intel)
-dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r osx-x64 -o stubs/osx-x64
-dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj -- build examples/polyinstall.sample.yaml --base examples --stubs stubs
-```
+See [ARCHITECTURE.md](ARCHITECTURE.md) for stub layout, publish commands, and a local smoke-test loop using `examples/polyinstall.sample.yaml`.
 
 ## Pull request expectations
 
@@ -96,12 +67,4 @@ Use concise, intention-revealing commit messages that explain the reason for the
 
 ## Release notes
 
-Releases are created by `.github/workflows/generate-release.yml` on every push to `master` when the `<Version>` in 
-`src/Directory.Build.props` does not yet have a matching git tag `v<Version>` on the remote. The workflow runs tests, 
-publishes self-contained CLI zips (Windows, Linux, macOS), and attaches one zip per platform. Each CLI zip includes the
-CLI plus a `stubs/` tree for its host RID; separate `stubs-<rid>-<tag>.zip` assets are published for cross-target builds.
-The workflow also publishes `SHA256SUMS.txt` for release asset verification, creates the tag on the pushed commit, and 
-opens a GitHub Release with those assets. Bump `<Version>` in `src/Directory.Build.props` when you want a new release; 
-if the tag already exists, the workflow skips. Pre-releases are marked when the version string contains `-alpha` or 
-`-beta` (case-insensitive). Do not edit release assets manually.
-
+Releases are created automatically by `.github/workflows/generate-release.yml` when the `<Version>` in `src/Directory.Build.props` does not yet have a matching `v<Version>` tag on the remote. Bump `<Version>` when you want a new release; if the tag already exists, the workflow skips. Pre-releases are marked when the version string contains `-alpha` or `-beta` (case-insensitive). See [ARCHITECTURE.md](ARCHITECTURE.md) for release artifact layout. Do not edit release assets manually.
