@@ -12,6 +12,9 @@
   <a href="./LICENSE">
     <img alt="GitHub License" src="https://img.shields.io/github/license/bolorundurowb/polyinstall">
   </a>
+  <a href="https://github.com/bolorundurowb/PolyInstall/releases">
+    <img alt="GitHub Downloads (all assets, all releases)" src="https://img.shields.io/github/downloads/bolorundurowb/PolyInstall/total">
+  </a>
 </p>
 
 **PolyInstall** is a powerful, manifest-driven installer generator. It allows you to package your applications into
