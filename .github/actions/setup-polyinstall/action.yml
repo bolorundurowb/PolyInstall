@@ -13,8 +13,7 @@ inputs:
     description: Directory where the PolyInstall release archive is extracted.
     required: false
   github-token:
-    description: GitHub token used for release API and asset downloads.
-    default: ${{ github.token }}
+    description: Optional GitHub token used for release API and asset downloads. Set this for private release repositories or higher API rate limits.
     required: false
   repository:
     description: Repository that owns the PolyInstall releases.
@@ -101,7 +100,10 @@ runs:
             )
           fi
 
-          release_json="$(curl "${curl_args[@]}" "https://api.github.com/repos/${repository}/releases/latest")"
+          if ! release_json="$(curl "${curl_args[@]}" "https://api.github.com/repos/${repository}/releases/latest")"; then
+            echo "::error::Could not query the latest release for ${repository}. If this is a private repository, pass a github-token with access to it."
+            exit 1
+          fi
           tag="$(printf '%s' "${release_json}" | sed -n 's/^[[:space:]]*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)"
           if [[ -z "${tag}" ]]; then
             echo "::error::Could not resolve latest release tag for ${repository}."
@@ -181,8 +183,20 @@ runs:
           )
         fi
 
-        curl "${curl_args[@]}" -o "${work_dir}/${ASSET}" "${ASSET_URL}"
-        curl "${curl_args[@]}" -o "${work_dir}/SHA256SUMS.txt" "${CHECKSUMS_URL}"
+        download_file() {
+          local url="$1"
+          local output="$2"
+          local label="$3"
+
+          echo "Downloading ${label} from ${url}"
+          if ! curl "${curl_args[@]}" -o "${output}" "${url}"; then
+            echo "::error::Failed to download ${label} from ${url}. Check that the release asset exists and that github-token has access if one was provided."
+            exit 1
+          fi
+        }
+
+        download_file "${ASSET_URL}" "${work_dir}/${ASSET}" "${ASSET}"
+        download_file "${CHECKSUMS_URL}" "${work_dir}/SHA256SUMS.txt" "SHA256SUMS.txt"
 
     - id: verify
       name: Verify release checksum
