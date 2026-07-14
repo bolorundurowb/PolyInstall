@@ -28,10 +28,10 @@ public class ManifestYamlTests
                   - "*.txt"
             """;
         var m = ManifestYaml.Parse(yaml);
-        m.Metadata.Name.Verify().ToBe("T");
-        m.Build.Targets.Verify().ToHaveCount(1);
-        m.Ui.LogoPath.Verify().ToBe("branding/logo.png");
-        m.Ui.WizardSteps[0].Type.Verify().ToBe("welcome");
+        m.Metadata.Name.Must().Be("T");
+        m.Build.Targets.Must().HaveCount(1);
+        m.Ui.LogoPath.Must().Be("branding/logo.png");
+        m.Ui.WizardSteps[0].Type.Must().Be("welcome");
     }
 
     [Fact]
@@ -52,7 +52,7 @@ public class ManifestYamlTests
 
         var m = ManifestYaml.Parse(yaml);
 
-        m.Build.Signing.Verify().ToBeNull();
+        m.Build.Signing.Must().BeNull();
     }
 
     [Fact]
@@ -85,15 +85,15 @@ public class ManifestYamlTests
 
         var m = ManifestYaml.Parse(yaml);
 
-        m.Build.Signing.Verify().NotToBeNull();
-        m.Build.Signing!.Windows.Verify().NotToBeNull();
-        m.Build.Signing.Windows!.CertificatePath.Verify().ToBe("${WINDOWS_CERT_PATH}");
-        m.Build.Signing.Windows.CertificatePasswordEnv.Verify().ToBe("WINDOWS_CERT_PASSWORD");
-        m.Build.Signing.Windows.TimestampUrl.Verify().ToBe("http://timestamp.example.test");
-        m.Build.Signing.Macos.Verify().NotToBeNull();
-        m.Build.Signing.Macos!.Identity.Verify().ToBe("Developer ID Application: Example");
-        m.Build.Signing.Macos.Keychain.Verify().ToBe("${MACOS_KEYCHAIN}");
-        m.Build.Signing.Macos.NotarizationProfile.Verify().ToBe("polyinstall-notary");
+        m.Build.Signing.Must().NotBeNull();
+        m.Build.Signing!.Windows.Must().NotBeNull();
+        m.Build.Signing.Windows!.CertificatePath.Must().Be("${WINDOWS_CERT_PATH}");
+        m.Build.Signing.Windows.CertificatePasswordEnv.Must().Be("WINDOWS_CERT_PASSWORD");
+        m.Build.Signing.Windows.TimestampUrl.Must().Be("http://timestamp.example.test");
+        m.Build.Signing.Macos.Must().NotBeNull();
+        m.Build.Signing.Macos!.Identity.Must().Be("Developer ID Application: Example");
+        m.Build.Signing.Macos.Keychain.Must().Be("${MACOS_KEYCHAIN}");
+        m.Build.Signing.Macos.NotarizationProfile.Must().Be("polyinstall-notary");
     }
 
     [Fact]
@@ -115,13 +115,13 @@ public class ManifestYamlTests
 
         var m = ManifestYaml.Parse(yaml);
 
-        ((object?)m.FileAssociations).Verify().NotToBeNull();
-        m.FileAssociations.Verify().ToHaveCount(1);
-        m.FileAssociations![0].Extension.Verify().ToBe(".oef");
-        m.FileAssociations[0].Description.Verify().ToBe("OEF File");
-        m.FileAssociations[0].ProgId.Verify().ToBe("Custom.ProgId");
-        m.FileAssociations[0].Icon.Verify().ToBe("app.ico");
-        m.FileAssociations[0].Command.Verify().ToBe("\"my.exe\" \"%1\"");
+        ((object?)m.FileAssociations).Must().NotBeNull();
+        m.FileAssociations.Must().HaveCount(1);
+        m.FileAssociations![0].Extension.Must().Be(".oef");
+        m.FileAssociations[0].Description.Must().Be("OEF File");
+        m.FileAssociations[0].ProgId.Must().Be("Custom.ProgId");
+        m.FileAssociations[0].Icon.Must().Be("app.ico");
+        m.FileAssociations[0].Command.Must().Be("\"my.exe\" \"%1\"");
     }
 
     [Fact]
@@ -143,10 +143,10 @@ public class ManifestYamlTests
 
         var m = ManifestYaml.Parse(yaml);
 
-        ((object?)m.FileAssociations).Verify().NotToBeNull();
-        m.FileAssociations.Verify().ToHaveCount(1);
-        m.FileAssociations![0].MimeType.Verify().ToBe("application/x-oef");
-        m.FileAssociations[0].BundlePath.Verify().ToBe("/Applications/MyApp.app");
+        ((object?)m.FileAssociations).Must().NotBeNull();
+        m.FileAssociations.Must().HaveCount(1);
+        m.FileAssociations![0].MimeType.Must().Be("application/x-oef");
+        m.FileAssociations[0].BundlePath.Must().Be("/Applications/MyApp.app");
     }
 
     [Fact]

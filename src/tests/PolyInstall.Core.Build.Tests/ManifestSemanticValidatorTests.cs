@@ -30,8 +30,8 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("HKLM");
-        ex.Message.Verify().ToContain("install_scope is 'user'");
+        ex.Message.Must().Contain("HKLM");
+        ex.Message.Must().Contain("install_scope is 'user'");
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("unsupported registry root");
+        ex.Message.Must().Contain("unsupported registry root");
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("ROOT\\SubKey");
+        ex.Message.Must().Contain("ROOT\\SubKey");
     }
 
     [Fact]
@@ -131,8 +131,8 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("Windows-only");
-        ex.Message.Verify().ToContain("require");
+        ex.Message.Must().Contain("Windows-only");
+        ex.Message.Must().Contain("require");
     }
 
     [Fact]
@@ -156,7 +156,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("no longer accepts 'shortcut_path'");
+        ex.Message.Must().Contain("no longer accepts 'shortcut_path'");
     }
 
     [Fact]
@@ -180,7 +180,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("requires parameter 'name'");
+        ex.Message.Must().Contain("requires parameter 'name'");
     }
 
     [Fact]
@@ -204,7 +204,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("requires parameter 'location'");
+        ex.Message.Must().Contain("requires parameter 'location'");
     }
 
     [Fact]
@@ -229,7 +229,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("'location' must be 'start_menu' or 'desktop'");
+        ex.Message.Must().Contain("'location' must be 'start_menu' or 'desktop'");
     }
 
     [Fact]
@@ -255,7 +255,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("subfolder' must be a simple relative name");
+        ex.Message.Must().Contain("subfolder' must be a simple relative name");
     }
 
     [Fact]
@@ -328,7 +328,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("requires parameter 'target_path'");
+        ex.Message.Must().Contain("requires parameter 'target_path'");
     }
 
     [Fact]
@@ -345,7 +345,7 @@ public class ManifestSemanticValidatorTests
         manifest.Files = [];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("files must contain at least one entry");
+        ex.Message.Must().Contain("files must contain at least one entry");
     }
 
     [Fact]
@@ -355,7 +355,7 @@ public class ManifestSemanticValidatorTests
         manifest.Build.Targets = [];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("build.targets must contain at least one target");
+        ex.Message.Must().Contain("build.targets must contain at least one target");
     }
 
     [Fact]
@@ -365,7 +365,7 @@ public class ManifestSemanticValidatorTests
         manifest.Build.Targets = ["win64"];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("unknown token 'win64'");
+        ex.Message.Must().Contain("unknown token 'win64'");
     }
 
     [Fact]
@@ -375,14 +375,14 @@ public class ManifestSemanticValidatorTests
         manifest.Build.Compression = "zip";
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("build.compression must be 'brotli' or 'gzip'");
+        ex.Message.Must().Contain("build.compression must be 'brotli' or 'gzip'");
     }
 
     [Fact]
     public void Validate_OmittedSigning_Passes()
     {
         var manifest = CreateBaseManifest("user");
-        manifest.Build.Signing.Verify().ToBeNull();
+        manifest.Build.Signing.Must().BeNull();
 
         ManifestSemanticValidator.Validate(manifest);
     }
@@ -413,7 +413,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("build.signing.windows requires one signing identity source");
+        ex.Message.Must().Contain("build.signing.windows requires one signing identity source");
     }
 
     [Fact]
@@ -430,8 +430,8 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("plaintext secret");
-        ex.Message.Verify().ToContain("certificate_password_env");
+        ex.Message.Must().Contain("plaintext secret");
+        ex.Message.Must().Contain("certificate_password_env");
     }
 
     [Fact]
@@ -448,7 +448,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("must specify only one signing identity source");
+        ex.Message.Must().Contain("must specify only one signing identity source");
     }
 
     [Fact]
@@ -465,8 +465,8 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("build.signing.windows is configured");
-        ex.Message.Verify().ToContain("does not contain a Windows target");
+        ex.Message.Must().Contain("build.signing.windows is configured");
+        ex.Message.Must().Contain("does not contain a Windows target");
     }
 
     [Fact]
@@ -485,9 +485,9 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("store_location must be 'current_user' or 'local_machine'");
-        ex.Message.Verify().ToContain("file_digest_algorithm");
-        ex.Message.Verify().ToContain("timestamp_digest_algorithm");
+        ex.Message.Must().Contain("store_location must be 'current_user' or 'local_machine'");
+        ex.Message.Must().Contain("file_digest_algorithm");
+        ex.Message.Must().Contain("timestamp_digest_algorithm");
     }
 
     [Fact]
@@ -501,7 +501,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("build.signing.linux is not supported");
+        ex.Message.Must().Contain("build.signing.linux is not supported");
     }
 
     [Fact]
@@ -533,7 +533,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("build.signing.macos.identity is required");
+        ex.Message.Must().Contain("build.signing.macos.identity is required");
     }
 
     [Fact]
@@ -549,8 +549,8 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("build.signing.macos is configured");
-        ex.Message.Verify().ToContain("does not contain a macOS target");
+        ex.Message.Must().Contain("build.signing.macos is configured");
+        ex.Message.Must().Contain("does not contain a macOS target");
     }
 
     [Fact]
@@ -568,7 +568,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("notarization_profile requires build.macos.package: dmg");
+        ex.Message.Must().Contain("notarization_profile requires build.macos.package: dmg");
     }
 
     [Fact]
@@ -581,7 +581,7 @@ public class ManifestSemanticValidatorTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("files[0].source_dir must be a relative path");
+        ex.Message.Must().Contain("files[0].source_dir must be a relative path");
     }
 
     [Fact]
@@ -594,7 +594,7 @@ public class ManifestSemanticValidatorTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("files[0].source_dir must not contain '..'");
+        ex.Message.Must().Contain("files[0].source_dir must not contain '..'");
     }
 
     [Fact]
@@ -609,7 +609,7 @@ public class ManifestSemanticValidatorTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("'progress' step but no 'destination' step");
+        ex.Message.Must().Contain("'progress' step but no 'destination' step");
     }
 
     [Fact]
@@ -625,7 +625,7 @@ public class ManifestSemanticValidatorTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("'destination' after 'progress'");
+        ex.Message.Must().Contain("'destination' after 'progress'");
     }
 
     [Fact]
@@ -665,7 +665,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("Linux-only");
+        ex.Message.Must().Contain("Linux-only");
     }
 
     [Fact]
@@ -689,7 +689,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("Linux/macOS-only");
+        ex.Message.Must().Contain("Linux/macOS-only");
     }
 
     [Fact]
@@ -756,9 +756,9 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("add_to_path");
-        ex.Message.Verify().ToContain("machine");
-        ex.Message.Verify().ToContain("install_scope");
+        ex.Message.Must().Contain("add_to_path");
+        ex.Message.Must().Contain("machine");
+        ex.Message.Must().Contain("install_scope");
     }
 
     [Fact]
@@ -781,7 +781,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("'scope' must be 'user' or 'machine'");
+        ex.Message.Must().Contain("'scope' must be 'user' or 'machine'");
     }
 
     [Fact]
@@ -805,7 +805,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("requires an OS predicate");
+        ex.Message.Must().Contain("requires an OS predicate");
     }
 
     [Fact]
@@ -825,7 +825,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("requires parameter 'extension'");
+        ex.Message.Must().Contain("requires parameter 'extension'");
     }
 
     [Fact]
@@ -850,7 +850,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("must start with a dot");
+        ex.Message.Must().Contain("must start with a dot");
     }
 
     [Fact]
@@ -923,7 +923,7 @@ public class ManifestSemanticValidatorTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("bundle_path");
+        ex.Message.Must().Contain("bundle_path");
     }
 
     [Fact]
@@ -966,7 +966,7 @@ public class ManifestSemanticValidatorTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("services require an OS predicate");
+        ex.Message.Must().Contain("services require an OS predicate");
     }
 
     [Fact]
@@ -985,7 +985,7 @@ public class ManifestSemanticValidatorTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("Windows services support only scope 'system'");
+        ex.Message.Must().Contain("Windows services support only scope 'system'");
     }
 
     [Fact]
@@ -1005,7 +1005,7 @@ public class ManifestSemanticValidatorTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("cannot be mapped to launchd");
+        ex.Message.Must().Contain("cannot be mapped to launchd");
     }
 
     [Fact]
@@ -1054,8 +1054,8 @@ public class ManifestSemanticValidatorTests
         manifest.Metadata.Version = "";
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("metadata.name");
-        ex.Message.Verify().ToContain("metadata.version");
+        ex.Message.Must().Contain("metadata.name");
+        ex.Message.Must().Contain("metadata.version");
     }
 
     [Fact]
@@ -1073,8 +1073,8 @@ public class ManifestSemanticValidatorTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("file_associations[0].extension");
-        ex.Message.Verify().ToContain("must start with a dot");
+        ex.Message.Must().Contain("file_associations[0].extension");
+        ex.Message.Must().Contain("must start with a dot");
     }
 
     [Fact]
@@ -1093,7 +1093,7 @@ public class ManifestSemanticValidatorTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("file_associations[0].bundle_path");
+        ex.Message.Must().Contain("file_associations[0].bundle_path");
     }
 
     [Fact]

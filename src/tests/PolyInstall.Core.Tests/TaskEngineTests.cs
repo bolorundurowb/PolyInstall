@@ -31,13 +31,13 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.ShortcutCalls.Verify().ToHaveCount(1);
+        pal.ShortcutCalls.Must().HaveCount(1);
         var c = pal.ShortcutCalls[0];
-        c.Target.Verify().ToBe($"C:{s}app{s}app.exe");
+        c.Target.Must().Be($"C:{s}app{s}app.exe");
         var expectedName = OperatingSystem.IsWindows() ? "app.lnk" : "app";
-        c.Shortcut.Verify().ToEndWith(expectedName);
-        c.Description.Verify().ToBe("App");
-        c.Icon.Verify().ToBe($"C:{s}app{s}app.ico");
+        c.Shortcut.Must().EndWith(expectedName);
+        c.Description.Must().Be("App");
+        c.Icon.Must().Be($"C:{s}app{s}app.ico");
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public class TaskEngineTests
         };
 
         TaskEngine.RunPhase(tasks, pal);
-        pal.ShortcutCalls.Verify().ToBeEmpty();
+        pal.ShortcutCalls.Must().BeEmpty();
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public class TaskEngineTests
     {
         var pal = new RecordingPal();
         TaskEngine.RunPhase(null, pal);
-        pal.ShortcutCalls.Verify().ToBeEmpty();
+        pal.ShortcutCalls.Must().BeEmpty();
     }
 
     [Fact]
@@ -129,11 +129,11 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.ShortcutCalls.Verify().ToHaveCount(1);
+        pal.ShortcutCalls.Must().HaveCount(1);
         var c = pal.ShortcutCalls[0];
-        c.Target.Verify().ToBe($"C:{s}Install{s}Open Exam Suite{s}Simulator{s}app.exe");
+        c.Target.Must().Be($"C:{s}Install{s}Open Exam Suite{s}Simulator{s}app.exe");
         var expectedName = OperatingSystem.IsWindows() ? "Sim.lnk" : "Sim";
-        c.Shortcut.Verify().ToEndWith(expectedName);
+        c.Shortcut.Must().EndWith(expectedName);
     }
 
     [Fact]
@@ -157,10 +157,10 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.ShortcutCalls.Verify().ToHaveCount(1);
+        pal.ShortcutCalls.Must().HaveCount(1);
         var c = pal.ShortcutCalls[0];
         var expectedName = OperatingSystem.IsWindows() ? "MyApp.lnk" : "MyApp";
-        c.Shortcut.Verify().ToEndWith($"MyVendor{Path.DirectorySeparatorChar}{expectedName}");
+        c.Shortcut.Must().EndWith($"MyVendor{Path.DirectorySeparatorChar}{expectedName}");
     }
 
     [Fact]
@@ -183,10 +183,10 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.ShortcutCalls.Verify().ToHaveCount(1);
+        pal.ShortcutCalls.Must().HaveCount(1);
         var c = pal.ShortcutCalls[0];
-        c.Shortcut.Verify().ToEndWith("app.lnk");
-        c.Shortcut.EndsWith("app.lnk.lnk", StringComparison.Ordinal).Verify().ToBeFalse();
+        c.Shortcut.Must().EndWith("app.lnk");
+        c.Shortcut.EndsWith("app.lnk.lnk", StringComparison.Ordinal).Must().BeFalse();
     }
 
     [Fact]
@@ -210,12 +210,12 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.RegistryCalls.Verify().ToHaveCount(1);
+        pal.RegistryCalls.Must().HaveCount(1);
         var r = pal.RegistryCalls[0];
-        r.KeyPath.Verify().ToBe(@"HKCU\Software\Test");
-        r.ValueName.Verify().ToBe("x");
-        r.Value.Verify().ToBe("1");
-        r.ValueKind.Verify().ToBe("string");
+        r.KeyPath.Must().Be(@"HKCU\Software\Test");
+        r.ValueName.Must().Be("x");
+        r.Value.Must().Be("1");
+        r.ValueKind.Must().Be("string");
     }
 
     [Fact]
@@ -241,13 +241,13 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.DesktopEntryCalls.Verify().ToHaveCount(1);
+        pal.DesktopEntryCalls.Must().HaveCount(1);
         var d = pal.DesktopEntryCalls[0];
-        d.FileName.Verify().ToBe("app.desktop");
-        d.Name.Verify().ToBe("App");
-        d.Exec.Verify().ToBe($"{s}usr{s}bin{s}app");
-        d.Icon.Verify().ToBe($"{s}usr{s}share{s}icons{s}app.png");
-        d.Comment.Verify().ToBe("My app");
+        d.FileName.Must().Be("app.desktop");
+        d.Name.Must().Be("App");
+        d.Exec.Must().Be($"{s}usr{s}bin{s}app");
+        d.Icon.Must().Be($"{s}usr{s}share{s}icons{s}app.png");
+        d.Comment.Must().Be("My app");
     }
 
     [Fact]
@@ -270,10 +270,10 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.PermissionCalls.Verify().ToHaveCount(1);
+        pal.PermissionCalls.Must().HaveCount(1);
         var p = pal.PermissionCalls[0];
-        p.Path.Verify().ToBe($"{s}usr{s}bin{s}app");
-        p.Mode.Verify().ToBe(755);
+        p.Path.Must().Be($"{s}usr{s}bin{s}app");
+        p.Mode.Must().Be(755);
     }
 
     [Fact]
@@ -296,7 +296,7 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.ShortcutCalls.Verify().ToHaveCount(1);
+        pal.ShortcutCalls.Must().HaveCount(1);
     }
 
     [Fact]
@@ -327,9 +327,9 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.ShortcutCalls.Verify().ToHaveCount(1);
+        pal.ShortcutCalls.Must().HaveCount(1);
         var expectedName = OperatingSystem.IsWindows() ? "MyApp.lnk" : "MyApp";
-        pal.ShortcutCalls[0].Shortcut.Verify().ToEndWith(expectedName);
+        pal.ShortcutCalls[0].Shortcut.Must().EndWith(expectedName);
     }
 
     [Fact]
@@ -355,9 +355,9 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.PathCalls.Verify().ToHaveCount(1);
-        pal.PathCalls[0].Path.Verify().ToBe(installDir);
-        pal.PathCalls[0].Scope.Verify().ToBe("user");
+        pal.PathCalls.Must().HaveCount(1);
+        pal.PathCalls[0].Path.Must().Be(installDir);
+        pal.PathCalls[0].Scope.Must().Be("user");
     }
 
     [Fact]
@@ -390,9 +390,9 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.PathCalls.Verify().ToHaveCount(1);
-        pal.PathCalls[0].Path.Verify().ToBe($"C:{s}Program Files{s}MyApp{s}bin");
-        pal.PathCalls[0].Scope.Verify().ToBe("machine");
+        pal.PathCalls.Must().HaveCount(1);
+        pal.PathCalls[0].Path.Must().Be($"C:{s}Program Files{s}MyApp{s}bin");
+        pal.PathCalls[0].Scope.Must().Be("machine");
     }
 
     [Fact]
@@ -431,10 +431,10 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.RegisterCalls.Verify().ToHaveCount(1);
-        pal.RegisterCalls[0].Extension.Verify().ToBe(".oef");
-        pal.RegisterCalls[0].Description.Verify().ToBe("OEF File");
-        pal.RegisterCalls[0].Command.Verify().ToBe("open %1");
+        pal.RegisterCalls.Must().HaveCount(1);
+        pal.RegisterCalls[0].Extension.Must().Be(".oef");
+        pal.RegisterCalls[0].Description.Must().Be("OEF File");
+        pal.RegisterCalls[0].Command.Must().Be("open %1");
     }
 
     [Fact]
@@ -457,8 +457,8 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal, isUninstall: true);
 
-        pal.UnregisterCalls.Verify().ToHaveCount(1);
-        pal.UnregisterCalls[0].Extension.Verify().ToBe(".oef");
+        pal.UnregisterCalls.Must().HaveCount(1);
+        pal.UnregisterCalls[0].Extension.Must().Be(".oef");
     }
 
     [Fact]
@@ -482,8 +482,8 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.RegisterCalls.Verify().ToHaveCount(1);
-        pal.RegisterCalls[0].MimeType.Verify().ToBe("application/x-custom");
+        pal.RegisterCalls.Must().HaveCount(1);
+        pal.RegisterCalls[0].MimeType.Must().Be("application/x-custom");
     }
 
     [Fact]
@@ -512,8 +512,8 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.RegisterCalls.Verify().ToHaveCount(1);
-        pal.RegisterCalls[0].BundlePath.Verify().ToBe("/Applications/MyApp.app");
+        pal.RegisterCalls.Must().HaveCount(1);
+        pal.RegisterCalls[0].BundlePath.Must().Be("/Applications/MyApp.app");
     }
 
     [Fact]
@@ -542,8 +542,8 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.RegisterCalls.Verify().ToHaveCount(1);
-        pal.RegisterCalls[0].ProgId.Verify().ToBe("MyCoolApp.oef.1");
+        pal.RegisterCalls.Must().HaveCount(1);
+        pal.RegisterCalls[0].ProgId.Must().Be("MyCoolApp.oef.1");
     }
 
     [Fact]
@@ -567,7 +567,7 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal, new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "simulator" });
 
-        pal.ShortcutCalls.Verify().ToBeEmpty();
+        pal.ShortcutCalls.Must().BeEmpty();
     }
 
     [Fact]
@@ -591,7 +591,7 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal, new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "simulator" });
 
-        pal.ShortcutCalls.Verify().ToHaveCount(1);
+        pal.ShortcutCalls.Must().HaveCount(1);
     }
 
     [Fact]
@@ -614,7 +614,7 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
 
-        pal.ShortcutCalls.Verify().ToHaveCount(1);
+        pal.ShortcutCalls.Must().HaveCount(1);
     }
 
     [Fact]
@@ -727,8 +727,8 @@ public class TaskEngineTests
 
         TaskEngine.RunPhase(tasks, pal);
 
-        pal.ShortcutCalls.Verify().ToHaveCount(1);
-        pal.ShortcutCalls[0].Shortcut.Verify().ToEndWith("app");
+        pal.ShortcutCalls.Must().HaveCount(1);
+        pal.ShortcutCalls[0].Shortcut.Must().EndWith("app");
     }
 
     private sealed class RecordingPal : IPolyInstallPal

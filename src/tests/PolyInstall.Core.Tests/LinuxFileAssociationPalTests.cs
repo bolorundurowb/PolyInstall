@@ -19,7 +19,7 @@ public class LinuxFileAssociationPalTests
 
         var result = LinuxFileAssociationPal.ResolveMimeType(assoc);
 
-        result.Verify().ToBe("application/x-custom");
+        result.Must().Be("application/x-custom");
     }
 
     [Fact]
@@ -32,7 +32,7 @@ public class LinuxFileAssociationPalTests
 
         var result = LinuxFileAssociationPal.ResolveMimeType(assoc);
 
-        result.Verify().ToBe("application/x-oef");
+        result.Must().Be("application/x-oef");
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public class LinuxFileAssociationPalTests
 
         var result = LinuxFileAssociationPal.ResolveMimeType(assoc);
 
-        result.Verify().ToBe("application/x-test");
+        result.Must().Be("application/x-test");
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public class LinuxFileAssociationPalTests
 
         var result = LinuxFileAssociationPal.ResolveDesktopFileName(assoc);
 
-        result.Verify().ToBe("MyAppv1.0.desktop");
+        result.Must().Be("MyAppv1.0.desktop");
     }
 
     [Fact]
@@ -68,7 +68,7 @@ public class LinuxFileAssociationPalTests
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             ".local", "share", "mime");
 
-        LinuxFileAssociationPal.GetMimeDatabasePath().Verify().ToBe(expected);
+        LinuxFileAssociationPal.GetMimeDatabasePath().Must().Be(expected);
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public class LinuxFileAssociationPalTests
             LinuxFileAssociationPal.GetMimeDatabasePath(),
             "packages");
 
-        LinuxFileAssociationPal.GetMimePackagesPath().Verify().ToBe(expected);
+        LinuxFileAssociationPal.GetMimePackagesPath().Must().Be(expected);
     }
 
     [Fact]
@@ -86,7 +86,7 @@ public class LinuxFileAssociationPalTests
     {
         var result = LinuxFileAssociationPal.GetApplicationsPath();
 
-        result.Verify().ToEndWith(Path.Combine(".local", "share", "applications"));
+        result.Must().EndWith(Path.Combine(".local", "share", "applications"));
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public class LinuxFileAssociationPalTests
 
         var result = LinuxFileAssociationPal.GetCreatedFiles(assoc, "application/x-oef");
 
-        result.Verify().ToBeEmpty();
+        result.Must().BeEmpty();
     }
 
     [Fact]
@@ -135,11 +135,11 @@ public class LinuxFileAssociationPalTests
 
             var mimePath = Path.Combine(tempDir, ".local", "share", "mime", "packages",
                 "PolyInstall-Test-polytest.xml");
-            File.Exists(mimePath).Verify().ToBeTrue();
+            File.Exists(mimePath).Must().BeTrue();
 
             var content = File.ReadAllText(mimePath);
-            content.Verify().ToContain("application/x-polytest");
-            content.Verify().ToContain("*.polytest");
+            content.Must().Contain("application/x-polytest");
+            content.Must().Contain("*.polytest");
         }
         finally
         {
@@ -182,7 +182,7 @@ public class LinuxFileAssociationPalTests
 
             var mimePath = Path.Combine(tempDir, ".local", "share", "mime", "packages",
                 "PolyInstall-Test2-polytest2.xml");
-            File.Exists(mimePath).Verify().ToBeFalse();
+            File.Exists(mimePath).Must().BeFalse();
         }
         finally
         {

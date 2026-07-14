@@ -21,7 +21,7 @@ public class InstallPathResolverTests
 
         var result = InstallPathResolver.Expand("{UserHome}/SampleApp", pal, targetOs);
 
-        result.Verify().ToBe(expected);
+        result.Must().Be(expected);
     }
 
     [Theory]
@@ -37,7 +37,7 @@ public class InstallPathResolverTests
 
         var result = InstallPathResolver.Expand(@"{UserHome}\SampleApp", pal, targetOs);
 
-        result.Verify().ToBe(expected);
+        result.Must().Be(expected);
     }
 
     [Theory]
@@ -57,11 +57,11 @@ public class InstallPathResolverTests
     {
         var ok = InstallPathResolver.TryParseInstallerTargetOperatingSystem(token, out var os);
         if (expectedOk)
-            ok.Verify().ToBeTrue();
+            ok.Must().BeTrue();
         else
-            ok.Verify().ToBeFalse();
+            ok.Must().BeFalse();
         if (expectedOk)
-            os.Verify().ToBe(expectedOs);
+            os.Must().Be(expectedOs);
     }
 
     [Fact]
@@ -79,7 +79,7 @@ public class InstallPathResolverTests
 
         var result = InstallPathResolver.Expand("{UserHome}\\SampleApp", pal);
 
-        result.Verify().ToBe("C:/Users/bolorundurowb/SampleApp");
+        result.Must().Be("C:/Users/bolorundurowb/SampleApp");
     }
 
     private sealed class TestInstallPathPal(string userHome) : IInstallPathPal

@@ -15,7 +15,7 @@ public class PayloadFileInventoryTests
 
             var files = PayloadFileInventory.Enumerate(root);
 
-            files.Verify().ToBeEquivalentTo(["a.txt", "b.txt"]);
+            files.Must().BeEquivalentTo(["a.txt", "b.txt"]);
         }
         finally
         {
@@ -34,8 +34,8 @@ public class PayloadFileInventoryTests
 
             var files = PayloadFileInventory.Enumerate(root);
 
-            files.Verify().ToHaveCount(1);
-            files[0].Verify().ToBe("sub/c.txt");
+            files.Must().HaveCount(1);
+            files[0].Must().Be("sub/c.txt");
         }
         finally
         {
@@ -49,7 +49,7 @@ public class PayloadFileInventoryTests
         var root = TestHelpers.NewTempDir();
         try
         {
-            PayloadFileInventory.Enumerate(root).Verify().ToBeEmpty();
+            PayloadFileInventory.Enumerate(root).Must().BeEmpty();
         }
         finally
         {
@@ -61,7 +61,7 @@ public class PayloadFileInventoryTests
     public void Enumerate_WithNonexistentDirectory_ReturnsEmptyList()
     {
         PayloadFileInventory.Enumerate(Path.Combine(Path.GetTempPath(), "does-not-exist-" + Guid.NewGuid().ToString("n")))
-            .Verify().ToBeEmpty();
+            .Must().BeEmpty();
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public class PayloadFileInventoryTests
 
             var files = PayloadFileInventory.Enumerate(root);
 
-            files.SequenceEqual(["a.txt", "M.txt", "Z.txt"]).Verify().ToBeTrue();
+            files.SequenceEqual(["a.txt", "M.txt", "Z.txt"]).Must().BeTrue();
         }
         finally
         {
@@ -90,6 +90,6 @@ public class PayloadFileInventoryTests
     [InlineData("mixed\\dir/file.txt", "mixed/dir/file.txt")]
     public void NormalizeRelativePath_NormalizesSeparatorsAndTrimsLeadingSlash(string input, string expected)
     {
-        PayloadFileInventory.NormalizeRelativePath(input).Verify().ToBe(expected);
+        PayloadFileInventory.NormalizeRelativePath(input).Must().Be(expected);
     }
 }

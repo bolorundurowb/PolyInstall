@@ -56,17 +56,17 @@ public class FeatureManifestTests
 
         var m = ManifestYaml.Parse(yaml);
 
-        m.Features.Verify().ToHaveCount(2);
-        m.Features![0].Id.Verify().ToBe("simulator");
-        m.Features[0].Name.Verify().ToBe("Simulator");
-        m.Features[0].DefaultSelected.Verify().ToBeTrue();
-        m.Features[1].Id.Verify().ToBe("samples");
-        m.Features[1].DefaultSelected.Verify().ToBeFalse();
+        m.Features.Must().HaveCount(2);
+        m.Features![0].Id.Must().Be("simulator");
+        m.Features[0].Name.Must().Be("Simulator");
+        m.Features[0].DefaultSelected.Must().BeTrue();
+        m.Features[1].Id.Must().Be("samples");
+        m.Features[1].DefaultSelected.Must().BeFalse();
 
-        m.Files[1].Features.Verify().ToBeEquivalentTo(["simulator"]);
-        m.Files[2].Features.Verify().ToBeEquivalentTo(["samples"]);
-        m.Tasks!.PostInstall![0].Features.Verify().ToBeEquivalentTo(["simulator"]);
-        m.FileAssociations![0].Features.Verify().ToBeEquivalentTo(["simulator"]);
+        m.Files[1].Features.Must().BeEquivalentTo(["simulator"]);
+        m.Files[2].Features.Must().BeEquivalentTo(["samples"]);
+        m.Tasks!.PostInstall![0].Features.Must().BeEquivalentTo(["simulator"]);
+        m.FileAssociations![0].Features.Must().BeEquivalentTo(["simulator"]);
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public class FeatureManifestTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("duplicated");
+        ex.Message.Must().Contain("duplicated");
     }
 
     [Fact]
@@ -93,7 +93,7 @@ public class FeatureManifestTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("features[0].id");
+        ex.Message.Must().Contain("features[0].id");
     }
 
     [Fact]
@@ -108,7 +108,7 @@ public class FeatureManifestTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("files[1].features references unknown feature id 'ghost'");
+        ex.Message.Must().Contain("files[1].features references unknown feature id 'ghost'");
     }
 
     [Fact]
@@ -135,7 +135,7 @@ public class FeatureManifestTests
         };
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("tasks.post_install[0].features references unknown feature id 'ghost'");
+        ex.Message.Must().Contain("tasks.post_install[0].features references unknown feature id 'ghost'");
     }
 
     [Fact]
@@ -155,7 +155,7 @@ public class FeatureManifestTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("file_associations[0].features references unknown feature id 'ghost'");
+        ex.Message.Must().Contain("file_associations[0].features references unknown feature id 'ghost'");
     }
 
     [Fact]
@@ -169,7 +169,7 @@ public class FeatureManifestTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("no features are defined");
+        ex.Message.Must().Contain("no features are defined");
     }
 
     [Fact]
@@ -186,7 +186,7 @@ public class FeatureManifestTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("'features' before 'destination'");
+        ex.Message.Must().Contain("'features' before 'destination'");
     }
 
     [Fact]
@@ -203,7 +203,7 @@ public class FeatureManifestTests
         ];
 
         var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
-        ex.Message.Verify().ToContain("'features' after 'progress'");
+        ex.Message.Must().Contain("'features' after 'progress'");
     }
 
     [Fact]

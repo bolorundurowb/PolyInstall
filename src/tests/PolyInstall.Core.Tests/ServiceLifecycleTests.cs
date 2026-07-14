@@ -41,11 +41,11 @@ public class ServiceLifecycleTests
                 Pal = new TestPal(installRoot, servicePal),
             });
 
-            servicePal.Installed.Verify().ToHaveCount(1);
-            servicePal.Installed[0].Executable.Verify().ToBe(Path.Combine(installRoot, "app"));
-            servicePal.Installed[0].Arguments.SequenceEqual(["--service"]).Verify().ToBeTrue();
-            result.State.RegisteredServices.Verify().ToHaveCount(1);
-            InstallStateIo.ReadState(installRoot).RegisteredServices.Verify().ToHaveCount(1);
+            servicePal.Installed.Must().HaveCount(1);
+            servicePal.Installed[0].Executable.Must().Be(Path.Combine(installRoot, "app"));
+            servicePal.Installed[0].Arguments.SequenceEqual(["--service"]).Must().BeTrue();
+            result.State.RegisteredServices.Must().HaveCount(1);
+            InstallStateIo.ReadState(installRoot).RegisteredServices.Must().HaveCount(1);
         }
         finally
         {
@@ -88,8 +88,8 @@ public class ServiceLifecycleTests
                 ExistingInstall = existing,
             });
 
-            servicePal.Removed.Verify().ToHaveCount(1);
-            servicePal.Removed[0].Name.Verify().ToBe("com.example.old");
+            servicePal.Removed.Must().HaveCount(1);
+            servicePal.Removed[0].Name.Must().Be("com.example.old");
         }
         finally
         {

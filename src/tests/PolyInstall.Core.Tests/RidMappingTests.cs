@@ -13,7 +13,7 @@ public class RidMappingTests
     [InlineData("osx-arm64", "osx-arm64")]
     public void ToDotNetRid_WithKnownToken_ReturnsExpectedRid(string token, string expected)
     {
-        RidMapping.ToDotNetRid(token).Verify().ToBe(expected);
+        RidMapping.ToDotNetRid(token).Must().Be(expected);
     }
 
     [Theory]
@@ -21,7 +21,7 @@ public class RidMappingTests
     [InlineData("  linux-x64  ")]
     public void ToDotNetRid_WithCasingOrWhitespace_IsCaseInsensitiveAndTrimmed(string token)
     {
-        RidMapping.ToDotNetRid(token).Verify().ToBeOneOf("win-x64", "linux-x64");
+        RidMapping.ToDotNetRid(token).Must().BeOneOf("win-x64", "linux-x64");
     }
 
     [Fact]

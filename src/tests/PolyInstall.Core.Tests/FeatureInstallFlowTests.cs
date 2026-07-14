@@ -64,12 +64,12 @@ public class FeatureInstallFlowTests : IDisposable
                 Pal = new TestPal(installRoot),
             });
 
-            File.Exists(Path.Combine(installRoot, "core.txt")).Verify().ToBeTrue();
-            File.Exists(Path.Combine(installRoot, "a", "a.txt")).Verify().ToBeTrue();
-            File.Exists(Path.Combine(installRoot, "b", "b.txt")).Verify().ToBeFalse();
+            File.Exists(Path.Combine(installRoot, "core.txt")).Must().BeTrue();
+            File.Exists(Path.Combine(installRoot, "a", "a.txt")).Must().BeTrue();
+            File.Exists(Path.Combine(installRoot, "b", "b.txt")).Must().BeFalse();
 
-            result.State.SelectedFeatures.Verify().ToBeEquivalentTo(["feat-a"]);
-            result.State.PayloadFiles.Verify().ToBeEquivalentTo(["core.txt", "a/a.txt"]);
+            result.State.SelectedFeatures.Must().BeEquivalentTo(["feat-a"]);
+            result.State.PayloadFiles.Must().BeEquivalentTo(["core.txt", "a/a.txt"]);
         }
         finally
         {
@@ -120,12 +120,12 @@ public class FeatureInstallFlowTests : IDisposable
                 ExistingInstall = existing,
             });
 
-            result.Mode.Verify().ToBe(InstallMode.Update);
-            File.ReadAllText(Path.Combine(installRoot, "a", "a.txt")).Verify().ToBe("a-v2");
-            File.Exists(Path.Combine(installRoot, "b", "b.txt")).Verify().ToBeFalse();
-            File.Exists(Path.Combine(installRoot, "core.txt")).Verify().ToBeTrue();
-            result.State.SelectedFeatures.Verify().ToBeEquivalentTo(["feat-a"]);
-            result.State.PayloadFiles.Verify().ToBeEquivalentTo(["core.txt", "a/a.txt"]);
+            result.Mode.Must().Be(InstallMode.Update);
+            File.ReadAllText(Path.Combine(installRoot, "a", "a.txt")).Must().Be("a-v2");
+            File.Exists(Path.Combine(installRoot, "b", "b.txt")).Must().BeFalse();
+            File.Exists(Path.Combine(installRoot, "core.txt")).Must().BeTrue();
+            result.State.SelectedFeatures.Must().BeEquivalentTo(["feat-a"]);
+            result.State.PayloadFiles.Must().BeEquivalentTo(["core.txt", "a/a.txt"]);
         }
         finally
         {
@@ -148,7 +148,7 @@ public class FeatureInstallFlowTests : IDisposable
 
             InstallBootstrap.Init(manifest, installRoot, new TestPal(installRoot), existing);
 
-            InstallBootstrap.SelectedFeatures.Verify().ToBeEquivalentTo(["feat-b"]);
+            InstallBootstrap.SelectedFeatures.Must().BeEquivalentTo(["feat-b"]);
         }
         finally
         {
@@ -163,7 +163,7 @@ public class FeatureInstallFlowTests : IDisposable
         InstallBootstrap.Init(manifest, Path.GetTempPath(), new TestPal(Path.GetTempPath()));
 
         // feat-a is default_selected=true, feat-b is default_selected=false.
-        InstallBootstrap.SelectedFeatures.Verify().ToBeEquivalentTo(["feat-a"]);
+        InstallBootstrap.SelectedFeatures.Must().BeEquivalentTo(["feat-a"]);
     }
 
     private static InstallManifest BuildManifestWithFeatures()

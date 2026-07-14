@@ -44,9 +44,9 @@ public class PayloadArchiveTests
             using var ms = new MemoryStream(decompressed);
             using var zip = new ZipArchive(ms, ZipArchiveMode.Read);
             var entry = zip.GetEntry("files/test.txt");
-            entry.Verify().NotToBeNull();
+            entry.Must().NotBeNull();
             using var sr = new StreamReader(entry!.Open());
-            sr.ReadToEnd().Verify().ToBe("hello world");
+            sr.ReadToEnd().Must().Be("hello world");
         }
         finally
         {
@@ -72,7 +72,7 @@ public class PayloadArchiveTests
             var decompressed = PayloadArchive.Decompress(compressed, compression);
             using var ms = new MemoryStream(decompressed);
             using var zip = new ZipArchive(ms, ZipArchiveMode.Read);
-            zip.Entries.Select(e => e.FullName).Verify().ToBeEquivalentTo(["a.txt", "b.txt"]);
+            zip.Entries.Select(e => e.FullName).Must().BeEquivalentTo(["a.txt", "b.txt"]);
         }
         finally
         {
@@ -94,7 +94,7 @@ public class PayloadArchiveTests
             var decompressed = PayloadArchive.Decompress(compressed, PayloadCompression.GZip);
             using var ms = new MemoryStream(decompressed);
             using var zip = new ZipArchive(ms, ZipArchiveMode.Read);
-            zip.Entries.Select(e => e.FullName).Verify().ToContain("dir/file.txt");
+            zip.Entries.Select(e => e.FullName).Must().Contain("dir/file.txt");
         }
         finally
         {
@@ -119,14 +119,14 @@ public class PayloadArchiveTests
                 compression,
                 payloadPath);
 
-            length.Verify().ToBeGreaterThan(0);
-            new FileInfo(payloadPath).Length.Verify().ToBe(length);
+            length.Must().BeGreaterThan(0);
+            new FileInfo(payloadPath).Length.Must().Be(length);
 
             var decompressed = PayloadArchive.Decompress(File.ReadAllBytes(payloadPath), compression);
             using var ms = new MemoryStream(decompressed);
             using var zip = new ZipArchive(ms, ZipArchiveMode.Read);
             using var sr = new StreamReader(zip.GetEntry("app.txt")!.Open());
-            sr.ReadToEnd().Verify().ToBe("streamed payload");
+            sr.ReadToEnd().Must().Be("streamed payload");
         }
         finally
         {

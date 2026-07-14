@@ -10,7 +10,7 @@ public class ConditionEvaluatorTests
     [InlineData("   ")]
     public void Evaluate_WithNullOrWhitespaceRequire_ReturnsTrue(string? require)
     {
-        ConditionEvaluator.Evaluate(require).Verify().ToBeTrue();
+        ConditionEvaluator.Evaluate(require).Must().BeTrue();
     }
 
     [Fact]
@@ -33,9 +33,9 @@ public class ConditionEvaluatorTests
         };
         var actual = ConditionEvaluator.Evaluate(require);
         if (expected)
-            actual.Verify().ToBeTrue();
+            actual.Must().BeTrue();
         else
-            actual.Verify().ToBeFalse();
+            actual.Must().BeFalse();
     }
 
     [Theory]
@@ -57,8 +57,8 @@ public class ConditionEvaluatorTests
         };
         var actual = ConditionEvaluator.Evaluate(require);
         if (expected)
-            actual.Verify().ToBeTrue();
+            actual.Must().BeTrue();
         else
-            actual.Verify().ToBeFalse();
+            actual.Must().BeFalse();
     }
 }

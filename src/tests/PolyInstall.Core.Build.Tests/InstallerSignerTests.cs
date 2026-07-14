@@ -17,7 +17,7 @@ public class InstallerSignerTests
             },
             "pfx-secret");
 
-        command.FileName.Verify().ToBe("signtool");
+        command.FileName.Must().Be("signtool");
         command.Arguments.SequenceEqual(
             [
                 "sign",
@@ -32,8 +32,8 @@ public class InstallerSignerTests
                 "/p",
                 "pfx-secret",
                 "dist/App-windows-x64.exe",
-            ]).Verify().ToBeTrue();
-        command.SecretArguments.Verify().ToContain("pfx-secret");
+            ]).Must().BeTrue();
+        command.SecretArguments.Must().Contain("pfx-secret");
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public class InstallerSignerTests
             },
             null);
 
-        ContainsInOrder(command.Arguments, "/sha1", "abcdef", "/s", "My", "/sm").Verify().ToBeTrue();
+        ContainsInOrder(command.Arguments, "/sha1", "abcdef", "/s", "My", "/sm").Must().BeTrue();
     }
 
     [Fact]
@@ -64,7 +64,7 @@ public class InstallerSignerTests
             },
             "Signing macOS executable");
 
-        command.FileName.Verify().ToBe("codesign");
+        command.FileName.Must().Be("codesign");
         command.Arguments.SequenceEqual(
             [
                 "--force",
@@ -76,7 +76,7 @@ public class InstallerSignerTests
                 "--keychain",
                 "build.keychain-db",
                 "dist/App-osx-arm64",
-            ]).Verify().ToBeTrue();
+            ]).Must().BeTrue();
     }
 
     [Fact]
@@ -89,7 +89,7 @@ public class InstallerSignerTests
                 NotarizationProfile = "polyinstall-notary",
             });
 
-        command.FileName.Verify().ToBe("xcrun");
+        command.FileName.Must().Be("xcrun");
         command.Arguments.SequenceEqual(
             [
                 "notarytool",
@@ -98,7 +98,7 @@ public class InstallerSignerTests
                 "--keychain-profile",
                 "polyinstall-notary",
                 "--wait",
-            ]).Verify().ToBeTrue();
+            ]).Must().BeTrue();
     }
 
     [Fact]
@@ -120,10 +120,10 @@ public class InstallerSignerTests
                 CancellationToken.None,
                 runner);
 
-            runner.Commands.Verify().ToHaveCount(1);
+            runner.Commands.Must().HaveCount(1);
             var command = runner.Commands[0];
-            ContainsInOrder(command.Arguments, "/p", "env-secret").Verify().ToBeTrue();
-            command.SecretArguments.Verify().ToContain("env-secret");
+            ContainsInOrder(command.Arguments, "/p", "env-secret").Must().BeTrue();
+            command.SecretArguments.Must().Contain("env-secret");
         }
         finally
         {
@@ -150,7 +150,7 @@ public class InstallerSignerTests
         (await act.ThrowsAsync<InvalidOperationException>())
             .WithMessageContaining($"'{envName}'")
             .WithMessageContaining("not set");
-        runner.Commands.Verify().ToBeEmpty();
+        runner.Commands.Must().BeEmpty();
     }
 
     [Fact]
@@ -168,15 +168,15 @@ public class InstallerSignerTests
             CancellationToken.None,
             runner);
 
-        runner.Commands.Verify().ToHaveCount(3);
-        runner.Commands[0].Description.Verify().ToBe("Signing macOS DMG");
-        runner.Commands[0].FileName.Verify().ToBe("codesign");
-        runner.Commands[1].Description.Verify().ToBe("Notarizing macOS DMG");
+        runner.Commands.Must().HaveCount(3);
+        runner.Commands[0].Description.Must().Be("Signing macOS DMG");
+        runner.Commands[0].FileName.Must().Be("codesign");
+        runner.Commands[1].Description.Must().Be("Notarizing macOS DMG");
         ContainsInOrder(runner.Commands[1].Arguments, "notarytool", "submit", "dist/App-osx-arm64.dmg")
-            .Verify().ToBeTrue();
-        runner.Commands[2].Description.Verify().ToBe("Stapling macOS notarization ticket");
+            .Must().BeTrue();
+        runner.Commands[2].Description.Must().Be("Stapling macOS notarization ticket");
         runner.Commands[2].Arguments.SequenceEqual(["stapler", "staple", "dist/App-osx-arm64.dmg"])
-            .Verify().ToBeTrue();
+            .Must().BeTrue();
     }
 
     [Fact]
@@ -193,8 +193,8 @@ public class InstallerSignerTests
             CancellationToken.None,
             runner);
 
-        runner.Commands.Verify().ToHaveCount(1);
-        runner.Commands[0].Description.Verify().ToBe("Signing macOS DMG");
+        runner.Commands.Must().HaveCount(1);
+        runner.Commands[0].Description.Must().Be("Signing macOS DMG");
     }
 
     private static bool ContainsInOrder<T>(IEnumerable<T> actual, params T[] expected)

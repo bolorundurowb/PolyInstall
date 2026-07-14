@@ -16,8 +16,8 @@ public class ZipPayloadExtractorTests
 
             ZipPayloadExtractor.ExtractToDirectory(zip, dest);
 
-            File.ReadAllText(Path.Combine(dest, "a.txt")).Verify().ToBe("hello");
-            File.ReadAllText(Path.Combine(dest, "sub", "b.txt")).Verify().ToBe("world");
+            File.ReadAllText(Path.Combine(dest, "a.txt")).Must().Be("hello");
+            File.ReadAllText(Path.Combine(dest, "sub", "b.txt")).Must().Be("world");
         }
         finally
         {
@@ -36,7 +36,7 @@ public class ZipPayloadExtractorTests
 
             ZipPayloadExtractor.ExtractToDirectory(zip, dest);
 
-            File.Exists(Path.Combine(dest, "a.txt")).Verify().ToBeTrue();
+            File.Exists(Path.Combine(dest, "a.txt")).Must().BeTrue();
         }
         finally
         {

@@ -45,16 +45,16 @@ public class InstallBundleReaderTests
             bundle.Position = 0;
 
             var (readManifest, readCompressed) = InstallBundleReader.ReadFromStream(bundle);
-            readManifest.Metadata.Name.Verify().ToBe("App");
-            readManifest.Build.Compression.Verify().ToBe("gzip");
+            readManifest.Metadata.Name.Must().Be("App");
+            readManifest.Build.Compression.Must().Be("gzip");
 
             var zipBytes = InstallBundleReader.DecompressPayload(readManifest, readCompressed);
             using var zipMs = new MemoryStream(zipBytes);
             using var zip = new ZipArchive(zipMs, ZipArchiveMode.Read);
             var entry = zip.GetEntry("files/f.txt");
-            entry.Verify().NotToBeNull();
+            entry.Must().NotBeNull();
             using var sr = new StreamReader(entry!.Open());
-            sr.ReadToEnd().Verify().ToBe("payload-body");
+            sr.ReadToEnd().Must().Be("payload-body");
         }
         finally
         {
@@ -105,9 +105,9 @@ public class InstallBundleReaderTests
             using var zipFs = File.OpenRead(zipPath);
             using var zip = new ZipArchive(zipFs, ZipArchiveMode.Read);
             var entry = zip.GetEntry("files/source.txt");
-            entry.Verify().NotToBeNull();
+            entry.Must().NotBeNull();
             using var sr = new StreamReader(entry!.Open());
-            sr.ReadToEnd().Verify().ToBe("payload-body");
+            sr.ReadToEnd().Must().Be("payload-body");
         }
         finally
         {

@@ -14,7 +14,7 @@ public class WindowsElevationTests
             manifest,
             existing,
             isWindows: true,
-            isAdministrator: false).Verify().ToBeTrue();
+            isAdministrator: false).Must().BeTrue();
     }
 
     [Fact]
@@ -26,6 +26,6 @@ public class WindowsElevationTests
             manifest,
             existingInstall: null,
             isWindows: true,
-            isAdministrator: true).Verify().ToBeFalse();
+            isAdministrator: true).Must().BeFalse();
     }
 }

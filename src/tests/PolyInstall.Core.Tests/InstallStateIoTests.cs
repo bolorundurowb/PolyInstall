@@ -25,10 +25,10 @@ public class InstallStateIoTests
         {
             InstallStateIo.WriteState(installRoot, state);
             var json = File.ReadAllText(InstallStatePaths.InstallStatePath(installRoot));
-            json.Verify().ToContain("selected_features");
+            json.Must().Contain("selected_features");
 
             var read = InstallStateIo.ReadState(installRoot);
-            read.SelectedFeatures.Verify().ToBeEquivalentTo(["samples", "simulator"]);
+            read.SelectedFeatures.Must().BeEquivalentTo(["samples", "simulator"]);
         }
         finally
         {
@@ -55,13 +55,13 @@ public class InstallStateIoTests
         {
             InstallStateIo.WriteState(installRoot, state);
             var path = InstallStatePaths.InstallStatePath(installRoot);
-            File.Exists(path).Verify().ToBeTrue();
+            File.Exists(path).Must().BeTrue();
             var json = File.ReadAllText(path);
-            json.Verify().ToContain("registry_uninstall_key_relative");
+            json.Must().Contain("registry_uninstall_key_relative");
 
             var read = InstallStateIo.ReadState(installRoot);
-            read.DisplayName.Verify().ToBe("Test");
-            read.InstallScope.Verify().ToBe("user");
+            read.DisplayName.Must().Be("Test");
+            read.InstallScope.Must().Be("user");
         }
         finally
         {
@@ -101,14 +101,14 @@ public class InstallStateIoTests
             InstallStateIo.WriteEmbeddedManifest(installRoot, manifest);
             var read = InstallStateIo.ReadEmbeddedManifest(installRoot);
 
-            read.Metadata.Name.Verify().ToBe("Test");
-            read.Tasks.Verify().NotToBeNull();
+            read.Metadata.Name.Must().Be("Test");
+            read.Tasks.Must().NotBeNull();
             var postInstall = read.Tasks!.PostInstall!;
-            postInstall.Verify().ToHaveCount(1);
+            postInstall.Must().HaveCount(1);
             var task = postInstall[0];
-            task.Action.Verify().ToBe("create_shortcut");
-            task.Parameters.Verify().NotToBeNull();
-            task.Parameters!.Verify().ContainKey("target_path");
+            task.Action.Must().Be("create_shortcut");
+            task.Parameters.Must().NotBeNull();
+            task.Parameters!.Must().ContainKey("target_path");
         }
         finally
         {
@@ -149,10 +149,10 @@ public class InstallStateIoTests
             var path = InstallStatePaths.EmbeddedManifestPath(installRoot);
             var json = File.ReadAllText(path);
 
-            json.Verify().ToContain("\"action\": \"create_shortcut\"");
-            json.Verify().ToContain("\"target_path\"");
-            json.Verify().ToContain("\"name\"");
-            json.Verify().ToContain("\"location\"");
+            json.Must().Contain("\"action\": \"create_shortcut\"");
+            json.Must().Contain("\"target_path\"");
+            json.Must().Contain("\"name\"");
+            json.Must().Contain("\"location\"");
         }
         finally
         {

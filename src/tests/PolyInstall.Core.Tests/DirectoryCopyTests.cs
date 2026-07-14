@@ -18,9 +18,9 @@ public class DirectoryCopyTests
         {
             DirectoryCopy.CopyRecursive(source, dest, onFileCopied: reported.Add);
 
-            File.Exists(Path.Combine(dest, "root.txt")).Verify().ToBeTrue();
-            File.Exists(Path.Combine(dest, "nested", "child.txt")).Verify().ToBeTrue();
-            reported.Verify().ToBeEquivalentTo(["root.txt", Path.Combine("nested", "child.txt")]);
+            File.Exists(Path.Combine(dest, "root.txt")).Must().BeTrue();
+            File.Exists(Path.Combine(dest, "nested", "child.txt")).Must().BeTrue();
+            reported.Must().BeEquivalentTo(["root.txt", Path.Combine("nested", "child.txt")]);
         }
         finally
         {

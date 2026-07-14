@@ -17,12 +17,12 @@ public class PalImplementationTests
             "My Application",
             @"C:\Program Files\MyApp\app.ico");
 
-        script.Verify().ToContain("$w = New-Object -ComObject WScript.Shell");
-        script.Verify().ToContain("CreateShortcut");
-        script.Verify().ToContain("TargetPath");
-        script.Verify().ToContain("Description");
-        script.Verify().ToContain("IconLocation");
-        script.Verify().ToContain("Save()");
+        script.Must().Contain("$w = New-Object -ComObject WScript.Shell");
+        script.Must().Contain("CreateShortcut");
+        script.Must().Contain("TargetPath");
+        script.Must().Contain("Description");
+        script.Must().Contain("IconLocation");
+        script.Must().Contain("Save()");
     }
 
     [Fact]
@@ -34,12 +34,12 @@ public class PalImplementationTests
             null,
             null);
 
-        script.Verify().ToContain("$w = New-Object -ComObject WScript.Shell");
-        script.Verify().ToContain("CreateShortcut");
-        script.Verify().ToContain("TargetPath");
-        script.Contains("Description", StringComparison.Ordinal).Verify().ToBeFalse();
-        script.Contains("IconLocation", StringComparison.Ordinal).Verify().ToBeFalse();
-        script.Verify().ToContain("Save()");
+        script.Must().Contain("$w = New-Object -ComObject WScript.Shell");
+        script.Must().Contain("CreateShortcut");
+        script.Must().Contain("TargetPath");
+        script.Contains("Description", StringComparison.Ordinal).Must().BeFalse();
+        script.Contains("IconLocation", StringComparison.Ordinal).Must().BeFalse();
+        script.Must().Contain("Save()");
     }
 
     [Fact]
@@ -51,7 +51,7 @@ public class PalImplementationTests
             null,
             null);
 
-        script.Verify().ToContain("O''Brien");
+        script.Must().Contain("O''Brien");
     }
 
     [Fact]
@@ -59,10 +59,10 @@ public class PalImplementationTests
     {
         var script = PosixSymlinkShortcut.BuildFallbackScript("/usr/bin/myapp");
 
-        script.Verify().ToStartWith("#!/bin/sh");
-        script.Verify().ToContain("exec");
-        script.Verify().ToContain("/usr/bin/myapp");
-        script.Verify().ToContain("\"$@\"");
+        script.Must().StartWith("#!/bin/sh");
+        script.Must().Contain("exec");
+        script.Must().Contain("/usr/bin/myapp");
+        script.Must().Contain("\"$@\"");
     }
 
     [Fact]
@@ -70,7 +70,7 @@ public class PalImplementationTests
     {
         var script = PosixSymlinkShortcut.BuildFallbackScript("/usr/bin/my \"app\"");
 
-        script.Verify().ToContain("my \\\"app\\\"");
+        script.Must().Contain("my \\\"app\\\"");
     }
 
     [Fact]
@@ -82,13 +82,13 @@ public class PalImplementationTests
             "/usr/share/icons/myapp.png",
             "A great application");
 
-        content.Verify().ToContain("[Desktop Entry]");
-        content.Verify().ToContain("Type=Application");
-        content.Verify().ToContain("Name=My Application");
-        content.Verify().ToContain("Exec=/usr/bin/myapp");
-        content.Verify().ToContain("Terminal=false");
-        content.Verify().ToContain("Icon=/usr/share/icons/myapp.png");
-        content.Verify().ToContain("Comment=A great application");
+        content.Must().Contain("[Desktop Entry]");
+        content.Must().Contain("Type=Application");
+        content.Must().Contain("Name=My Application");
+        content.Must().Contain("Exec=/usr/bin/myapp");
+        content.Must().Contain("Terminal=false");
+        content.Must().Contain("Icon=/usr/share/icons/myapp.png");
+        content.Must().Contain("Comment=A great application");
     }
 
     [Fact]
@@ -100,13 +100,13 @@ public class PalImplementationTests
             null,
             null);
 
-        content.Verify().ToContain("[Desktop Entry]");
-        content.Verify().ToContain("Type=Application");
-        content.Verify().ToContain("Name=MyApp");
-        content.Verify().ToContain("Exec=/usr/bin/myapp");
-        content.Verify().ToContain("Terminal=false");
-        content.Contains("Icon=", StringComparison.Ordinal).Verify().ToBeFalse();
-        content.Contains("Comment=", StringComparison.Ordinal).Verify().ToBeFalse();
+        content.Must().Contain("[Desktop Entry]");
+        content.Must().Contain("Type=Application");
+        content.Must().Contain("Name=MyApp");
+        content.Must().Contain("Exec=/usr/bin/myapp");
+        content.Must().Contain("Terminal=false");
+        content.Contains("Icon=", StringComparison.Ordinal).Must().BeFalse();
+        content.Contains("Comment=", StringComparison.Ordinal).Must().BeFalse();
     }
 
     [Fact]
@@ -120,7 +120,7 @@ public class PalImplementationTests
 
         var binPath = WindowsServiceManagerPal.BuildBinPath(info);
 
-        binPath.Verify().ToBe("\"C:\\Program Files\\MyApp\\app.exe\" --service \"value with spaces\"");
+        binPath.Must().Be("\"C:\\Program Files\\MyApp\\app.exe\" --service \"value with spaces\"");
     }
 
     [Fact]
@@ -140,13 +140,13 @@ public class PalImplementationTests
 
         var content = LinuxSystemdServiceManagerPal.BuildUnitContent(info);
 
-        content.Verify().ToContain("[Unit]");
-        content.Verify().ToContain("Description=My App");
-        content.Verify().ToContain("ExecStart=/opt/myapp/app --service");
-        content.Verify().ToContain("WorkingDirectory=/opt/myapp");
-        content.Verify().ToContain("Restart=on-failure");
-        content.Verify().ToContain("Environment=\"MYAPP_HOME=/opt/myapp\"");
-        content.Verify().ToContain("WantedBy=default.target");
+        content.Must().Contain("[Unit]");
+        content.Must().Contain("Description=My App");
+        content.Must().Contain("ExecStart=/opt/myapp/app --service");
+        content.Must().Contain("WorkingDirectory=/opt/myapp");
+        content.Must().Contain("Restart=on-failure");
+        content.Must().Contain("Environment=\"MYAPP_HOME=/opt/myapp\"");
+        content.Must().Contain("WantedBy=default.target");
     }
 
     [Fact]
@@ -164,13 +164,13 @@ public class PalImplementationTests
 
         var content = MacOsLaunchdServiceManagerPal.BuildPlistContent(info);
 
-        content.Verify().ToContain("<key>Label</key>");
-        content.Verify().ToContain("<string>com.example.myapp</string>");
-        content.Verify().ToContain("<key>ProgramArguments</key>");
-        content.Verify().ToContain("<string>--service</string>");
-        content.Verify().ToContain("<key>WorkingDirectory</key>");
-        content.Verify().ToContain("<key>KeepAlive</key>");
-        content.Verify().ToContain("<key>EnvironmentVariables</key>");
+        content.Must().Contain("<key>Label</key>");
+        content.Must().Contain("<string>com.example.myapp</string>");
+        content.Must().Contain("<key>ProgramArguments</key>");
+        content.Must().Contain("<string>--service</string>");
+        content.Must().Contain("<key>WorkingDirectory</key>");
+        content.Must().Contain("<key>KeepAlive</key>");
+        content.Must().Contain("<key>EnvironmentVariables</key>");
     }
 
     [Fact]
@@ -178,9 +178,9 @@ public class PalImplementationTests
     {
         var sanitized = PosixPathPal.SanitizeFileName("/usr/local/bin/myapp");
 
-        sanitized.Contains('/', StringComparison.Ordinal).Verify().ToBeFalse();
-        sanitized.Contains('\\', StringComparison.Ordinal).Verify().ToBeFalse();
-        sanitized.Contains(':', StringComparison.Ordinal).Verify().ToBeFalse();
+        sanitized.Contains('/', StringComparison.Ordinal).Must().BeFalse();
+        sanitized.Contains('\\', StringComparison.Ordinal).Must().BeFalse();
+        sanitized.Contains(':', StringComparison.Ordinal).Must().BeFalse();
     }
 
     [Fact]
@@ -188,7 +188,7 @@ public class PalImplementationTests
     {
         var sanitized = PosixPathPal.SanitizeFileName("");
 
-        sanitized.Verify().ToBeEmpty();
+        sanitized.Must().BeEmpty();
     }
 
     [Fact]
@@ -196,7 +196,7 @@ public class PalImplementationTests
     {
         var sanitized = PosixPathPal.SanitizeFileName("///");
 
-        sanitized.Verify().ToBeEmpty();
+        sanitized.Must().BeEmpty();
     }
 
     [Fact]
@@ -215,7 +215,7 @@ public class PalImplementationTests
 
             var result = PosixPathPal.FindShellProfile(tempDir);
 
-            result.Verify().ToBe(bashrc);
+            result.Must().Be(bashrc);
         }
         finally
         {
@@ -237,7 +237,7 @@ public class PalImplementationTests
 
             var result = PosixPathPal.FindShellProfile(tempDir);
 
-            result.Verify().ToBe(zshrc);
+            result.Must().Be(zshrc);
         }
         finally
         {
@@ -256,7 +256,7 @@ public class PalImplementationTests
 
             var result = PosixPathPal.FindShellProfile(tempDir);
 
-            result.Verify().ToBe(profile);
+            result.Must().Be(profile);
         }
         finally
         {
@@ -272,7 +272,7 @@ public class PalImplementationTests
         {
             var result = PosixPathPal.FindShellProfile(tempDir);
 
-            result.Verify().ToBe(Path.Combine(tempDir, ".bashrc"));
+            result.Must().Be(Path.Combine(tempDir, ".bashrc"));
         }
         finally
         {
@@ -287,7 +287,7 @@ public class PalImplementationTests
 
         var paths = pal.AddedPaths;
 
-        ((object)paths).Verify().ToBeAssignableTo<IReadOnlyList<(string, string)>>();
+        ((object)paths).Must().ToBeAssignableTo<IReadOnlyList<(string, string)>>();
     }
 
     [Fact]
@@ -295,7 +295,7 @@ public class PalImplementationTests
     {
         var pal = new PathPal();
 
-        pal.AddedPaths.Verify().ToBeEmpty();
+        pal.AddedPaths.Must().BeEmpty();
     }
 
     [Fact]
@@ -314,7 +314,7 @@ public class PalImplementationTests
             var pal = new DefaultShortcutPal();
             pal.CreateFileShortcut(targetPath, shortcutPath, "Test", null);
 
-            File.Exists(shortcutPath).Verify().ToBeTrue();
+            File.Exists(shortcutPath).Must().BeTrue();
         }
         finally
         {
@@ -338,7 +338,7 @@ public class PalImplementationTests
             var pal = new DefaultShortcutPal();
             pal.CreateFileShortcut(targetPath, shortcutPath, null, null);
 
-            (File.Exists(shortcutPath) || Directory.Exists(shortcutPath)).Verify().ToBeTrue();
+            (File.Exists(shortcutPath) || Directory.Exists(shortcutPath)).Must().BeTrue();
         }
         finally
         {
@@ -361,7 +361,7 @@ public class PalImplementationTests
 
             PosixSymlinkShortcut.Create(targetPath, shortcutPath);
 
-            (File.Exists(shortcutPath) || Directory.Exists(shortcutPath)).Verify().ToBeTrue();
+            (File.Exists(shortcutPath) || Directory.Exists(shortcutPath)).Must().BeTrue();
         }
         finally
         {
@@ -385,7 +385,7 @@ public class PalImplementationTests
 
             PosixSymlinkShortcut.Create(targetPath, shortcutPath);
 
-            (File.Exists(shortcutPath) || Directory.Exists(shortcutPath)).Verify().ToBeTrue();
+            (File.Exists(shortcutPath) || Directory.Exists(shortcutPath)).Must().BeTrue();
         }
         finally
         {
@@ -409,7 +409,7 @@ public class PalImplementationTests
             pal.CreateDesktopEntry("test", "Test App", "/usr/bin/test", null, null);
 
             var expectedPath = Path.Combine(tempDir, ".local", "share", "applications", "test.desktop");
-            File.Exists(expectedPath).Verify().ToBeTrue();
+            File.Exists(expectedPath).Must().BeTrue();
         }
         finally
         {
@@ -434,7 +434,7 @@ public class PalImplementationTests
             pal.CreateDesktopEntry("myapp", "My App", "/usr/bin/myapp", null, null);
 
             var expectedPath = Path.Combine(tempDir, ".local", "share", "applications", "myapp.desktop");
-            File.Exists(expectedPath).Verify().ToBeTrue();
+            File.Exists(expectedPath).Must().BeTrue();
         }
         finally
         {
@@ -459,10 +459,10 @@ public class PalImplementationTests
             pal.CreateDesktopEntry("myapp.desktop", "My App", "/usr/bin/myapp", null, null);
 
             var expectedPath = Path.Combine(tempDir, ".local", "share", "applications", "myapp.desktop");
-            File.Exists(expectedPath).Verify().ToBeTrue();
+            File.Exists(expectedPath).Must().BeTrue();
 
             var doubleExtensionPath = Path.Combine(tempDir, ".local", "share", "applications", "myapp.desktop.desktop");
-            File.Exists(doubleExtensionPath).Verify().ToBeFalse();
+            File.Exists(doubleExtensionPath).Must().BeFalse();
         }
         finally
         {
@@ -488,9 +488,9 @@ public class PalImplementationTests
 
             var fileInfo = new FileInfo(filePath);
             var mode = fileInfo.UnixFileMode;
-            (mode & UnixFileMode.UserExecute).Verify().ToBe(UnixFileMode.UserExecute);
-            (mode & UnixFileMode.GroupExecute).Verify().ToBe(UnixFileMode.GroupExecute);
-            (mode & UnixFileMode.OtherExecute).Verify().ToBe(UnixFileMode.OtherExecute);
+            (mode & UnixFileMode.UserExecute).Must().Be(UnixFileMode.UserExecute);
+            (mode & UnixFileMode.GroupExecute).Must().Be(UnixFileMode.GroupExecute);
+            (mode & UnixFileMode.OtherExecute).Must().Be(UnixFileMode.OtherExecute);
         }
         finally
         {
@@ -512,8 +512,8 @@ public class PalImplementationTests
             pal.SetValue(testKeyPath, "TestValue", "TestData", "string");
 
             using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\" + testKeyPath.Split('\\').Last());
-            key.Verify().NotToBeNull();
-            key!.GetValue("TestValue").Verify().ToBe("TestData");
+            key.Must().NotBeNull();
+            key!.GetValue("TestValue").Must().Be("TestData");
         }
         finally
         {
@@ -570,7 +570,7 @@ public class PalImplementationTests
             PosixPathPal.AddToPath("/usr/local/testapp/bin", "user");
 
             var content = File.ReadAllText(profile);
-            content.Verify().ToContain("export PATH=\"$PATH:/usr/local/testapp/bin\"");
+            content.Must().Contain("export PATH=\"$PATH:/usr/local/testapp/bin\"");
         }
         finally
         {
@@ -597,7 +597,7 @@ public class PalImplementationTests
             PosixPathPal.AddToPath("/usr/local/testapp/bin", "user");
 
             var lines = File.ReadAllLines(profile);
-            lines.Count(l => l.Trim() == entry).Verify().ToBe(1);
+            lines.Count(l => l.Trim() == entry).Must().Be(1);
         }
         finally
         {
@@ -624,7 +624,7 @@ public class PalImplementationTests
             PosixPathPal.RemoveFromPath("/usr/local/testapp/bin", "user");
 
             var content = File.ReadAllText(profile);
-            content.Contains(entry, StringComparison.Ordinal).Verify().ToBeFalse();
+            content.Contains(entry, StringComparison.Ordinal).Must().BeFalse();
         }
         finally
         {
@@ -661,10 +661,10 @@ public class PalImplementationTests
     {
         var pal = new DefaultPolyInstallPal();
 
-        pal.UserHome.Verify().ToBe(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
-        pal.Desktop.Verify().ToBe(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory));
-        pal.Shortcuts.Verify().NotToBeNull();
-        pal.Path.Verify().NotToBeNull();
+        pal.UserHome.Must().Be(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+        pal.Desktop.Must().Be(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory));
+        pal.Shortcuts.Must().NotBeNull();
+        pal.Path.Must().NotBeNull();
     }
 
     [Fact]
@@ -674,13 +674,13 @@ public class PalImplementationTests
 
         if (OperatingSystem.IsWindows())
         {
-            pal.Registry.Verify().NotToBeNull();
-            pal.FileAssociations.Verify().NotToBeNull();
-            pal.FileAssociations.Verify().ToBeOfType<WindowsFileAssociationPal>();
+            pal.Registry.Must().NotBeNull();
+            pal.FileAssociations.Must().NotBeNull();
+            pal.FileAssociations.Must().ToBeOfType<WindowsFileAssociationPal>();
         }
         else
         {
-            pal.Registry.Verify().ToBeNull();
+            pal.Registry.Must().BeNull();
         }
     }
 
@@ -691,16 +691,16 @@ public class PalImplementationTests
 
         if (OperatingSystem.IsLinux())
         {
-            pal.DesktopEntries.Verify().NotToBeNull();
-            pal.DesktopEntries.Verify().ToBeOfType<LinuxDesktopEntryPal>();
-            pal.FilePermissions.Verify().NotToBeNull();
-            pal.FilePermissions.Verify().ToBeOfType<PosixFilePermissionsPal>();
-            pal.FileAssociations.Verify().NotToBeNull();
-            pal.FileAssociations.Verify().ToBeOfType<LinuxFileAssociationPal>();
+            pal.DesktopEntries.Must().NotBeNull();
+            pal.DesktopEntries.Must().ToBeOfType<LinuxDesktopEntryPal>();
+            pal.FilePermissions.Must().NotBeNull();
+            pal.FilePermissions.Must().ToBeOfType<PosixFilePermissionsPal>();
+            pal.FileAssociations.Must().NotBeNull();
+            pal.FileAssociations.Must().ToBeOfType<LinuxFileAssociationPal>();
         }
         else
         {
-            pal.DesktopEntries.Verify().ToBeNull();
+            pal.DesktopEntries.Must().BeNull();
         }
     }
 
@@ -711,14 +711,14 @@ public class PalImplementationTests
 
         if (OperatingSystem.IsMacOS())
         {
-            pal.FilePermissions.Verify().NotToBeNull();
-            pal.FilePermissions.Verify().ToBeOfType<PosixFilePermissionsPal>();
-            pal.FileAssociations.Verify().NotToBeNull();
-            pal.FileAssociations.Verify().ToBeOfType<MacOsFileAssociationPal>();
+            pal.FilePermissions.Must().NotBeNull();
+            pal.FilePermissions.Must().ToBeOfType<PosixFilePermissionsPal>();
+            pal.FileAssociations.Must().NotBeNull();
+            pal.FileAssociations.Must().ToBeOfType<MacOsFileAssociationPal>();
         }
         else if (!OperatingSystem.IsLinux())
         {
-            pal.FilePermissions.Verify().ToBeNull();
+            pal.FilePermissions.Must().BeNull();
         }
     }
 
@@ -739,7 +739,7 @@ public class PalImplementationTests
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
                 null, [typeof(string)], null)!
                 .Invoke(pal, [".test"]);
-            result.Verify().ToBeNull();
+            result.Must().BeNull();
         }
         finally
         {
