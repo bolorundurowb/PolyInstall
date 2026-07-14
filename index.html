@@ -731,7 +731,7 @@
 
     <section class="hero" id="top">
       <div>
-        <span class="eyebrow">Current release: v1.0.0</span>
+        <span class="eyebrow">Current release: v2.0.1</span>
         <h1>Build native-feeling installers from one YAML manifest.</h1>
         <p class="hero-copy">
           PolyInstall is a cross-platform installer builder for teams that want predictable packaging without maintaining
@@ -765,7 +765,7 @@ polyinstall validate manifest.yaml</code></pre>
 
     <section class="stats-grid" aria-label="Project highlights">
       <div class="stat">
-        <strong>1.0.0</strong>
+        <strong>2.0.1</strong>
         <span>Current stable release.</span>
       </div>
       <div class="stat">
@@ -808,7 +808,7 @@ polyinstall validate manifest.yaml</code></pre>
 
           <div class="callout">
             <strong>Current project state</strong>
-            The repository is at <code>v1.0.0</code>, targets <code>net10.0</code>, uses
+            The repository is at <code>v2.0.1</code>, targets <code>net10.0</code>, uses
             Avalonia <code>12.0.4</code> for the installer UI, and runs CI restore/build/test with coverage on GitHub
             Actions. The release pipeline publishes self-contained CLI zips for <code>win-x64</code>,
             <code>linux-x64</code>, and <code>osx-arm64</code>; each CLI zip carries its host stub, while separate
@@ -927,7 +927,7 @@ polyinstall validate manifest.yaml</code></pre>
             <article class="step">
               <h3>Download a release archive</h3>
               <p>
-                Open the <a href="https://github.com/bolorundurowb/PolyInstall/releases/tag/v1.0.0" rel="noreferrer">PolyInstall v1.0.0 release</a>
+                Open the <a href="https://github.com/bolorundurowb/PolyInstall/releases/tag/v2.0.1" rel="noreferrer">PolyInstall v2.0.1 release</a>
                 and download the archive that matches your build machine, such as
                 <code>polyinstall-win-x64-&lt;tag&gt;.zip</code>, <code>polyinstall-linux-x64-&lt;tag&gt;.zip</code>, or
                 <code>polyinstall-osx-arm64-&lt;tag&gt;.zip</code>. Each CLI archive includes the runtime stub for that
@@ -1494,6 +1494,12 @@ polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
             possible when you also provide the matching <code>stubs-&lt;rid&gt;</code> archive or custom stubs directory.
           </div>
 
+          <div class="callout">
+            <strong>Public release downloads</strong>
+            Keep <code>github-token: ""</code> when downloading the public PolyInstall release from another repository.
+            Set a token only when you point the action at a private release repository or mirror.
+          </div>
+
           <h3 style="margin-top: 1.6rem;">Validate manifests on pull requests</h3>
           <p>
             A lightweight validation workflow catches schema mistakes, missing payload paths, invalid shortcut parameters,
@@ -1513,9 +1519,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: bolorundurowb/PolyInstall/.github/actions/setup-polyinstall@v1.0.0
+      - uses: bolorundurowb/PolyInstall/.github/actions/setup-polyinstall@v2.0.1
         with:
-          version: v1.0.0
+          version: v2.0.1
+          github-token: ""
 
       - name: Validate manifest
         run: polyinstall validate installer/manifest.yaml --base installer</code></pre>
@@ -1559,10 +1566,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: bolorundurowb/PolyInstall/.github/actions/setup-polyinstall@v1.0.0
+      - uses: bolorundurowb/PolyInstall/.github/actions/setup-polyinstall@v2.0.1
         with:
-          version: v1.0.0
+          version: v2.0.1
           rid: $&#123;&#123; matrix.rid &#125;&#125;
+          github-token: ""
 
       - name: Validate manifest
         env:
@@ -2390,7 +2398,7 @@ dotnet test src/PolyInstall.slnx -c Release --no-build --verbosity normal</code>
       <p>
         PolyInstall documentation page styled from the embedded logo palette:
         ink <code>#0e1116</code>, plum <code>#6C0450</code>, paper <code>#f5f3ee</code>, and rule <code>#d8d4c8</code>.
-        Last reviewed against source version <code>1.0.0</code>.
+        Last reviewed against source version <code>2.0.1</code>.
       </p>
     </footer>
   </div>
