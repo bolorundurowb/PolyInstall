@@ -63,10 +63,10 @@ public class FeatureManifestTests
         m.Features[1].Id.Verify().ToBe("samples");
         m.Features[1].DefaultSelected.Verify().ToBeFalse();
 
-        m.Files[1].Features.Verify().ToBeEquivalentTo(new[] { "simulator" });
-        m.Files[2].Features.Verify().ToBeEquivalentTo(new[] { "samples" });
-        m.Tasks!.PostInstall![0].Features.Verify().ToBeEquivalentTo(new[] { "simulator" });
-        m.FileAssociations![0].Features.Verify().ToBeEquivalentTo(new[] { "simulator" });
+        m.Files[1].Features.Verify().ToBeEquivalentTo(["simulator"]);
+        m.Files[2].Features.Verify().ToBeEquivalentTo(["samples"]);
+        m.Tasks!.PostInstall![0].Features.Verify().ToBeEquivalentTo(["simulator"]);
+        m.FileAssociations![0].Features.Verify().ToBeEquivalentTo(["simulator"]);
     }
 
     [Fact]

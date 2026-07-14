@@ -28,7 +28,7 @@ public class InstallStateIoTests
             json.Verify().ToContain("selected_features");
 
             var read = InstallStateIo.ReadState(installRoot);
-            read.SelectedFeatures.Verify().ToBeEquivalentTo(new[] { "samples", "simulator" });
+            read.SelectedFeatures.Verify().ToBeEquivalentTo(["samples", "simulator"]);
         }
         finally
         {

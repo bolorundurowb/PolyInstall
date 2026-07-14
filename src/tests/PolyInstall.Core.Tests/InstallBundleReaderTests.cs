@@ -93,7 +93,7 @@ public class InstallBundleReaderTests
 
             using (var bundle = File.Create(bundlePath))
             {
-                bundle.Write(new byte[] { 0x4D, 0x5A });
+                bundle.Write([0x4D, 0x5A]);
                 bundle.Write(manifestBytes);
                 bundle.Write(compressed);
                 InstallPayloadTrailer.WriteFooter(bundle, manifestBytes.Length, compressed.Length);

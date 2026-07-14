@@ -30,7 +30,7 @@ public class GlobResolverTests
         {
             var results = GlobResolver.Collect(root, ".", ["**/*.txt"], null);
             results.Verify().ToHaveCount(2);
-            results.Select(f => f.RelativePath).Verify().ToBeEquivalentTo(new[] { "a.txt", "sub/b.txt" });
+            results.Select(f => f.RelativePath).Verify().ToBeEquivalentTo(["a.txt", "sub/b.txt"]);
         }
         finally { DeleteTree(root); }
     }
@@ -43,7 +43,7 @@ public class GlobResolverTests
         {
             var results = GlobResolver.Collect(root, ".", ["**/*.txt"], null);
             results.Select(f => f.RelativePath).Verify().ToBeEquivalentTo(
-                new[] { "a.txt", "sub/b.txt", "sub/deep/c.txt" });
+                ["a.txt", "sub/b.txt", "sub/deep/c.txt"]);
         }
         finally { DeleteTree(root); }
     }
@@ -82,7 +82,7 @@ public class GlobResolverTests
         try
         {
             var results = GlobResolver.Collect(root, ".", ["**/*"], ["**/*.log"]);
-            results.Select(f => f.RelativePath).Verify().ToBeEquivalentTo(new[] { "keep.txt", "sub/keep2.txt" });
+            results.Select(f => f.RelativePath).Verify().ToBeEquivalentTo(["keep.txt", "sub/keep2.txt"]);
         }
         finally { DeleteTree(root); }
     }
@@ -158,7 +158,7 @@ public class GlobResolverTests
         try
         {
             var results = GlobResolver.Collect(root, ".", ["**/*.txt", "**/*.dll"], null);
-            results.Select(f => f.RelativePath).Verify().ToBeEquivalentTo(new[] { "a.txt", "b.dll" });
+            results.Select(f => f.RelativePath).Verify().ToBeEquivalentTo(["a.txt", "b.dll"]);
         }
         finally { DeleteTree(root); }
     }

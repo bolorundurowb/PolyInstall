@@ -81,7 +81,7 @@ public static class InstallerBuildPipeline
                         if (!seenPerFeature.TryGetValue(featureId, out var set))
                             seenPerFeature[featureId] = set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                         if (!featureIndex.FeatureFiles.TryGetValue(featureId, out var list))
-                            featureIndex.FeatureFiles[featureId] = list = new List<string>();
+                            featureIndex.FeatureFiles[featureId] = list = [];
                         if (set.Add(g.RelativePath))
                             list.Add(g.RelativePath);
                     }

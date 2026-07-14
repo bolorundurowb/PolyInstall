@@ -13,7 +13,7 @@ public class FeatureFilterTests
             payloadFiles: ["a.txt", "b/c.txt"],
             selectedFeatures: new HashSet<string>(StringComparer.OrdinalIgnoreCase));
 
-        allowed.Verify().ToBeEquivalentTo(new[] { "a.txt", "b/c.txt" });
+        allowed.Verify().ToBeEquivalentTo(["a.txt", "b/c.txt"]);
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public class FeatureFilterTests
             ["core.txt", "sim.txt", "samples/s.txt"],
             new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "sim" });
 
-        allowed.Verify().ToBeEquivalentTo(new[] { "core.txt", "sim.txt" });
+        allowed.Verify().ToBeEquivalentTo(["core.txt", "sim.txt"]);
     }
 
     [Fact]

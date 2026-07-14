@@ -15,7 +15,7 @@ public class PayloadFileInventoryTests
 
             var files = PayloadFileInventory.Enumerate(root);
 
-            files.Verify().ToBeEquivalentTo(new[] { "a.txt", "b.txt" });
+            files.Verify().ToBeEquivalentTo(["a.txt", "b.txt"]);
         }
         finally
         {
@@ -76,7 +76,7 @@ public class PayloadFileInventoryTests
 
             var files = PayloadFileInventory.Enumerate(root);
 
-            files.SequenceEqual(new[] { "a.txt", "M.txt", "Z.txt" }).Verify().ToBeTrue();
+            files.SequenceEqual(["a.txt", "M.txt", "Z.txt"]).Verify().ToBeTrue();
         }
         finally
         {

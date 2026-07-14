@@ -74,7 +74,7 @@ internal sealed class WindowsFileAssociationPal : IFileAssociationPal
         try
         {
             var state = InstallStateIo.ReadState(installDir);
-            state.FileAssociationBackups ??= new List<FileAssociationBackup>();
+            state.FileAssociationBackups ??= [];
 
             if (state.FileAssociationBackups.Any(b => b.Extension.Equals(extension, StringComparison.OrdinalIgnoreCase)))
                 return; // Already backed up

@@ -86,12 +86,12 @@ internal sealed class LinuxFileAssociationPal : IFileAssociationPal
             try
             {
                 var state = InstallStateIo.ReadState(installDir);
-                state.FileAssociationBackups ??= new List<FileAssociationBackup>();
+                state.FileAssociationBackups ??= [];
                 var backup = state.FileAssociationBackups.FirstOrDefault(b =>
                     b.Extension.Equals(association.Extension, StringComparison.OrdinalIgnoreCase));
                 if (backup is not null)
                 {
-                    backup.BackupFilePaths ??= new List<string>();
+                    backup.BackupFilePaths ??= [];
                     if (!backup.BackupFilePaths.Contains(path))
                         backup.BackupFilePaths.Add(path);
                     InstallStateIo.WriteState(installDir, state);
@@ -164,7 +164,7 @@ internal sealed class LinuxFileAssociationPal : IFileAssociationPal
         try
         {
             var state = InstallStateIo.ReadState(installDir);
-            state.FileAssociationBackups ??= new List<FileAssociationBackup>();
+            state.FileAssociationBackups ??= [];
 
             if (state.FileAssociationBackups.Any(b => b.Extension.Equals(extension, StringComparison.OrdinalIgnoreCase)))
                 return;

@@ -53,7 +53,7 @@ public partial class MainWindow : Window
     {
         var hasFeatures = InstallBootstrap.Manifest.Features is { Count: > 0 };
         if (hasFeatures)
-            return new List<WizardStep>(steps);
+            return [..steps];
         return steps
             .Where(s => !string.Equals(s.Type?.Trim(), "features", StringComparison.OrdinalIgnoreCase))
             .ToList();

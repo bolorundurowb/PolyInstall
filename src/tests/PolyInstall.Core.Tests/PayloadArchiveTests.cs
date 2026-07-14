@@ -72,7 +72,7 @@ public class PayloadArchiveTests
             var decompressed = PayloadArchive.Decompress(compressed, compression);
             using var ms = new MemoryStream(decompressed);
             using var zip = new ZipArchive(ms, ZipArchiveMode.Read);
-            zip.Entries.Select(e => e.FullName).Verify().ToBeEquivalentTo(new[] { "a.txt", "b.txt" });
+            zip.Entries.Select(e => e.FullName).Verify().ToBeEquivalentTo(["a.txt", "b.txt"]);
         }
         finally
         {

@@ -31,7 +31,7 @@ public class InstallFinalizerTests
         state.Publisher.Verify().ToBe("Contoso");
         state.InstallLocation.Verify().ToBe(installDir);
         state.InstallScope.Verify().ToBe("user");
-        state.PayloadFiles.Verify().ToBeEquivalentTo(new[] { "app.exe", "config.json" });
+        state.PayloadFiles.Verify().ToBeEquivalentTo(["app.exe", "config.json"]);
         state.ProductId.Verify().NotToBeNullOrWhiteSpace();
         state.RegistryUninstallKeyRelative.Verify().NotToBeNullOrWhiteSpace();
     }
@@ -64,6 +64,6 @@ public class InstallFinalizerTests
 
         var state = InstallFinalizer.CreateState(manifest, "C:\\App", files);
 
-        state.PayloadFiles!.SequenceEqual(new[] { "a.exe", "M.exe", "Z.exe" }).Verify().ToBeTrue();
+        state.PayloadFiles!.SequenceEqual(["a.exe", "M.exe", "Z.exe"]).Verify().ToBeTrue();
     }
 }

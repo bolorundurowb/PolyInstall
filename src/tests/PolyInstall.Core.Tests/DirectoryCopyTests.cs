@@ -20,7 +20,7 @@ public class DirectoryCopyTests
 
             File.Exists(Path.Combine(dest, "root.txt")).Verify().ToBeTrue();
             File.Exists(Path.Combine(dest, "nested", "child.txt")).Verify().ToBeTrue();
-            reported.Verify().ToBeEquivalentTo(new[] { "root.txt", Path.Combine("nested", "child.txt") });
+            reported.Verify().ToBeEquivalentTo(["root.txt", Path.Combine("nested", "child.txt")]);
         }
         finally
         {

@@ -95,7 +95,7 @@ public class UpdateFlowTests
             File.Exists(InstallStatePaths.InstallStatePath(installRoot)).Verify().ToBeTrue();
             File.Exists(InstallStatePaths.EmbeddedManifestPath(installRoot)).Verify().ToBeTrue();
             state.DisplayVersion.Verify().ToBe("2.0.0");
-            state.PayloadFiles.Verify().ToBeEquivalentTo(new[] { "app.txt" });
+            state.PayloadFiles.Verify().ToBeEquivalentTo(["app.txt"]);
             InstallStateIo.ReadEmbeddedManifest(installRoot).Metadata.Name.Verify().ToBe("SampleApp");
         }
         finally
@@ -198,7 +198,7 @@ public class UpdateFlowTests
 
             var updatedState = InstallStateIo.ReadState(installRoot);
             updatedState.DisplayVersion.Verify().ToBe("2.0.0");
-            updatedState.PayloadFiles.Verify().ToBeEquivalentTo(new[] { "app.txt" });
+            updatedState.PayloadFiles.Verify().ToBeEquivalentTo(["app.txt"]);
         }
         finally
         {
@@ -294,7 +294,7 @@ public class UpdateFlowTests
             result.Mode.Verify().ToBe(InstallMode.Install);
             result.CreatedInstallDirectory.Verify().ToBeTrue();
             File.ReadAllText(Path.Combine(installRoot, "app.txt")).Verify().ToBe("fresh");
-            InstallStateIo.ReadState(installRoot).PayloadFiles.Verify().ToBeEquivalentTo(new[] { "app.txt" });
+            InstallStateIo.ReadState(installRoot).PayloadFiles.Verify().ToBeEquivalentTo(["app.txt"]);
         }
         finally
         {

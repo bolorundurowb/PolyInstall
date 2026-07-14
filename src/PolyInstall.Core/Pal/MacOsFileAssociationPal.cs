@@ -77,7 +77,7 @@ internal sealed class MacOsFileAssociationPal : IFileAssociationPal
         try
         {
             var state = InstallStateIo.ReadState(installDir);
-            state.FileAssociationBackups ??= new List<FileAssociationBackup>();
+            state.FileAssociationBackups ??= [];
 
             if (state.FileAssociationBackups.Any(b => b.Extension.Equals(extension, StringComparison.OrdinalIgnoreCase)))
                 return;

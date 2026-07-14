@@ -43,7 +43,7 @@ public class ServiceLifecycleTests
 
             servicePal.Installed.Verify().ToHaveCount(1);
             servicePal.Installed[0].Executable.Verify().ToBe(Path.Combine(installRoot, "app"));
-            servicePal.Installed[0].Arguments.SequenceEqual(new[] { "--service" }).Verify().ToBeTrue();
+            servicePal.Installed[0].Arguments.SequenceEqual(["--service"]).Verify().ToBeTrue();
             result.State.RegisteredServices.Verify().ToHaveCount(1);
             InstallStateIo.ReadState(installRoot).RegisteredServices.Verify().ToHaveCount(1);
         }
