@@ -39,11 +39,13 @@ ui:
       title: Welcome
     - type: destination
       title: Install location
-      default_path: "{UserHome}/SampleApp"
+      default_path: "{LocalAppData}/SampleApp"
     - type: features
       title: Select Features
     - type: progress
       title: Installing
+      # Defaults to true; set false to hide the detailed log panel.
+      show_logs: true
     - type: finish
       title: Complete
 # Optional features that the user can pick during install. Files, tasks, and file_associations

@@ -418,6 +418,11 @@
             "null",
             "string"
           ]
+        },
+        "show_logs": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the progress step displays its detailed install log."
         }
       }
     },
