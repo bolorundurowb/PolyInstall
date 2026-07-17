@@ -17,7 +17,19 @@ public static class ManifestSemanticValidator
 
     public static void Validate(InstallManifest manifest)
     {
-        var errors = new List<string>();
+        var result = ValidateResult(manifest);
+        if (result.IsValid)
+            return;
+
+        var msg = string.Join(Environment.NewLine, result.Diagnostics.Select(d => d.Message));
+        throw new InvalidOperationException(
+            $"Manifest semantic validation failed:{Environment.NewLine}{msg}");
+    }
+
+    /// <summary>Collects semantic validation failures without throwing for invalid manifest content.</summary>
+    public static ManifestValidationResult ValidateResult(InstallManifest manifest)
+    {
+        var errors = new List<ManifestDiagnostic>();
         ValidateMetadata(manifest, errors);
         ValidateBuild(manifest, errors);
         ValidateFeatures(manifest, errors);
@@ -26,16 +38,20 @@ public static class ManifestSemanticValidator
         ValidateTasks(manifest, errors);
         ValidateServices(manifest, errors);
         ValidateFileAssociations(manifest, errors);
-
-        if (errors.Count == 0)
-            return;
-
-        var msg = string.Join(Environment.NewLine, errors);
-        throw new InvalidOperationException(
-            $"Manifest semantic validation failed:{Environment.NewLine}{msg}");
+        return errors.Count == 0
+            ? ManifestValidationResult.Success
+            : new ManifestValidationResult(errors);
     }
 
-    private static void ValidateFeatures(InstallManifest manifest, List<string> errors)
+    private static void Add(
+        List<ManifestDiagnostic> errors,
+        string code,
+        string message,
+        string? path = null,
+        string? help = null)
+        => errors.Add(new ManifestDiagnostic(code, message, path, help));
+
+    private static void ValidateFeatures(InstallManifest manifest, List<ManifestDiagnostic> errors)
     {
         var definedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (manifest.Features is { Count: > 0 } features)
@@ -43,15 +59,19 @@ public static class ManifestSemanticValidator
             for (int i = 0; i < features.Count; i++)
             {
                 var feat = features[i];
+                var path = $"features[{i}].id";
                 if (string.IsNullOrWhiteSpace(feat.Id))
                 {
-                    errors.Add($"features[{i}].id must be non-empty.");
+                    Add(errors, "PI110", $"{path} must be non-empty.", path,
+                        "Set a non-empty feature id.");
                     continue;
                 }
 
                 if (!definedIds.Add(feat.Id))
                 {
-                    errors.Add($"features[{i}].id '{feat.Id}' is duplicated. Feature ids must be unique.");
+                    Add(errors, "PI111",
+                        $"{path} '{feat.Id}' is duplicated. Feature ids must be unique.", path,
+                        "Give each feature a unique id.");
                 }
             }
         }
@@ -69,7 +89,12 @@ public static class ManifestSemanticValidator
                 foreach (var fid in refs)
                 {
                     if (!definedIds.Contains(fid))
-                        errors.Add($"files[{i}].features references unknown feature id '{fid}'.");
+                    {
+                        var path = $"files[{i}].features";
+                        Add(errors, "PI112",
+                            $"{path} references unknown feature id '{fid}'.", path,
+                            "Reference a feature id defined under 'features', or remove the reference.");
+                    }
                 }
             }
         }
@@ -93,7 +118,12 @@ public static class ManifestSemanticValidator
                 foreach (var fid in refs)
                 {
                     if (!definedIds.Contains(fid))
-                        errors.Add($"file_associations[{i}].features references unknown feature id '{fid}'.");
+                    {
+                        var path = $"file_associations[{i}].features";
+                        Add(errors, "PI112",
+                            $"{path} references unknown feature id '{fid}'.", path,
+                            "Reference a feature id defined under 'features', or remove the reference.");
+                    }
                 }
             }
         }
@@ -109,31 +139,40 @@ public static class ManifestSemanticValidator
                 foreach (var fid in refs)
                 {
                     if (!definedIds.Contains(fid))
-                        errors.Add($"services[{i}].features references unknown feature id '{fid}'.");
+                    {
+                        var path = $"services[{i}].features";
+                        Add(errors, "PI112",
+                            $"{path} references unknown feature id '{fid}'.", path,
+                            "Reference a feature id defined under 'features', or remove the reference.");
+                    }
                 }
             }
         }
 
         if (anyReference && definedIds.Count == 0)
         {
-            errors.Add(
-                "files, tasks, or file_associations reference features, but no features are defined at the manifest level. Define a 'features' list before referencing feature ids.");
+            Add(errors, "PI113",
+                "files, tasks, or file_associations reference features, but no features are defined at the manifest level. Define a 'features' list before referencing feature ids.",
+                "features",
+                "Add a top-level 'features' list, or remove feature references.");
         }
     }
 
-    private static void ValidateMetadata(InstallManifest manifest, List<string> errors)
+    private static void ValidateMetadata(InstallManifest manifest, List<ManifestDiagnostic> errors)
     {
         if (string.IsNullOrWhiteSpace(manifest.Metadata.Name))
-            errors.Add("metadata.name must be non-empty.");
+            Add(errors, "PI101", "metadata.name must be non-empty.", "metadata.name",
+                "Set metadata.name to your product name.");
         if (string.IsNullOrWhiteSpace(manifest.Metadata.Version))
-            errors.Add("metadata.version must be non-empty.");
+            Add(errors, "PI102", "metadata.version must be non-empty.", "metadata.version",
+                "Set metadata.version to a non-empty version string.");
     }
 
     private static void CheckTaskFeatureRefs(
         List<InstallTask>? tasks,
         string phase,
         HashSet<string> definedIds,
-        List<string> errors,
+        List<ManifestDiagnostic> errors,
         ref bool anyReference)
     {
         if (tasks is null) return;
@@ -146,12 +185,17 @@ public static class ManifestSemanticValidator
             foreach (var fid in refs)
             {
                 if (!definedIds.Contains(fid))
-                    errors.Add($"tasks.{phase}[{i}].features references unknown feature id '{fid}'.");
+                {
+                    var path = $"tasks.{phase}[{i}].features";
+                    Add(errors, "PI112",
+                        $"{path} references unknown feature id '{fid}'.", path,
+                        "Reference a feature id defined under 'features', or remove the reference.");
+                }
             }
         }
     }
 
-    private static void ValidateFileAssociations(InstallManifest manifest, List<string> errors)
+    private static void ValidateFileAssociations(InstallManifest manifest, List<ManifestDiagnostic> errors)
     {
         if (manifest.FileAssociations is not { Count: > 0 } assocs)
             return;
@@ -163,40 +207,55 @@ public static class ManifestSemanticValidator
             var prefix = $"file_associations[{i}]";
 
             if (string.IsNullOrWhiteSpace(assoc.Extension))
-                errors.Add($"{prefix}.extension is required.");
+                Add(errors, "PI190", $"{prefix}.extension is required.", $"{prefix}.extension",
+                    "Set extension to a dotted value such as '.oef'.");
             else if (!assoc.Extension.StartsWith('.'))
-                errors.Add($"{prefix}.extension must start with a dot, e.g. '.oef'.");
+                Add(errors, "PI191", $"{prefix}.extension must start with a dot, e.g. '.oef'.",
+                    $"{prefix}.extension", "Prefix the extension with a dot.");
 
             if (string.IsNullOrWhiteSpace(assoc.Description))
-                errors.Add($"{prefix}.description is required.");
+                Add(errors, "PI192", $"{prefix}.description is required.", $"{prefix}.description");
 
             if (string.IsNullOrWhiteSpace(assoc.Command))
-                errors.Add($"{prefix}.command is required.");
+                Add(errors, "PI193", $"{prefix}.command is required.", $"{prefix}.command");
 
             if (hasMacOsTarget && string.IsNullOrWhiteSpace(assoc.BundlePath))
-                errors.Add($"{prefix}.bundle_path is required for macOS targets.");
+                Add(errors, "PI194", $"{prefix}.bundle_path is required for macOS targets.",
+                    $"{prefix}.bundle_path", "Set bundle_path to the .app bundle path for macOS.");
         }
     }
 
-    private static void ValidateBuild(InstallManifest manifest, List<string> errors)
+    private static void ValidateBuild(InstallManifest manifest, List<ManifestDiagnostic> errors)
     {
         if (manifest.Build.Targets.Count == 0)
-            errors.Add("build.targets must contain at least one target.");
+            Add(errors, "PI103", "build.targets must contain at least one target.", "build.targets",
+                "Add at least one supported target RID token.");
 
-        foreach (var target in manifest.Build.Targets)
+        for (var i = 0; i < manifest.Build.Targets.Count; i++)
         {
+            var target = manifest.Build.Targets[i];
             if (!KnownTargetTokens.Contains(target))
-                errors.Add($"build.targets contains unknown token '{target}'. Supported: {string.Join(", ", KnownTargetTokens)}.");
+            {
+                Add(errors, "PI104",
+                    $"build.targets contains unknown token '{target}'. Supported: {string.Join(", ", KnownTargetTokens)}.",
+                    $"build.targets[{i}]",
+                    "Use one of the supported target RID tokens.");
+            }
         }
 
         var compression = manifest.Build.Compression.ToLowerInvariant();
         if (compression != "brotli" && compression != "gzip")
-            errors.Add($"build.compression must be 'brotli' or 'gzip', got '{manifest.Build.Compression}'.");
+        {
+            Add(errors, "PI105",
+                $"build.compression must be 'brotli' or 'gzip', got '{manifest.Build.Compression}'.",
+                "build.compression",
+                "Set build.compression to 'brotli' or 'gzip'.");
+        }
 
         ValidateSigning(manifest, errors);
     }
 
-    private static void ValidateSigning(InstallManifest manifest, List<string> errors)
+    private static void ValidateSigning(InstallManifest manifest, List<ManifestDiagnostic> errors)
     {
         var signing = manifest.Build.Signing;
         if (signing is null)
@@ -204,8 +263,10 @@ public static class ManifestSemanticValidator
 
         if (signing.Linux is not null)
         {
-            errors.Add(
-                "build.signing.linux is not supported. Linux outputs are unsigned by default; use an external detached-signature workflow if needed.");
+            Add(errors, "PI120",
+                "build.signing.linux is not supported. Linux outputs are unsigned by default; use an external detached-signature workflow if needed.",
+                "build.signing.linux",
+                "Remove build.signing.linux.");
         }
 
         if (signing.Windows is not null)
@@ -218,15 +279,20 @@ public static class ManifestSemanticValidator
     private static void ValidateWindowsSigning(
         InstallManifest manifest,
         WindowsSigningOptions options,
-        List<string> errors)
+        List<ManifestDiagnostic> errors)
     {
         if (!HasTargetPrefix(manifest, "windows-"))
-            errors.Add("build.signing.windows is configured, but build.targets does not contain a Windows target.");
+            Add(errors, "PI121",
+                "build.signing.windows is configured, but build.targets does not contain a Windows target.",
+                "build.signing.windows",
+                "Add a windows-* target or remove Windows signing.");
 
         if (!string.IsNullOrWhiteSpace(options.CertificatePassword))
         {
-            errors.Add(
-                "build.signing.windows.certificate_password stores a plaintext secret. Use certificate_password_env instead.");
+            Add(errors, "PI122",
+                "build.signing.windows.certificate_password stores a plaintext secret. Use certificate_password_env instead.",
+                "build.signing.windows.certificate_password",
+                "Move the secret into an environment variable and set certificate_password_env.");
         }
 
         var identitySources = CountNonEmpty(
@@ -235,77 +301,102 @@ public static class ManifestSemanticValidator
             options.CertificateSubject);
         if (identitySources == 0)
         {
-            errors.Add(
-                "build.signing.windows requires one signing identity source: certificate_path, certificate_thumbprint, or certificate_subject.");
+            Add(errors, "PI123",
+                "build.signing.windows requires one signing identity source: certificate_path, certificate_thumbprint, or certificate_subject.",
+                "build.signing.windows",
+                "Provide exactly one identity source.");
         }
         else if (identitySources > 1)
         {
-            errors.Add(
-                "build.signing.windows must specify only one signing identity source: certificate_path, certificate_thumbprint, or certificate_subject.");
+            Add(errors, "PI124",
+                "build.signing.windows must specify only one signing identity source: certificate_path, certificate_thumbprint, or certificate_subject.",
+                "build.signing.windows",
+                "Keep only one of certificate_path, certificate_thumbprint, or certificate_subject.");
         }
 
         if (!string.IsNullOrWhiteSpace(options.StoreLocation)
             && !IsOneOf(options.StoreLocation, "current_user", "local_machine"))
         {
-            errors.Add(
-                $"build.signing.windows.store_location must be 'current_user' or 'local_machine', got '{options.StoreLocation}'.");
+            Add(errors, "PI125",
+                $"build.signing.windows.store_location must be 'current_user' or 'local_machine', got '{options.StoreLocation}'.",
+                "build.signing.windows.store_location");
         }
 
         if (!IsDigestAlgorithm(options.FileDigestAlgorithm))
-            errors.Add("build.signing.windows.file_digest_algorithm must be 'sha1', 'sha256', 'sha384', or 'sha512'.");
+            Add(errors, "PI126",
+                "build.signing.windows.file_digest_algorithm must be 'sha1', 'sha256', 'sha384', or 'sha512'.",
+                "build.signing.windows.file_digest_algorithm");
 
         if (!IsDigestAlgorithm(options.TimestampDigestAlgorithm))
-            errors.Add("build.signing.windows.timestamp_digest_algorithm must be 'sha1', 'sha256', 'sha384', or 'sha512'.");
+            Add(errors, "PI127",
+                "build.signing.windows.timestamp_digest_algorithm must be 'sha1', 'sha256', 'sha384', or 'sha512'.",
+                "build.signing.windows.timestamp_digest_algorithm");
     }
 
     private static void ValidateMacOsSigning(
         InstallManifest manifest,
         MacOsSigningOptions options,
-        List<string> errors)
+        List<ManifestDiagnostic> errors)
     {
         if (!HasTargetPrefix(manifest, "osx-"))
-            errors.Add("build.signing.macos is configured, but build.targets does not contain a macOS target.");
+            Add(errors, "PI128",
+                "build.signing.macos is configured, but build.targets does not contain a macOS target.",
+                "build.signing.macos",
+                "Add an osx-* target or remove macOS signing.");
 
         if (string.IsNullOrWhiteSpace(options.Identity))
-            errors.Add("build.signing.macos.identity is required when macOS signing is configured.");
+            Add(errors, "PI129",
+                "build.signing.macos.identity is required when macOS signing is configured.",
+                "build.signing.macos.identity");
 
         if (!string.IsNullOrWhiteSpace(options.NotarizationProfile)
             && !string.Equals(manifest.Build.Macos?.Package, "dmg", StringComparison.OrdinalIgnoreCase))
         {
-            errors.Add("build.signing.macos.notarization_profile requires build.macos.package: dmg.");
+            Add(errors, "PI130",
+                "build.signing.macos.notarization_profile requires build.macos.package: dmg.",
+                "build.signing.macos.notarization_profile",
+                "Set build.macos.package to dmg, or remove notarization_profile.");
         }
     }
 
-    private static void ValidateFiles(InstallManifest manifest, List<string> errors)
+    private static void ValidateFiles(InstallManifest manifest, List<ManifestDiagnostic> errors)
     {
         if (manifest.Files.Count == 0)
         {
-            errors.Add("files must contain at least one entry.");
+            Add(errors, "PI106", "files must contain at least one entry.", "files",
+                "Add at least one files entry with a relative source_dir.");
             return;
         }
 
         for (int i = 0; i < manifest.Files.Count; i++)
         {
             var entry = manifest.Files[i];
+            var path = $"files[{i}].source_dir";
             if (Path.IsPathRooted(entry.SourceDir))
             {
-                errors.Add($"files[{i}].source_dir must be a relative path, got absolute path '{entry.SourceDir}'.");
-                continue;
+                Add(errors, "PI107",
+                    $"{path} must be a relative path, got absolute path '{entry.SourceDir}'.", path,
+                    "Use a path relative to the manifest directory.");
+                // Continue checking include so sibling issues still surface.
             }
-
-            if (entry.SourceDir.Contains("..", StringComparison.Ordinal))
+            else if (entry.SourceDir.Contains("..", StringComparison.Ordinal))
             {
-                errors.Add($"files[{i}].source_dir must not contain '..' directory traversal, got '{entry.SourceDir}'.");
+                Add(errors, "PI108",
+                    $"{path} must not contain '..' directory traversal, got '{entry.SourceDir}'.", path,
+                    "Remove '..' segments from source_dir.");
             }
 
             if (entry.Include.Count == 0)
             {
-                errors.Add($"files[{i}].include must contain at least one glob pattern.");
+                Add(errors, "PI109",
+                    $"files[{i}].include must contain at least one glob pattern.",
+                    $"files[{i}].include",
+                    "Add at least one include glob such as '**/*'.");
             }
         }
     }
 
-    private static void ValidateWizardSteps(InstallManifest manifest, List<string> errors)
+    private static void ValidateWizardSteps(InstallManifest manifest, List<ManifestDiagnostic> errors)
     {
         var steps = manifest.Ui.WizardSteps;
         if (steps.Count == 0)
@@ -339,37 +430,62 @@ public static class ManifestSemanticValidator
         }
 
         if (hasProgress && !hasDestination)
-            errors.Add("ui.wizard_steps contains a 'progress' step but no 'destination' step. A 'destination' step is required before 'progress' so the user can choose an install directory.");
+        {
+            Add(errors, "PI140",
+                "ui.wizard_steps contains a 'progress' step but no 'destination' step. A 'destination' step is required before 'progress' so the user can choose an install directory.",
+                "ui.wizard_steps",
+                "Add a destination step before progress.");
+        }
         else if (hasProgress && hasDestination && destinationIndex > progressIndex)
-            errors.Add("ui.wizard_steps has 'destination' after 'progress'. The 'destination' step must come before the 'progress' step.");
+        {
+            Add(errors, "PI141",
+                "ui.wizard_steps has 'destination' after 'progress'. The 'destination' step must come before the 'progress' step.",
+                $"ui.wizard_steps[{destinationIndex}]",
+                "Move the destination step above progress.");
+        }
 
         if (hasFeatures)
         {
             if (hasDestination && featuresIndex < destinationIndex)
-                errors.Add("ui.wizard_steps has 'features' before 'destination'. The 'features' step must come after the 'destination' step.");
+            {
+                Add(errors, "PI142",
+                    "ui.wizard_steps has 'features' before 'destination'. The 'features' step must come after the 'destination' step.",
+                    $"ui.wizard_steps[{featuresIndex}]",
+                    "Move the features step after destination.");
+            }
             if (hasProgress && featuresIndex > progressIndex)
-                errors.Add("ui.wizard_steps has 'features' after 'progress'. The 'features' step must come before the 'progress' step.");
+            {
+                Add(errors, "PI143",
+                    "ui.wizard_steps has 'features' after 'progress'. The 'features' step must come before the 'progress' step.",
+                    $"ui.wizard_steps[{featuresIndex}]",
+                    "Move the features step before progress.");
+            }
         }
     }
 
-    private static void ValidateTasks(InstallManifest manifest, List<string> errors)
+    private static void ValidateTasks(InstallManifest manifest, List<ManifestDiagnostic> errors)
     {
         var scope = (manifest.Build.Windows?.InstallScope ?? "user").ToLowerInvariant();
         var isUserScope = scope == "user";
 
-        var allTasks = new List<(InstallTask Task, string Phase)>();
-        if (manifest.Tasks?.PreInstall is not null)
-            allTasks.AddRange(manifest.Tasks.PreInstall.Select(t => (t, "pre_install")));
-        if (manifest.Tasks?.PostInstall is not null)
-            allTasks.AddRange(manifest.Tasks.PostInstall.Select(t => (t, "post_install")));
-        if (manifest.Tasks?.PreUninstall is not null)
-            allTasks.AddRange(manifest.Tasks.PreUninstall.Select(t => (t, "pre_uninstall")));
-        if (manifest.Tasks?.PostUninstall is not null)
-            allTasks.AddRange(manifest.Tasks.PostUninstall.Select(t => (t, "post_uninstall")));
+        ValidateTaskPhase(manifest.Tasks?.PreInstall, "pre_install", isUserScope, errors);
+        ValidateTaskPhase(manifest.Tasks?.PostInstall, "post_install", isUserScope, errors);
+        ValidateTaskPhase(manifest.Tasks?.PreUninstall, "pre_uninstall", isUserScope, errors);
+        ValidateTaskPhase(manifest.Tasks?.PostUninstall, "post_uninstall", isUserScope, errors);
+    }
 
-        for (int i = 0; i < allTasks.Count; i++)
+    private static void ValidateTaskPhase(
+        List<InstallTask>? tasks,
+        string phase,
+        bool isUserScope,
+        List<ManifestDiagnostic> errors)
+    {
+        if (tasks is null)
+            return;
+
+        for (int i = 0; i < tasks.Count; i++)
         {
-            var (task, phase) = allTasks[i];
+            var task = tasks[i];
             var prefix = $"tasks.{phase}[{i}]";
 
             if (task.Action.Equals("create_shortcut", StringComparison.OrdinalIgnoreCase))
@@ -385,11 +501,12 @@ public static class ManifestSemanticValidator
             else if (task.Action.Equals("file_association", StringComparison.OrdinalIgnoreCase))
                 ValidateFileAssociation(task, prefix, errors);
             else
-                errors.Add($"{prefix}: unknown task action '{task.Action}'.");
+                Add(errors, "PI160", $"{prefix}: unknown task action '{task.Action}'.", prefix,
+                    "Use a supported task action such as create_shortcut or write_registry.");
         }
     }
 
-    private static void ValidateServices(InstallManifest manifest, List<string> errors)
+    private static void ValidateServices(InstallManifest manifest, List<ManifestDiagnostic> errors)
     {
         if (manifest.Services is not { Count: > 0 } services)
             return;
@@ -400,16 +517,19 @@ public static class ManifestSemanticValidator
             var prefix = $"services[{i}]";
 
             if (string.IsNullOrWhiteSpace(service.Name))
-                errors.Add($"{prefix}.name is required.");
+                Add(errors, "PI180", $"{prefix}.name is required.", $"{prefix}.name");
             else if (!IsValidServiceName(service.Name))
-                errors.Add($"{prefix}.name '{service.Name}' contains unsupported characters. Use letters, digits, '.', '_', or '-'.");
+                Add(errors, "PI181",
+                    $"{prefix}.name '{service.Name}' contains unsupported characters. Use letters, digits, '.', '_', or '-'.",
+                    $"{prefix}.name");
 
             if (string.IsNullOrWhiteSpace(service.Executable))
-                errors.Add($"{prefix}.executable is required.");
+                Add(errors, "PI182", $"{prefix}.executable is required.", $"{prefix}.executable");
 
             var scope = string.IsNullOrWhiteSpace(service.Scope) ? "system" : service.Scope;
             if (!IsOneOf(scope, "system", "user", "machine"))
-                errors.Add($"{prefix}.scope must be 'system' or 'user', got '{service.Scope}'.");
+                Add(errors, "PI183", $"{prefix}.scope must be 'system' or 'user', got '{service.Scope}'.",
+                    $"{prefix}.scope");
 
             var isWindows = HasOsPredicate(service.Require, "windows") || HasOsPredicate(service.Require, "win");
             var isLinux = HasOsPredicate(service.Require, "linux");
@@ -418,23 +538,28 @@ public static class ManifestSemanticValidator
 
             if (!isWindows && !isLinux && !isMacOs && !isUnix)
             {
-                errors.Add(
-                    $"{prefix}: services require an OS predicate (e.g., 'os.isWindows', 'os.isLinux', or 'os.isMacOS') to avoid runtime errors on unsupported platforms.");
+                Add(errors, "PI184",
+                    $"{prefix}: services require an OS predicate (e.g., 'os.isWindows', 'os.isLinux', or 'os.isMacOS') to avoid runtime errors on unsupported platforms.",
+                    prefix,
+                    "Add a require predicate such as os.isWindows.");
             }
 
             if (isWindows && scope.Equals("user", StringComparison.OrdinalIgnoreCase))
-                errors.Add($"{prefix}: Windows services support only scope 'system'.");
+                Add(errors, "PI185", $"{prefix}: Windows services support only scope 'system'.",
+                    $"{prefix}.scope", "Set scope to 'system' for Windows services.");
 
             if ((isMacOs || isUnix) && !IsValidLaunchdRestart(service.Restart))
             {
-                errors.Add(
-                    $"{prefix}.restart '{service.Restart}' cannot be mapped to launchd. Supported for macOS: always, on-failure.");
+                Add(errors, "PI186",
+                    $"{prefix}.restart '{service.Restart}' cannot be mapped to launchd. Supported for macOS: always, on-failure.",
+                    $"{prefix}.restart");
             }
 
             if (!IsValidSystemdRestart(service.Restart))
             {
-                errors.Add(
-                    $"{prefix}.restart '{service.Restart}' is not a supported systemd restart policy. Supported: no, always, on-success, on-failure, on-abnormal, on-watchdog, on-abort.");
+                Add(errors, "PI187",
+                    $"{prefix}.restart '{service.Restart}' is not a supported systemd restart policy. Supported: no, always, on-success, on-failure, on-abnormal, on-watchdog, on-abort.",
+                    $"{prefix}.restart");
             }
 
             if (service.Environment is { Count: > 0 })
@@ -442,39 +567,45 @@ public static class ManifestSemanticValidator
                 foreach (var key in service.Environment.Keys)
                 {
                     if (string.IsNullOrWhiteSpace(key) || key.Any(c => !(char.IsLetterOrDigit(c) || c == '_')) || char.IsDigit(key[0]))
-                        errors.Add($"{prefix}.environment contains invalid variable name '{key}'. Use shell-style names such as MY_APP_HOME.");
+                        Add(errors, "PI188",
+                            $"{prefix}.environment contains invalid variable name '{key}'. Use shell-style names such as MY_APP_HOME.",
+                            $"{prefix}.environment");
                 }
             }
         }
     }
 
-    private static void ValidateCreateShortcut(InstallTask task, string prefix, List<string> errors)
+    private static void ValidateCreateShortcut(InstallTask task, string prefix, List<ManifestDiagnostic> errors)
     {
         if (!string.IsNullOrEmpty(GetParamString(task, "shortcut_path")))
         {
-            errors.Add(
+            Add(errors, "PI161",
                 $"{prefix}: create_shortcut no longer accepts 'shortcut_path'. " +
-                "Use 'name', 'location' (start_menu or desktop), and optional 'subfolder' instead.");
+                "Use 'name', 'location' (start_menu or desktop), and optional 'subfolder' instead.",
+                prefix,
+                "Replace shortcut_path with name, location, and optional subfolder.");
         }
 
         var targetPath = GetParamString(task, "target_path");
         if (string.IsNullOrEmpty(targetPath))
-            errors.Add($"{prefix}: create_shortcut requires parameter 'target_path'.");
+            Add(errors, "PI162", $"{prefix}: create_shortcut requires parameter 'target_path'.", prefix);
 
         var name = GetParamString(task, "name");
         if (string.IsNullOrEmpty(name))
-            errors.Add($"{prefix}: create_shortcut requires parameter 'name'.");
+            Add(errors, "PI163", $"{prefix}: create_shortcut requires parameter 'name'.", prefix);
 
         var location = GetParamString(task, "location");
         if (string.IsNullOrEmpty(location))
         {
-            errors.Add($"{prefix}: create_shortcut requires parameter 'location'.");
+            Add(errors, "PI164", $"{prefix}: create_shortcut requires parameter 'location'.", prefix);
         }
         else if (!location.Equals("start_menu", StringComparison.OrdinalIgnoreCase)
                  && !location.Equals("desktop", StringComparison.OrdinalIgnoreCase))
         {
-            errors.Add(
-                $"{prefix}: create_shortcut 'location' must be 'start_menu' or 'desktop', got '{location}'.");
+            Add(errors, "PI165",
+                $"{prefix}: create_shortcut 'location' must be 'start_menu' or 'desktop', got '{location}'.",
+                prefix,
+                "Set location to start_menu or desktop.");
         }
 
         var subfolder = GetParamString(task, "subfolder");
@@ -482,31 +613,36 @@ public static class ManifestSemanticValidator
         {
             if (Path.IsPathRooted(subfolder) || subfolder.Contains("..", StringComparison.Ordinal))
             {
-                errors.Add(
-                    $"{prefix}: create_shortcut 'subfolder' must be a simple relative name, got '{subfolder}'.");
+                Add(errors, "PI166",
+                    $"{prefix}: create_shortcut 'subfolder' must be a simple relative name, got '{subfolder}'.",
+                    prefix);
             }
         }
     }
 
-    private static void ValidateWriteRegistry(InstallTask task, string prefix, bool isUserScope, List<string> errors)
+    private static void ValidateWriteRegistry(InstallTask task, string prefix, bool isUserScope, List<ManifestDiagnostic> errors)
     {
         if (!HasOsPredicate(task, "windows"))
         {
-            errors.Add(
-                $"{prefix}: write_registry is Windows-only. Add require: 'os.isWindows' (or similar) to avoid runtime errors on other platforms.");
+            Add(errors, "PI167",
+                $"{prefix}: write_registry is Windows-only. Add require: 'os.isWindows' (or similar) to avoid runtime errors on other platforms.",
+                prefix,
+                "Add require: os.isWindows.");
         }
 
         var keyPath = GetParamString(task, "key_path");
         if (string.IsNullOrEmpty(keyPath))
         {
-            errors.Add($"{prefix}: write_registry requires parameter 'key_path'.");
+            Add(errors, "PI168", $"{prefix}: write_registry requires parameter 'key_path'.", prefix);
             return;
         }
 
         var parts = keyPath.Split('\\', 2, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length < 2)
         {
-            errors.Add($"{prefix}: key_path must be in the form 'ROOT\\SubKey', e.g. 'HKCU\\Software\\MyApp'.");
+            Add(errors, "PI169",
+                $"{prefix}: key_path must be in the form 'ROOT\\SubKey', e.g. 'HKCU\\Software\\MyApp'.",
+                prefix);
             return;
         }
 
@@ -514,16 +650,20 @@ public static class ManifestSemanticValidator
         var supportedRoots = new[] { "HKCU", "HKEY_CURRENT_USER", "HKLM", "HKEY_LOCAL_MACHINE" };
         if (!supportedRoots.Contains(root))
         {
-            errors.Add(
-                $"{prefix}: unsupported registry root '{parts[0]}'. Supported: HKCU, HKEY_CURRENT_USER, HKLM, HKEY_LOCAL_MACHINE.");
+            Add(errors, "PI170",
+                $"{prefix}: unsupported registry root '{parts[0]}'. Supported: HKCU, HKEY_CURRENT_USER, HKLM, HKEY_LOCAL_MACHINE.",
+                prefix,
+                "Use HKCU or HKLM.");
             return;
         }
 
         if (isUserScope && IsWindowsTask(task) && (root == "HKLM" || root == "HKEY_LOCAL_MACHINE"))
         {
-            errors.Add(
+            Add(errors, "PI171",
                 $"{prefix}: write_registry uses HKLM, but install_scope is 'user'. " +
-                "Use HKCU or change install_scope to 'machine'.");
+                "Use HKCU or change install_scope to 'machine'.",
+                prefix,
+                "Use HKCU, or set build.windows.install_scope to 'machine'.");
         }
 
         var valueKind = GetParamString(task, "value_kind");
@@ -532,60 +672,67 @@ public static class ManifestSemanticValidator
             var validKinds = new[] { "string", "reg_sz", "expand_string", "reg_expand_sz", "dword", "reg_dword" };
             if (!validKinds.Contains(valueKind, StringComparer.OrdinalIgnoreCase))
             {
-                errors.Add(
-                    $"{prefix}: unsupported value_kind '{valueKind}'. Supported: string, reg_sz, expand_string, reg_expand_sz, dword, reg_dword.");
+                Add(errors, "PI172",
+                    $"{prefix}: unsupported value_kind '{valueKind}'. Supported: string, reg_sz, expand_string, reg_expand_sz, dword, reg_dword.",
+                    prefix);
             }
         }
     }
 
-    private static void ValidateCreateDesktopEntry(InstallTask task, string prefix, List<string> errors)
+    private static void ValidateCreateDesktopEntry(InstallTask task, string prefix, List<ManifestDiagnostic> errors)
     {
         if (!HasOsPredicate(task, "linux") && !HasOsPredicate(task, "unix"))
         {
-            errors.Add(
-                $"{prefix}: create_desktop_entry is Linux-only. Add require: 'os.isLinux' to avoid runtime errors on other platforms.");
+            Add(errors, "PI173",
+                $"{prefix}: create_desktop_entry is Linux-only. Add require: 'os.isLinux' to avoid runtime errors on other platforms.",
+                prefix,
+                "Add require: os.isLinux.");
         }
 
         if (string.IsNullOrEmpty(GetParamString(task, "file_name")))
-            errors.Add($"{prefix}: create_desktop_entry requires parameter 'file_name'.");
+            Add(errors, "PI174", $"{prefix}: create_desktop_entry requires parameter 'file_name'.", prefix);
         if (string.IsNullOrEmpty(GetParamString(task, "name")))
-            errors.Add($"{prefix}: create_desktop_entry requires parameter 'name'.");
+            Add(errors, "PI175", $"{prefix}: create_desktop_entry requires parameter 'name'.", prefix);
         if (string.IsNullOrEmpty(GetParamString(task, "exec")))
-            errors.Add($"{prefix}: create_desktop_entry requires parameter 'exec'.");
+            Add(errors, "PI176", $"{prefix}: create_desktop_entry requires parameter 'exec'.", prefix);
     }
 
-    private static void ValidateSetPermissions(InstallTask task, string prefix, List<string> errors)
+    private static void ValidateSetPermissions(InstallTask task, string prefix, List<ManifestDiagnostic> errors)
     {
         if (!HasOsPredicate(task, "linux") && !HasOsPredicate(task, "macos") && !HasOsPredicate(task, "unix"))
         {
-            errors.Add(
-                $"{prefix}: set_permissions is Linux/macOS-only. Add require: 'os.isLinux', 'os.isMacOS', or 'os.isUnix' to avoid runtime errors on other platforms.");
+            Add(errors, "PI177",
+                $"{prefix}: set_permissions is Linux/macOS-only. Add require: 'os.isLinux', 'os.isMacOS', or 'os.isUnix' to avoid runtime errors on other platforms.",
+                prefix);
         }
 
         if (string.IsNullOrEmpty(GetParamString(task, "path")))
-            errors.Add($"{prefix}: set_permissions requires parameter 'path'.");
+            Add(errors, "PI178", $"{prefix}: set_permissions requires parameter 'path'.", prefix);
         if (GetParamString(task, "mode") is null)
-            errors.Add($"{prefix}: set_permissions requires parameter 'mode'.");
+            Add(errors, "PI179", $"{prefix}: set_permissions requires parameter 'mode'.", prefix);
     }
 
-    private static void ValidateAddToPath(InstallTask task, string prefix, bool isUserScope, List<string> errors)
+    private static void ValidateAddToPath(InstallTask task, string prefix, bool isUserScope, List<ManifestDiagnostic> errors)
     {
         var scope = GetParamString(task, "scope") ?? "user";
         if (!scope.Equals("user", StringComparison.OrdinalIgnoreCase)
             && !scope.Equals("machine", StringComparison.OrdinalIgnoreCase))
         {
-            errors.Add($"{prefix}: add_to_path 'scope' must be 'user' or 'machine', got '{scope}'.");
+            Add(errors, "PI195",
+                $"{prefix}: add_to_path 'scope' must be 'user' or 'machine', got '{scope}'.", prefix);
         }
 
         if (scope.Equals("machine", StringComparison.OrdinalIgnoreCase) && isUserScope)
         {
-            errors.Add(
+            Add(errors, "PI196",
                 $"{prefix}: add_to_path with scope 'machine' requires install_scope 'machine'. " +
-                "Machine-level PATH modification requires Administrator rights.");
+                "Machine-level PATH modification requires Administrator rights.",
+                prefix,
+                "Set install_scope to machine, or use PATH scope 'user'.");
         }
     }
 
-    private static void ValidateFileAssociation(InstallTask task, string prefix, List<string> errors)
+    private static void ValidateFileAssociation(InstallTask task, string prefix, List<ManifestDiagnostic> errors)
     {
         var isWindows = HasOsPredicate(task, "windows");
         var isLinux = HasOsPredicate(task, "linux") || HasOsPredicate(task, "unix");
@@ -593,28 +740,30 @@ public static class ManifestSemanticValidator
 
         if (!isWindows && !isLinux && !isMacOs)
         {
-            errors.Add(
-                $"{prefix}: file_association requires an OS predicate (e.g., 'os.isWindows', 'os.isLinux', or 'os.isMacOS') to avoid runtime errors on unsupported platforms.");
+            Add(errors, "PI197",
+                $"{prefix}: file_association requires an OS predicate (e.g., 'os.isWindows', 'os.isLinux', or 'os.isMacOS') to avoid runtime errors on unsupported platforms.",
+                prefix);
         }
 
         var extension = GetParamString(task, "extension");
         if (string.IsNullOrEmpty(extension))
         {
-            errors.Add($"{prefix}: file_association requires parameter 'extension'.");
+            Add(errors, "PI198", $"{prefix}: file_association requires parameter 'extension'.", prefix);
         }
         else if (!extension.StartsWith('.'))
         {
-            errors.Add($"{prefix}: file_association 'extension' must start with a dot, e.g. '.oef'.");
+            Add(errors, "PI199",
+                $"{prefix}: file_association 'extension' must start with a dot, e.g. '.oef'.", prefix);
         }
 
         if (string.IsNullOrEmpty(GetParamString(task, "description")))
-            errors.Add($"{prefix}: file_association requires parameter 'description'.");
+            Add(errors, "PI200", $"{prefix}: file_association requires parameter 'description'.", prefix);
 
         if (string.IsNullOrEmpty(GetParamString(task, "command")))
-            errors.Add($"{prefix}: file_association requires parameter 'command'.");
+            Add(errors, "PI201", $"{prefix}: file_association requires parameter 'command'.", prefix);
 
         if (isMacOs && string.IsNullOrEmpty(GetParamString(task, "bundle_path")))
-            errors.Add($"{prefix}: file_association on macOS requires parameter 'bundle_path'.");
+            Add(errors, "PI202", $"{prefix}: file_association on macOS requires parameter 'bundle_path'.", prefix);
     }
 
     private static bool IsWindowsTask(InstallTask task)

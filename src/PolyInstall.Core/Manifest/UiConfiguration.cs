@@ -20,4 +20,5 @@ public sealed class WizardStep
     public string? Title { get; set; }
     public string? Source { get; set; }
     public string? DefaultPath { get; set; }
+    public bool ShowLogs { get; set; } = true;
 }

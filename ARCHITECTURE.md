@@ -159,7 +159,7 @@ Supported actions include `create_shortcut`, `write_registry`, `create_desktop_e
 | Services | `WindowsServiceManagerPal` (`sc.exe`) | `LinuxSystemdServiceManagerPal` | `MacOsLaunchdServiceManagerPal` |
 | PATH | `PathPal` | `PathPal` | `PathPal` |
 
-`DefaultPolyInstallPal` wires implementations based on `OperatingSystem` checks. Path placeholders (`{AppDir}`, `{ProgramFiles}`, `{UserHome}`, `{Desktop}`) are expanded via `InstallPathResolver` / PAL `AppDir`.
+`DefaultPolyInstallPal` wires implementations based on `OperatingSystem` checks. Path placeholders (`{AppDir}`, `{ProgramFiles}`, `{LocalAppData}`, `{UserHome}`, `{Desktop}`) are expanded via `InstallPathResolver` / PAL `AppDir`. `{LocalAppData}` resolves to .NET's local application-data directory (and falls back to the user home directory when unavailable).
 
 ## Install state
 

@@ -40,6 +40,30 @@ public class InstallPathResolverTests
         result.Must().Be(expected);
     }
 
+    [Fact]
+    public void Expand_LocalAppData_IsCaseInsensitive()
+    {
+        var pal = new TestInstallPathPal("/home/test", "/home/test/.local/share");
+
+        InstallPathResolver.Expand("{localappdata}/SampleApp", pal, TargetOperatingSystem.Linux)
+            .Must().Be("/home/test/.local/share/SampleApp");
+    }
+
+    [Theory]
+    [InlineData(TargetOperatingSystem.Windows, @"C:\Users\test\AppData\Local", @"C:\Users\test\AppData\Local\SampleApp")]
+    [InlineData(TargetOperatingSystem.Linux, "/home/test/.local/share", "/home/test/.local/share/SampleApp")]
+    [InlineData(TargetOperatingSystem.MacOs, "/Users/test/Library/Application Support", "/Users/test/Library/Application Support/SampleApp")]
+    public void Expand_LocalAppData_NormalizesSeparatorsForTargetOs(
+        TargetOperatingSystem targetOs,
+        string localAppData,
+        string expected)
+    {
+        var pal = new TestInstallPathPal("/unused-home", localAppData);
+
+        InstallPathResolver.Expand("{LocalAppData}/SampleApp", pal, targetOs)
+            .Must().Be(expected);
+    }
+
     [Theory]
     [InlineData("win-x64", true, TargetOperatingSystem.Windows)]
     [InlineData("windows-arm64", true, TargetOperatingSystem.Windows)]
@@ -82,10 +106,11 @@ public class InstallPathResolverTests
         result.Must().Be("C:/Users/bolorundurowb/SampleApp");
     }
 
-    private sealed class TestInstallPathPal(string userHome) : IInstallPathPal
+    private sealed class TestInstallPathPal(string userHome, string? localAppData = null) : IInstallPathPal
     {
         public string AppDir => string.Empty;
         public string ProgramFiles => string.Empty;
+        public string LocalAppData { get; } = localAppData ?? userHome;
         public string UserHome { get; } = userHome;
         public string Desktop => string.Empty;
     }
@@ -94,6 +119,7 @@ public class InstallPathResolverTests
     {
         public string AppDir => string.Empty;
         public string ProgramFiles => string.Empty;
+        public string LocalAppData => UserHome;
         public string UserHome { get; } = userHome;
         public string Desktop => string.Empty;
         public IShortcutPal Shortcuts { get; } = new NoOpShortcutPal();
