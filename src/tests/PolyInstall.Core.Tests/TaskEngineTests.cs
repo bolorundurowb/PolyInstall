@@ -740,6 +740,7 @@ public class TaskEngineTests
 
         public string AppDir => AppDirBacking;
         public string ProgramFiles => ProgramFilesBacking;
+        public string LocalAppData => UserHomeBacking;
         public string UserHome => UserHomeBacking;
         public string Desktop => DesktopBacking;
 
@@ -827,6 +828,7 @@ public class TaskEngineTests
     {
         public string AppDir => "";
         public string ProgramFiles => "";
+        public string LocalAppData => "";
         public string UserHome => "";
         public string Desktop => "";
         public IShortcutPal Shortcuts { get; } = new NullShortcutPal();

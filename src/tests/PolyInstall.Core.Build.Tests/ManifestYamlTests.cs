@@ -165,4 +165,47 @@ public class ManifestYamlTests
         ((Action)(() => ManifestYaml.Parse(yaml))).Throws<Exception>()
             .WithMessageContaining("typo_section");
     }
+
+    [Fact]
+    public void Parse_ProgressStep_ShowLogsDefaultsToTrue()
+    {
+        var yaml = """
+            metadata:
+              name: T
+              version: 1.0.0
+            ui:
+              wizard_steps:
+                - type: progress
+                  title: Installing
+            files:
+              - source_dir: .
+            """;
+
+        var m = ManifestYaml.Parse(yaml);
+
+        m.Ui.WizardSteps.Must().HaveCount(1);
+        m.Ui.WizardSteps[0].Type.Must().Be("progress");
+        m.Ui.WizardSteps[0].ShowLogs.Must().BeTrue();
+    }
+
+    [Fact]
+    public void Parse_ProgressStep_ShowLogsFalse_IsPreserved()
+    {
+        var yaml = """
+            metadata:
+              name: T
+              version: 1.0.0
+            ui:
+              wizard_steps:
+                - type: progress
+                  title: Installing
+                  show_logs: false
+            files:
+              - source_dir: .
+            """;
+
+        var m = ManifestYaml.Parse(yaml);
+
+        m.Ui.WizardSteps[0].ShowLogs.Must().BeFalse();
+    }
 }

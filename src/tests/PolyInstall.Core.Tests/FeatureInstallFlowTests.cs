@@ -197,6 +197,7 @@ public class FeatureInstallFlowTests : IDisposable
     {
         public string AppDir { get; } = appDir;
         public string ProgramFiles => System.IO.Path.GetTempPath();
+        public string LocalAppData => System.IO.Path.GetTempPath();
         public string UserHome => System.IO.Path.GetTempPath();
         public string Desktop => System.IO.Path.GetTempPath();
         public IShortcutPal Shortcuts { get; } = new NoOpShortcutPal();
