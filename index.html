@@ -1039,9 +1039,10 @@ ui:
       title: Welcome to HelloPoly
     - type: destination
       title: Choose an install location
-      default_path: "{UserHome}/HelloPoly"
+              default_path: "{LocalAppData}/HelloPoly"
     - type: progress
       title: Installing HelloPoly
+      show_logs: false
     - type: finish
       title: Installation complete
 
@@ -1657,7 +1658,8 @@ jobs:
             <code>validate</code> command checks the manifest after YAML parsing and environment substitution. The
             <code>build</code> command also runs semantic validation: target names, compression, relative file source
             directories, non-empty includes, destination-before-progress wizard order, task/platform compatibility,
-            machine-scope PATH rules, and signing combinations.
+            machine-scope PATH rules, and signing combinations. Both commands report schema and semantic issues together,
+            with stable error codes and manifest paths so you can fix all reported problems in one run.
           </div>
 
           <h3 id="schema-root" style="margin-top: 1.6rem;">Root object</h3>
@@ -1851,8 +1853,8 @@ jobs:
             <div class="card">
               <h3>Windows options</h3>
               <p>
-                <code>install_scope: user</code> installs per user and writes registration under HKCU. Use it for most
-                desktop apps because it avoids administrator prompts.
+                <code>install_scope: user</code> installs per user under the local application-data directory and writes
+                registration under HKCU. Use it for most desktop apps because it avoids administrator prompts.
               </p>
               <p>
                 <code>install_scope: machine</code> writes under HKLM and requires elevation. Use it only when the app
@@ -1997,8 +1999,8 @@ jobs:
               <tr>
                 <td><code>progress</code></td>
                 <td>A progress screen while tasks run and files are copied.</td>
-                <td><code>title</code></td>
-                <td>Use in most installers. This is the normal place where installation work happens.</td>
+                <td><code>title</code>, <code>show_logs</code></td>
+                <td>Use in most installers. Set <code>show_logs: false</code> to keep the status and progress bar while hiding the detailed log panel.</td>
               </tr>
               <tr>
                 <td><code>finish</code></td>
@@ -2262,7 +2264,8 @@ jobs:
           <div class="callout">
             <strong>Placeholders you will use often</strong>
             <code>{AppDir}</code> means the chosen install directory, <code>{ProgramFiles}</code> means the OS program
-            files location, <code>{UserHome}</code> means the current user's home folder, and <code>{Desktop}</code>
+            files location, <code>{LocalAppData}</code> means the current user's local application-data folder,
+            <code>{UserHome}</code> means the current user's home folder, and <code>{Desktop}</code>
             means the current user's desktop folder.
           </div>
         </section>
@@ -2290,9 +2293,8 @@ jobs:
               <p>
                 Use <code>polyinstall validate manifest.yaml</code> and check that keys use snake_case. Add the
                 <code>yaml-language-server</code> schema comment so your editor catches issues before the CLI runs.
-                If <code>polyinstall build</code> fails after schema validation passes, read the semantic validation
-                message: it usually points to incompatible task/platform settings, file path rules, wizard ordering, or
-                signing configuration.
+                The CLI reports schema and semantic errors together using <code>error[PIxxx]</code> blocks, including
+                manifest paths and a final error count. Fix each listed issue, then run validation again.
               </p>
             </details>
 
