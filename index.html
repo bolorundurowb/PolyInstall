@@ -731,7 +731,7 @@
 
     <section class="hero" id="top">
       <div>
-        <span class="eyebrow">Current release: v2.0.1</span>
+        <span class="eyebrow">Current release: v2.1.0</span>
         <h1>Build native-feeling installers from one YAML manifest.</h1>
         <p class="hero-copy">
           PolyInstall is a cross-platform installer builder for teams that want predictable packaging without maintaining
@@ -754,18 +754,18 @@
         </div>
         <div class="hero-terminal">
           <div class="terminal-label">Essential commands</div>
-          <pre><code class="language-bash"># Build an installer from a manifest
-polyinstall build manifest.yaml
+          <pre><code class="language-bash"># Validate the manifest (schema + semantic)
+polyinstall validate manifest.yaml --base .
 
-# Validate a manifest before shipping
-polyinstall validate manifest.yaml</code></pre>
+# Build installers from the same manifest
+polyinstall build manifest.yaml --base .</code></pre>
         </div>
       </aside>
     </section>
 
     <section class="stats-grid" aria-label="Project highlights">
       <div class="stat">
-        <strong>2.0.1</strong>
+        <strong>2.1.0</strong>
         <span>Current stable release.</span>
       </div>
       <div class="stat">
@@ -808,11 +808,35 @@ polyinstall validate manifest.yaml</code></pre>
 
           <div class="callout">
             <strong>Current project state</strong>
-            The repository is at <code>v2.0.1</code>, targets <code>net10.0</code>, uses
+            The repository is at <code>v2.1.0</code>, targets <code>net10.0</code>, uses
             Avalonia <code>12.0.4</code> for the installer UI, and runs CI restore/build/test with coverage on GitHub
             Actions. The release pipeline publishes self-contained CLI zips for <code>win-x64</code>,
             <code>linux-x64</code>, and <code>osx-arm64</code>; each CLI zip carries its host stub, while separate
             <code>stubs-&lt;rid&gt;</code> archives are available when you need to build installers for another target.
+          </div>
+
+          <h3 style="margin-top: 1.6rem;">How to use PolyInstall</h3>
+          <ol>
+            <li>Write a YAML manifest that describes product metadata, targets, wizard steps, and payload files.</li>
+            <li>Point your editor at the published schema so typos and shape errors show up while you edit.</li>
+            <li>Run <code>polyinstall validate</code> to collect schema and semantic issues in one pass.</li>
+            <li>Run <code>polyinstall build</code> to produce installer binaries (and optional AppImage/DMG packaging).</li>
+            <li>Ship the generated installer; the Avalonia wizard installs files, runs post-install tasks, and records uninstall state.</li>
+          </ol>
+          <p>
+            Think of the manifest as the single source of truth. The CLI packages it with your payload; the runtime
+            installer reads the embedded manifest at install time. You do not maintain separate NSIS, Inno Setup, or
+            platform-specific project files for each OS.
+          </p>
+
+          <div class="callout">
+            <strong>What's new in v2.1.0</strong>
+            <ul style="margin: 0.5rem 0 0; padding-left: 1.2rem;">
+              <li><code>{LocalAppData}</code> path placeholder for per-user install roots across Windows, Linux, and macOS.</li>
+              <li>Windows <code>install_scope: user</code> defaults under the local application-data directory.</li>
+              <li>Collect-all validation with rustc-style <code>error[PIxxx]</code> reports, YAML carets, and help notes.</li>
+              <li>Progress wizard step <code>show_logs</code> (default <code>true</code>) to show or hide the scrolling install log.</li>
+            </ul>
           </div>
 
           <div class="grid three">
@@ -927,7 +951,7 @@ polyinstall validate manifest.yaml</code></pre>
             <article class="step">
               <h3>Download a release archive</h3>
               <p>
-                Open the <a href="https://github.com/bolorundurowb/PolyInstall/releases/tag/v2.0.1" rel="noreferrer">PolyInstall v2.0.1 release</a>
+                Open the <a href="https://github.com/bolorundurowb/PolyInstall/releases/tag/v2.1.0" rel="noreferrer">PolyInstall v2.1.0 release</a>
                 and download the archive that matches your build machine, such as
                 <code>polyinstall-win-x64-&lt;tag&gt;.zip</code>, <code>polyinstall-linux-x64-&lt;tag&gt;.zip</code>, or
                 <code>polyinstall-osx-arm64-&lt;tag&gt;.zip</code>. Each CLI archive includes the runtime stub for that
@@ -968,11 +992,31 @@ polyinstall validate .\manifest.yaml</code></pre>
             <article class="step">
               <h3>Validate before building</h3>
               <p>
-                Validation catches JSON Schema issues before packaging. The full <code>build</code> command also runs
-                semantic checks such as relative file paths, wizard ordering, task compatibility, and signing settings.
+                Both <code>validate</code> and <code>build</code> run JSON Schema checks and semantic checks together
+                after YAML parsing and environment substitution. You get every reported issue in one run—stable
+                <code>error[PIxxx]</code> codes, manifest paths, optional YAML carets, and actionable help notes—so you
+                can fix schema typos and semantic rules without ping-ponging between commands.
               </p>
               <pre><code class="language-bash">polyinstall validate manifest.yaml --base ./release-input
 polyinstall build manifest.yaml --base ./release-input</code></pre>
+              <pre><code class="language-text"># Example validation report shape
+error[PI005]: unknown property at '/typo_section'
+  --> manifest.yaml:12:1
+   |
+12 | typo_section: true
+   | ^^^^^^^^^^^^
+   |
+   = help: Remove the unknown property or correct its spelling.
+
+error[PI171]: tasks.post_install[0]: write_registry uses HKLM, but install_scope is 'user'. Use HKCU or change install_scope to 'machine'.
+  --> manifest.yaml:88:5
+   |
+88 |     key_path: HKLM\Software\MyApp
+   |     ^^^^^^^^
+   |
+   = help: Use HKCU, or set build.windows.install_scope to 'machine'.
+
+error: manifest validation failed with 2 errors</code></pre>
             </article>
           </div>
 
@@ -1029,6 +1073,7 @@ build:
   targets:
     - windows-x64
   windows:
+    # user scope defaults under LocalAppData and avoids elevation prompts
     install_scope: user
     register_arp: true
 
@@ -1039,9 +1084,10 @@ ui:
       title: Welcome to HelloPoly
     - type: destination
       title: Choose an install location
-              default_path: "{LocalAppData}/HelloPoly"
+      default_path: "{LocalAppData}/HelloPoly"
     - type: progress
       title: Installing HelloPoly
+      # defaults to true; set false to hide the detailed log panel
       show_logs: false
     - type: finish
       title: Installation complete
@@ -1065,8 +1111,10 @@ polyinstall build manifest.yaml --base .</code></pre>
             <article class="step">
               <h3>Run the installer</h3>
               <p>
-                Launch the generated binary on a matching target machine. The wizard lets the user choose the
-                destination, copies the payload, records install state, and finishes with a summary.
+                Launch the generated binary on a matching target machine. With the sample above, the destination step
+                defaults under <code>{LocalAppData}/HelloPoly</code>, the progress step shows status (logs hidden because
+                <code>show_logs</code> is <code>false</code>), files are copied, install state is recorded, and the
+                finish step summarises the result.
               </p>
               <pre><code class="language-bash"># Windows output
 dist/HelloPoly-windows-x64.exe</code></pre>
@@ -1135,6 +1183,7 @@ build:
     - linux-x64
     - osx-arm64
   windows:
+    # user scope defaults under LocalAppData (no elevation)
     install_scope: user
     register_arp: true
   linux:
@@ -1162,9 +1211,10 @@ ui:
       source: "legal/LICENCE.txt"
     - type: destination
       title: Choose where to install
-      default_path: "{ProgramFiles}/Contoso Studio"
+      default_path: "{LocalAppData}/Contoso Studio"
     - type: progress
       title: Installing
+      # omit show_logs or set true to keep the scrolling detail log
     - type: finish
       title: Ready to launch
 
@@ -1324,6 +1374,7 @@ tasks:
                 <tbody>
                   <tr><td><code>{AppDir}</code></td><td>The selected install directory or extracted app directory.</td></tr>
                   <tr><td><code>{ProgramFiles}</code></td><td>The OS-appropriate programme files location.</td></tr>
+                  <tr><td><code>{LocalAppData}</code></td><td>The current user's local application-data folder (<code>%LOCALAPPDATA%</code>, <code>~/.local/share</code>, or macOS Application Support). Falls back to the user home directory when unavailable.</td></tr>
                   <tr><td><code>{UserHome}</code></td><td>The current user's home directory.</td></tr>
                   <tr><td><code>{Desktop}</code></td><td>The current user's desktop folder.</td></tr>
                 </tbody>
@@ -1456,8 +1507,13 @@ build:
   output_dir: "${DIST_DIR:-dist}"</code></pre>
 
           <h3 style="margin-top: 1.6rem;">Command reference</h3>
-          <pre><code class="language-text">polyinstall build &lt;manifest.yaml&gt; [--base &lt;dir&gt;] [--stubs &lt;dir&gt;]
-polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]</code></pre>
+          <pre><code class="language-text">polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]
+polyinstall build &lt;manifest.yaml&gt; [--base &lt;dir&gt;] [--stubs &lt;dir&gt;]</code></pre>
+          <p>
+            Prefer <code>validate</code> while iterating on the manifest. Both commands parse YAML, expand
+            <code>${ENV}</code> values, then run schema and semantic checks together and print every collected
+            diagnostic before exiting non-zero.
+          </p>
           <table>
             <thead>
               <tr>
@@ -1520,9 +1576,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: bolorundurowb/PolyInstall/.github/actions/setup-polyinstall@v2.0.1
+      - uses: bolorundurowb/PolyInstall/.github/actions/setup-polyinstall@v2.1.0
         with:
-          version: v2.0.1
+          version: v2.1.0
           github-token: ""
 
       - name: Validate manifest
@@ -1567,9 +1623,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: bolorundurowb/PolyInstall/.github/actions/setup-polyinstall@v2.0.1
+      - uses: bolorundurowb/PolyInstall/.github/actions/setup-polyinstall@v2.1.0
         with:
-          version: v2.0.1
+          version: v2.1.0
           rid: $&#123;&#123; matrix.rid &#125;&#125;
           github-token: ""
 
@@ -1654,12 +1710,13 @@ jobs:
 
           <div class="callout">
             <strong>Validation model</strong>
-            The published schema catches field names, basic shapes, and allowed enums in YAML-aware editors. The
-            <code>validate</code> command checks the manifest after YAML parsing and environment substitution. The
-            <code>build</code> command also runs semantic validation: target names, compression, relative file source
-            directories, non-empty includes, destination-before-progress wizard order, task/platform compatibility,
-            machine-scope PATH rules, and signing combinations. Both commands report schema and semantic issues together,
-            with stable error codes and manifest paths so you can fix all reported problems in one run.
+            The published schema catches field names and basic shapes in YAML-aware editors. The
+            <code>validate</code> and <code>build</code> commands both run schema checks and semantic validation after
+            YAML parsing and environment substitution. Semantic rules cover target names, compression, relative file
+            source directories, non-empty includes, destination-before-progress wizard order, feature references,
+            task/platform compatibility, machine-scope PATH rules, and signing combinations. Diagnostics are collected
+            across both stages in one run and printed as rustc-style <code>error[PIxxx]</code> blocks with paths,
+            optional YAML carets, help notes, and a final error count.
           </div>
 
           <h3 id="schema-root" style="margin-top: 1.6rem;">Root object</h3>
@@ -1853,8 +1910,10 @@ jobs:
             <div class="card">
               <h3>Windows options</h3>
               <p>
-                <code>install_scope: user</code> installs per user under the local application-data directory and writes
-                registration under HKCU. Use it for most desktop apps because it avoids administrator prompts.
+                <code>install_scope: user</code> installs per user under the local application-data directory
+                (the same root as <code>{LocalAppData}</code>) and writes registration under HKCU. Use it for most
+                desktop apps because it avoids administrator prompts. Prefer
+                <code>default_path: "{LocalAppData}/YourApp"</code> so the destination step matches that default.
               </p>
               <p>
                 <code>install_scope: machine</code> writes under HKLM and requires elevation. Use it only when the app
@@ -1988,7 +2047,7 @@ jobs:
                 <td><code>destination</code></td>
                 <td>A folder picker for the install location.</td>
                 <td><code>title</code>, <code>default_path</code></td>
-                <td>Use when the user should choose where the app is installed.</td>
+                <td>Use when the user should choose where the app is installed. For per-user Windows apps, prefer <code>"{LocalAppData}/YourApp"</code>.</td>
               </tr>
               <tr>
                 <td><code>features</code></td>
@@ -1999,8 +2058,8 @@ jobs:
               <tr>
                 <td><code>progress</code></td>
                 <td>A progress screen while tasks run and files are copied.</td>
-                <td><code>title</code>, <code>show_logs</code></td>
-                <td>Use in most installers. Set <code>show_logs: false</code> to keep the status and progress bar while hiding the detailed log panel.</td>
+                <td><code>title</code>, <code>show_logs</code> (boolean, default <code>true</code>)</td>
+                <td>Use in most installers. Keep <code>show_logs: true</code> (or omit it) for the scrolling detail log; set <code>false</code> to show only the status line and progress bar.</td>
               </tr>
               <tr>
                 <td><code>finish</code></td>
@@ -2199,7 +2258,7 @@ jobs:
               <tr>
                 <td><code>parameters</code></td>
                 <td>object or null</td>
-                <td>Action-specific key/value map. String values can use path placeholders such as <code>{AppDir}</code>, <code>{Desktop}</code>, and <code>{ProgramFiles}</code>.</td>
+                <td>Action-specific key/value map. String values can use path placeholders such as <code>{AppDir}</code>, <code>{ProgramFiles}</code>, <code>{LocalAppData}</code>, <code>{UserHome}</code>, and <code>{Desktop}</code>.</td>
                 <td>Parameter names are snake_case. The required keys depend on the selected <code>action</code>.</td>
               </tr>
               <tr>
@@ -2294,7 +2353,17 @@ jobs:
                 Use <code>polyinstall validate manifest.yaml</code> and check that keys use snake_case. Add the
                 <code>yaml-language-server</code> schema comment so your editor catches issues before the CLI runs.
                 The CLI reports schema and semantic errors together using <code>error[PIxxx]</code> blocks, including
-                manifest paths and a final error count. Fix each listed issue, then run validation again.
+                manifest paths, YAML carets when the location can be mapped, help notes, and a final error count.
+                Fix every listed issue in one pass, then run validation again.
+              </p>
+            </details>
+
+            <details>
+              <summary>Where should a per-user Windows app install by default?</summary>
+              <p>
+                Use <code>build.windows.install_scope: user</code> and set the destination step
+                <code>default_path</code> to <code>"{LocalAppData}/YourApp"</code>. That matches PolyInstall's
+                Windows user-scope default root and avoids requesting administrator rights for typical desktop apps.
               </p>
             </details>
 
@@ -2400,7 +2469,7 @@ dotnet test src/PolyInstall.slnx -c Release --no-build --verbosity normal</code>
       <p>
         PolyInstall documentation page styled from the embedded logo palette:
         ink <code>#0e1116</code>, plum <code>#6C0450</code>, paper <code>#f5f3ee</code>, and rule <code>#d8d4c8</code>.
-        Last reviewed against source version <code>2.0.1</code>.
+        Last reviewed against source version <code>2.1.0</code>.
       </p>
     </footer>
   </div>
