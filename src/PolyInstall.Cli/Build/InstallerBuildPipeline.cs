@@ -44,12 +44,12 @@ public static class InstallerBuildPipeline
             schemaPath = Path.Combine(FindRepoSchema(), "v1.json");
         BuildLog.Info($"Validating manifest against schema ({schemaPath})…");
         var json = JsonSerializer.Serialize(manifest, InstallManifest.JsonOptions);
-        ManifestJsonValidator.Validate(json, schemaPath);
-        BuildLog.Info("Manifest schema validation passed.");
-
-        BuildLog.Info("Running manifest semantic validation…");
-        ManifestSemanticValidator.Validate(manifest);
-        BuildLog.Info("Manifest semantic validation passed.");
+        var diagnostics = ManifestJsonValidator.ValidateResult(json, schemaPath).Diagnostics
+            .Concat(ManifestSemanticValidator.ValidateResult(manifest).Diagnostics);
+        var prepared = ManifestDiagnosticPipeline.Prepare(diagnostics, yaml);
+        if (prepared.Count > 0)
+            throw new InvalidOperationException(DiagnosticFormatter.Format(prepared, manifestPath, yaml));
+        BuildLog.Info("Manifest schema and semantic validation passed.");
 
         BuildLog.Info("Collecting files from manifest entries…");
         var baseFiles = new List<(string EntryName, string FullPath)>();

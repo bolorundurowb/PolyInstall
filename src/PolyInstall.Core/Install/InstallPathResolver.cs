@@ -18,6 +18,7 @@ public static class InstallPathResolver
         var expanded = path
             .Replace("{AppDir}", appDir, StringComparison.OrdinalIgnoreCase)
             .Replace("{ProgramFiles}", pal.ProgramFiles, StringComparison.OrdinalIgnoreCase)
+            .Replace("{LocalAppData}", pal.LocalAppData, StringComparison.OrdinalIgnoreCase)
             .Replace("{UserHome}", pal.UserHome, StringComparison.OrdinalIgnoreCase)
             .Replace("{Desktop}", pal.Desktop, StringComparison.OrdinalIgnoreCase);
 
@@ -101,6 +102,7 @@ public interface IInstallPathPal
 {
     string AppDir { get; }
     string ProgramFiles { get; }
+    string LocalAppData { get; }
     string UserHome { get; }
     string Desktop { get; }
 }

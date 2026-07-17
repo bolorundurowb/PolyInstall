@@ -7,6 +7,9 @@ public sealed class DefaultPolyInstallPal : IPolyInstallPal
     public DefaultPolyInstallPal()
     {
         UserHome = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        LocalAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (string.IsNullOrWhiteSpace(LocalAppData))
+            LocalAppData = UserHome;
         Desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
         ProgramFiles = OperatingSystem.IsWindows()
             ? Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)
@@ -36,6 +39,7 @@ public sealed class DefaultPolyInstallPal : IPolyInstallPal
 
     public string AppDir => InstallBootstrap.InstallDirectory ?? InstallBootstrap.ExtractRoot;
     public string ProgramFiles { get; }
+    public string LocalAppData { get; }
     public string UserHome { get; }
     public string Desktop { get; }
     public IShortcutPal Shortcuts { get; }

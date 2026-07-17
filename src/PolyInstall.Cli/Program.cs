@@ -123,8 +123,14 @@ try
                 if (!File.Exists(schemaPath))
                     throw new FileNotFoundException("Could not find schema/v1.json (looked next to CLI and parent directories).");
                 var json = JsonSerializer.Serialize(m, InstallManifest.JsonOptions);
-                ManifestJsonValidator.Validate(json, schemaPath);
-                ManifestSemanticValidator.Validate(m);
+                var diagnostics = ManifestJsonValidator.ValidateResult(json, schemaPath).Diagnostics
+                    .Concat(ManifestSemanticValidator.ValidateResult(m).Diagnostics);
+                var prepared = ManifestDiagnosticPipeline.Prepare(diagnostics, yaml);
+                if (prepared.Count > 0)
+                {
+                    Console.Error.WriteLine(DiagnosticFormatter.Format(prepared, manifestPath, yaml));
+                    return 1;
+                }
                 Console.WriteLine("Manifest is valid.");
                 return 0;
             }

@@ -215,7 +215,7 @@ public partial class MainWindow : Window
             "eula" => BuildEula(step),
             "destination" => BuildDestination(step, pal),
             "features" => BuildFeatures(),
-            "progress" => BuildProgress(),
+            "progress" => BuildProgress(step),
             "finish" => new TextBlock
             {
                 Text = BuildFinishText(),
@@ -482,31 +482,32 @@ public partial class MainWindow : Window
     private static string GetDefaultInstallPath(IPolyInstallPal pal)
         => DefaultInstallPathResolver.GetDefaultInstallPath(InstallBootstrap.Manifest, pal);
 
-    private Control BuildProgress()
+    private ScrollViewer? _progressLogViewer;
+
+    private Control BuildProgress(WizardStep step)
     {
         _progressText = new TextBlock { Text = "Preparing…", TextWrapping = TextWrapping.Wrap };
         _progressBar = new ProgressBar { IsIndeterminate = true, Height = 8, HorizontalAlignment = HorizontalAlignment.Stretch };
-        _progressLogText = new TextBlock
-        {
-            TextWrapping = TextWrapping.NoWrap,
-        };
-        var progressLogViewer = new ScrollViewer
+        _progressLogText = step.ShowLogs ? new TextBlock { TextWrapping = TextWrapping.NoWrap } : null;
+        _progressLogViewer = step.ShowLogs ? new ScrollViewer
         {
             Height = 170,
             VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
             Content = _progressLogText,
-        };
-        return new StackPanel
+        } : null;
+        var panel = new StackPanel
         {
             Spacing = 12,
             Children =
             {
                 _progressText,
                 _progressBar,
-                progressLogViewer,
             },
         };
+        if (_progressLogViewer is not null)
+            panel.Children.Add(_progressLogViewer);
+        return panel;
     }
 
     private void QueueProgressEntry(string entry)
@@ -537,6 +538,8 @@ public partial class MainWindow : Window
         _progressLogText.Text = string.IsNullOrEmpty(_progressLogText.Text)
             ? entry
             : _progressLogText.Text + Environment.NewLine + entry;
+        if (_progressLogViewer is not null)
+            Dispatcher.UIThread.Post(_progressLogViewer.ScrollToEnd, Avalonia.Threading.DispatcherPriority.Background);
     }
 
     private async void OnNext(object? sender, RoutedEventArgs e)

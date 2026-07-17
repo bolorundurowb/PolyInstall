@@ -13,8 +13,6 @@ public static class DefaultInstallPathResolver
         if (InstallScopeHelper.IsMachineInstall(manifest))
             return Path.Combine(pal.ProgramFiles, productName);
 
-        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var baseDirectory = string.IsNullOrWhiteSpace(localAppData) ? pal.UserHome : localAppData;
-        return Path.Combine(baseDirectory, productName);
+        return Path.Combine(pal.LocalAppData, productName);
     }
 }
