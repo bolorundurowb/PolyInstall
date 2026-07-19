@@ -601,6 +601,17 @@ public partial class MainWindow : Window
             var dest = InstallBootstrap.InstallDirectory;
             if (string.IsNullOrWhiteSpace(dest))
                 throw new InvalidOperationException("No install directory.");
+
+            var resolvedDest = InstallPathResolver.Expand(dest.Trim(), pal);
+            var runningProcesses = await Task.Run(
+                () => pal.Processes.FindProcessesUnderDirectory(resolvedDest));
+            if (runningProcesses.Count > 0
+                && !await PromptCloseRunningProcessesAsync(pal, resolvedDest, runningProcesses))
+            {
+                await AbortInstallBeforeStartAsync();
+                return;
+            }
+
             var result = await Task.Run(
                 () => InstallCoordinator.Run(new InstallOperationOptions
                 {
@@ -667,6 +678,89 @@ public partial class MainWindow : Window
             _installCts?.Dispose();
             _installCts = null;
         }
+    }
+
+    /// <summary>
+    /// Prompts the user to close applications running from the install destination. Returns true
+    /// when the destination is clear and the install may proceed, false when the user cancels or
+    /// the processes cannot be terminated.
+    /// </summary>
+    private async Task<bool> PromptCloseRunningProcessesAsync(
+        IPolyInstallPal pal,
+        string destination,
+        IReadOnlyList<RunningProcessInfo> running)
+    {
+        const string continueChoice = "Close applications and continue";
+        var list = string.Join(
+            Environment.NewLine,
+            running.Select(p => $"• {p.Name} (PID {p.Id}) — {p.ExecutablePath}"));
+        var message =
+            "The following applications are running from the install location and must be closed "
+            + "before setup can continue:"
+            + Environment.NewLine + Environment.NewLine + list;
+
+        var choice = await ShowChoiceDialogAsync(
+            "Close running applications",
+            message,
+            defaultChoice: "Cancel",
+            scrollable: true,
+            continueChoice,
+            "Cancel");
+        if (!string.Equals(choice, continueChoice, StringComparison.Ordinal))
+            return false;
+
+        IReadOnlyList<RunningProcessInfo> remaining;
+        try
+        {
+            remaining = await Task.Run(
+                () => InstallProcessGuard.TerminateAndRescan(pal.Processes, running, destination));
+        }
+        catch (Exception ex)
+        {
+            await ShowChoiceDialogAsync(
+                "Close running applications",
+                "Could not close the running applications: " + ex.Message,
+                defaultChoice: "OK",
+                "OK");
+            return false;
+        }
+
+        if (remaining.Count > 0)
+        {
+            var stillRunning = string.Join(
+                Environment.NewLine,
+                remaining.Select(p => $"• {p.Name} (PID {p.Id})"));
+            await ShowChoiceDialogAsync(
+                "Close running applications",
+                "Some applications are still running and could not be closed:"
+                + Environment.NewLine + Environment.NewLine + stillRunning
+                + Environment.NewLine + Environment.NewLine
+                + "Please close them manually and run setup again.",
+                defaultChoice: "OK",
+                scrollable: true,
+                "OK");
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Exits setup when the install is aborted before any files are copied (e.g. the user
+    /// declined to close running applications). Matches the no-disk-touch cancel path:
+    /// no cleanup is needed, so the wizard closes.
+    /// </summary>
+    private async Task AbortInstallBeforeStartAsync()
+    {
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            if (_progressText is not null)
+                _progressText.Text = "Setup was cancelled because required applications are still running.";
+            AppendProgressEntry("Setup cancelled: applications still running");
+            if (_progressBar is not null)
+                _progressBar.IsIndeterminate = false;
+            Close();
+        });
     }
 
     private void OnBack(object? sender, RoutedEventArgs e)
@@ -853,7 +947,15 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task<string> ShowChoiceDialogAsync(string title, string message, string defaultChoice, params string[] options)
+    private Task<string> ShowChoiceDialogAsync(string title, string message, string defaultChoice, params string[] options)
+        => ShowChoiceDialogAsync(title, message, defaultChoice, scrollable: false, options);
+
+    private async Task<string> ShowChoiceDialogAsync(
+        string title,
+        string message,
+        string defaultChoice,
+        bool scrollable,
+        params string[] options)
     {
         if (options.Length == 0)
             throw new ArgumentException("At least one option is required.", nameof(options));
@@ -867,12 +969,26 @@ public partial class MainWindow : Window
         };
         DockPanel.SetDock(buttonPanel, Dock.Bottom);
 
+        var messageBlock = new TextBlock
+        {
+            Text = message,
+            TextWrapping = TextWrapping.Wrap,
+        };
+        Control messageContent = scrollable
+            ? new ScrollViewer
+            {
+                Content = messageBlock,
+                HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+                VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+            }
+            : messageBlock;
+
         var dialog = new Window
         {
             Title = title,
-            Width = 420,
-            Height = 170,
-            CanResize = false,
+            Width = scrollable ? 560 : 420,
+            Height = scrollable ? 380 : 170,
+            CanResize = scrollable,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             ShowInTaskbar = false,
             Content = new DockPanel
@@ -881,11 +997,7 @@ public partial class MainWindow : Window
                 Children =
                 {
                     buttonPanel,
-                    new TextBlock
-                    {
-                        Text = message,
-                        TextWrapping = TextWrapping.Wrap,
-                    },
+                    messageContent,
                 },
             },
         };
