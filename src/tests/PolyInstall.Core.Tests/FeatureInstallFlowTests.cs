@@ -207,6 +207,7 @@ public class FeatureInstallFlowTests : IDisposable
         public IPathPal? Path => null;
         public IFileAssociationPal? FileAssociations => null;
         public IServiceManagerPal? Services => null;
+        public IProcessManagerPal Processes { get; } = new NoOpProcessManagerPal();
     }
 
     private sealed class NoOpShortcutPal : IShortcutPal

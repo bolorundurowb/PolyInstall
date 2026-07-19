@@ -1,7 +1,21 @@
 using PolyInstall.Install;
 using PolyInstall.Manifest;
+using PolyInstall.Pal;
 
 namespace PolyInstall.Core.Tests;
+
+/// <summary>
+/// Shared no-op <see cref="IProcessManagerPal"/> for test PAL stubs. Reports no running
+/// processes and records terminate calls for optional assertions.
+/// </summary>
+public sealed class NoOpProcessManagerPal : IProcessManagerPal
+{
+    public List<int> Terminated { get; } = [];
+
+    public IReadOnlyList<RunningProcessInfo> FindProcessesUnderDirectory(string directory) => [];
+
+    public void Terminate(IEnumerable<int> processIds) => Terminated.AddRange(processIds);
+}
 
 public static class TestHelpers
 {
