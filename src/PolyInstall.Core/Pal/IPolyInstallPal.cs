@@ -11,6 +11,7 @@ public interface IPolyInstallPal : IInstallPathPal
     IPathPal? Path { get; }
     IFileAssociationPal? FileAssociations { get; }
     IServiceManagerPal? Services { get; }
+    IProcessManagerPal Processes { get; }
 }
 
 public interface IPathPal

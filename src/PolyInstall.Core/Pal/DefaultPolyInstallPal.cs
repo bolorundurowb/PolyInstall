@@ -35,6 +35,7 @@ public sealed class DefaultPolyInstallPal : IPolyInstallPal
                     ? new MacOsLaunchdServiceManagerPal()
                     : null;
         Path = new PathPal();
+        Processes = new ProcessManagerPal();
     }
 
     public string AppDir => InstallBootstrap.InstallDirectory ?? InstallBootstrap.ExtractRoot;
@@ -49,4 +50,5 @@ public sealed class DefaultPolyInstallPal : IPolyInstallPal
     public IFileAssociationPal? FileAssociations { get; }
     public IPathPal? Path { get; }
     public IServiceManagerPal? Services { get; }
+    public IProcessManagerPal Processes { get; }
 }
