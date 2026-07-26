@@ -43,6 +43,8 @@ public static class TaskEngine
         switch (action)
         {
             case "create_shortcut":
+                if (isUninstall)
+                    throw new InvalidOperationException($"Task action '{task.Action}' is not valid in uninstall phase. Remove it from pre_uninstall/post_uninstall.");
                 var shortcutPath = BuildShortcutPath(
                     pal,
                     GetString(p, "location"),
@@ -55,6 +57,8 @@ public static class TaskEngine
                     ExpandOptional(GetOptionalString(p, "icon_path"), pal));
                 break;
             case "write_registry":
+                if (isUninstall)
+                    throw new InvalidOperationException($"Task action '{task.Action}' is not valid in uninstall phase. Remove it from pre_uninstall/post_uninstall.");
                 if (pal.Registry is null)
                     throw new PlatformNotSupportedException("Registry tasks are not supported on this platform.");
                 pal.Registry.SetValue(
@@ -64,6 +68,8 @@ public static class TaskEngine
                     GetString(p, "value_kind"));
                 break;
             case "create_desktop_entry":
+                if (isUninstall)
+                    throw new InvalidOperationException($"Task action '{task.Action}' is not valid in uninstall phase. Remove it from pre_uninstall/post_uninstall.");
                 if (pal.DesktopEntries is null)
                     throw new PlatformNotSupportedException("Desktop entry tasks are not supported on this platform.");
                 pal.DesktopEntries.CreateDesktopEntry(
@@ -74,11 +80,15 @@ public static class TaskEngine
                     ExpandOptional(GetOptionalString(p, "comment"), pal));
                 break;
             case "set_permissions":
+                if (isUninstall)
+                    throw new InvalidOperationException($"Task action '{task.Action}' is not valid in uninstall phase. Remove it from pre_uninstall/post_uninstall.");
                 if (pal.FilePermissions is null)
                     throw new PlatformNotSupportedException("Permission tasks are not supported on this platform.");
                 pal.FilePermissions.SetFileMode(Expand(GetString(p, "path"), pal), GetInt(p, "mode"));
                 break;
             case "add_to_path":
+                if (isUninstall)
+                    throw new InvalidOperationException($"Task action '{task.Action}' is not valid in uninstall phase. Remove it from pre_uninstall/post_uninstall.");
                 if (pal.Path is null)
                     throw new PlatformNotSupportedException("PATH tasks are not supported on this platform.");
                 var pathValue = Expand(GetStringOrDefault(p, "path", InstallBootstrap.InstallDirectory ?? ""), pal);
