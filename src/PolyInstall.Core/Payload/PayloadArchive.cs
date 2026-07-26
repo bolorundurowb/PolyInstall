@@ -90,8 +90,7 @@ public static class PayloadArchive
         using var input = new MemoryStream(raw);
         using var output = new MemoryStream();
         using (var brotli = new BrotliStream(output, CompressionLevel.Optimal, leaveOpen: true))
-            input.CopyTo(brotli);
-        ct.ThrowIfCancellationRequested();
+            CopyToWithCancellation(input, brotli, ct);
         return output.ToArray();
     }
 
@@ -100,17 +99,16 @@ public static class PayloadArchive
         using var input = new MemoryStream(compressed);
         using var brotli = new BrotliStream(input, CompressionMode.Decompress);
         using var output = new MemoryStream();
-        brotli.CopyTo(output);
-        ct.ThrowIfCancellationRequested();
+        CopyToWithCancellation(brotli, output, ct);
         return output.ToArray();
     }
 
     private static byte[] CompressGZip(byte[] raw, CancellationToken ct)
     {
+        using var input = new MemoryStream(raw);
         using var output = new MemoryStream();
         using (var gz = new GZipStream(output, CompressionLevel.SmallestSize, leaveOpen: true))
-            gz.Write(raw);
-        ct.ThrowIfCancellationRequested();
+            CopyToWithCancellation(input, gz, ct);
         return output.ToArray();
     }
 
@@ -119,8 +117,7 @@ public static class PayloadArchive
         using var input = new MemoryStream(compressed);
         using var gz = new GZipStream(input, CompressionMode.Decompress);
         using var output = new MemoryStream();
-        gz.CopyTo(output);
-        ct.ThrowIfCancellationRequested();
+        CopyToWithCancellation(gz, output, ct);
         return output.ToArray();
     }
 

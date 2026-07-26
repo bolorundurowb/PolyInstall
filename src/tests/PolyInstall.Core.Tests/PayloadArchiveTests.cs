@@ -133,4 +133,52 @@ public class PayloadArchiveTests
             TestHelpers.TryDeleteDirectory(dir);
         }
     }
+
+    [Theory]
+    [InlineData(PayloadCompression.Brotli)]
+    [InlineData(PayloadCompression.GZip)]
+    public void Decompress_WithAlreadyCancelledToken_ThrowsOperationCanceledException(PayloadCompression compression)
+    {
+        var compressed = PayloadArchive.PackAndCompress(
+            [("test.txt", CreateTempFile("data"))],
+            compression);
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        ((Action)(() => PayloadArchive.Decompress(compressed, compression, cts.Token)))
+            .Throws<OperationCanceledException>();
+    }
+
+    [Theory]
+    [InlineData(PayloadCompression.Brotli)]
+    [InlineData(PayloadCompression.GZip)]
+    public void PackAndCompress_WithAlreadyCancelledToken_ThrowsOperationCanceledException(PayloadCompression compression)
+    {
+        var dir = TestHelpers.NewTempDir();
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "a.txt"), "A");
+
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            ((Action)(() => PayloadArchive.PackAndCompress(
+                [("a.txt", Path.Combine(dir, "a.txt"))],
+                compression,
+                cts.Token)))
+                .Throws<OperationCanceledException>();
+        }
+        finally
+        {
+            TestHelpers.TryDeleteDirectory(dir);
+        }
+    }
+
+    private static string CreateTempFile(string content)
+    {
+        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("n") + ".txt");
+        File.WriteAllText(path, content);
+        return path;
+    }
 }
