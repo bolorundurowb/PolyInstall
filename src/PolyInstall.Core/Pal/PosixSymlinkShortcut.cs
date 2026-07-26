@@ -6,16 +6,43 @@ internal static class PosixSymlinkShortcut
 {
     public static void Create(string targetPath, string shortcutPath)
     {
-        if (File.Exists(shortcutPath) || Directory.Exists(shortcutPath))
-            File.Delete(shortcutPath);
+        var backupPath = shortcutPath + ".polyinstall-bak";
+        var hadExistingFile = File.Exists(shortcutPath);
+        var hadExistingDir = !hadExistingFile && Directory.Exists(shortcutPath);
+
+        if (hadExistingFile)
+            File.Move(shortcutPath, backupPath, overwrite: true);
+        else if (hadExistingDir)
+            Directory.Move(shortcutPath, backupPath);
+
         try
         {
-            File.CreateSymbolicLink(shortcutPath, targetPath);
+            try
+            {
+                File.CreateSymbolicLink(shortcutPath, targetPath);
+            }
+            catch (PlatformNotSupportedException)
+            {
+                File.WriteAllText(shortcutPath, BuildFallbackScript(targetPath));
+                Chmod(shortcutPath, 0b111_101_101);
+            }
+
+            if (File.Exists(backupPath))
+                File.Delete(backupPath);
+            else if (Directory.Exists(backupPath))
+                Directory.Delete(backupPath, recursive: true);
         }
-        catch (PlatformNotSupportedException)
+        catch
         {
-            File.WriteAllText(shortcutPath, BuildFallbackScript(targetPath));
-            Chmod(shortcutPath, 0b111_101_101);
+            if (File.Exists(shortcutPath))
+            {
+                try { File.Delete(shortcutPath); } catch { }
+            }
+            if (File.Exists(backupPath))
+                File.Move(backupPath, shortcutPath, overwrite: true);
+            else if (Directory.Exists(backupPath))
+                Directory.Move(backupPath, shortcutPath);
+            throw;
         }
     }
 
