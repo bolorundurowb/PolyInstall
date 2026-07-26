@@ -731,6 +731,115 @@ public class TaskEngineTests
         pal.ShortcutCalls[0].Shortcut.Must().EndWith("app");
     }
 
+    [Fact]
+    public void RunPhase_WhenCreateShortcutDuringUninstall_ThrowsInvalidOperationException()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "create_shortcut",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["target_path"] = "app.exe",
+                    ["name"] = "app",
+                    ["location"] = "desktop",
+                },
+            },
+        };
+
+        ((Action)(() => TaskEngine.RunPhase(tasks, pal, isUninstall: true)))
+            .Throws<InvalidOperationException>()
+            .WithMessageContaining("not valid in uninstall phase");
+    }
+
+    [Fact]
+    public void RunPhase_WhenWriteRegistryDuringUninstall_ThrowsInvalidOperationException()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "write_registry",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["key_path"] = @"HKCU\Software\Test",
+                    ["value_name"] = "x",
+                    ["value"] = "1",
+                    ["value_kind"] = "string",
+                },
+            },
+        };
+
+        ((Action)(() => TaskEngine.RunPhase(tasks, pal, isUninstall: true)))
+            .Throws<InvalidOperationException>()
+            .WithMessageContaining("not valid in uninstall phase");
+    }
+
+    [Fact]
+    public void RunPhase_WhenCreateDesktopEntryDuringUninstall_ThrowsInvalidOperationException()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "create_desktop_entry",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["file_name"] = "app.desktop",
+                    ["name"] = "App",
+                    ["exec"] = "/usr/bin/app",
+                },
+            },
+        };
+
+        ((Action)(() => TaskEngine.RunPhase(tasks, pal, isUninstall: true)))
+            .Throws<InvalidOperationException>()
+            .WithMessageContaining("not valid in uninstall phase");
+    }
+
+    [Fact]
+    public void RunPhase_WhenSetPermissionsDuringUninstall_ThrowsInvalidOperationException()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "set_permissions",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["path"] = "/usr/bin/app",
+                    ["mode"] = 755,
+                },
+            },
+        };
+
+        ((Action)(() => TaskEngine.RunPhase(tasks, pal, isUninstall: true)))
+            .Throws<InvalidOperationException>()
+            .WithMessageContaining("not valid in uninstall phase");
+    }
+
+    [Fact]
+    public void RunPhase_WhenAddToPathDuringUninstall_ThrowsInvalidOperationException()
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "add_to_path",
+            },
+        };
+
+        ((Action)(() => TaskEngine.RunPhase(tasks, pal, isUninstall: true)))
+            .Throws<InvalidOperationException>()
+            .WithMessageContaining("not valid in uninstall phase");
+    }
+
     private sealed class RecordingPal : IPolyInstallPal
     {
         public string AppDirBacking { get; init; } = "";

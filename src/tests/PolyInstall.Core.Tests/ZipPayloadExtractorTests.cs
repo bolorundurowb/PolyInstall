@@ -26,17 +26,17 @@ public class ZipPayloadExtractorTests
     }
 
     [Fact]
-    public void ExtractToDirectory_WithDirectoryOnlyEntries_SkipsDirectoriesWithoutFiles()
+    public void ExtractToDirectory_WithDirectoryOnlyEntries_CreatesDirectoriesAndExtractsFiles()
     {
         var dest = TestHelpers.NewTempDir();
         try
         {
-            // Directory-only entries have empty Name; extractor intentionally skips them
             var zip = CreateZipBytes([("empty/", ""), ("a.txt", "x")]);
 
             ZipPayloadExtractor.ExtractToDirectory(zip, dest);
 
             File.Exists(Path.Combine(dest, "a.txt")).Must().BeTrue();
+            Directory.Exists(Path.Combine(dest, "empty")).Must().BeTrue();
         }
         finally
         {
@@ -54,6 +54,42 @@ public class ZipPayloadExtractorTests
 
             ((Action)(() => ZipPayloadExtractor.ExtractToDirectory(zip, dest))).Throws<InvalidOperationException>()
                 .WithMessageContaining("escapes destination");
+        }
+        finally
+        {
+            TestHelpers.TryDeleteDirectory(dest);
+        }
+    }
+
+    [Fact]
+    public void ExtractToDirectory_WithEmptyDirectoryEntry_CreatesDirectory()
+    {
+        var dest = TestHelpers.NewTempDir();
+        try
+        {
+            var zip = CreateZipWithEmptyDirectory();
+
+            ZipPayloadExtractor.ExtractToDirectory(zip, dest);
+
+            Directory.Exists(Path.Combine(dest, "empty_cache")).Must().BeTrue();
+        }
+        finally
+        {
+            TestHelpers.TryDeleteDirectory(dest);
+        }
+    }
+
+    [Fact]
+    public void ExtractToDirectory_WithNestedEmptyDirectory_CreatesNestedDirectory()
+    {
+        var dest = TestHelpers.NewTempDir();
+        try
+        {
+            var zip = CreateZipWithNestedEmptyDirectory();
+
+            ZipPayloadExtractor.ExtractToDirectory(zip, dest);
+
+            Directory.Exists(Path.Combine(dest, "parent", "child")).Must().BeTrue();
         }
         finally
         {
@@ -93,6 +129,29 @@ public class ZipPayloadExtractorTests
             var e = zip.CreateEntry("../../outside.txt");
             using var w = new StreamWriter(e.Open());
             w.Write("bad");
+        }
+
+        return ms.ToArray();
+    }
+
+    private static byte[] CreateZipWithEmptyDirectory()
+    {
+        using var ms = new MemoryStream();
+        using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            zip.CreateEntry("empty_cache/");
+        }
+
+        return ms.ToArray();
+    }
+
+    private static byte[] CreateZipWithNestedEmptyDirectory()
+    {
+        using var ms = new MemoryStream();
+        using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            zip.CreateEntry("parent/");
+            zip.CreateEntry("parent/child/");
         }
 
         return ms.ToArray();

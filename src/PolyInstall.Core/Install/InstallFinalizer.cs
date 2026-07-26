@@ -84,8 +84,19 @@ public static class InstallFinalizer
         var uninstallPath = InstallStatePaths.UninstallExePath(installDirectory);
         File.Copy(bundledUninstallPath, uninstallPath, overwrite: true);
 
+        if (!File.Exists(uninstallPath))
+            throw new InvalidOperationException($"Failed to copy uninstaller to '{uninstallPath}'.");
+
         var estimatedKb = InstallDirectoryEstimator.EstimateKibRecursive(installDirectory);
-        WindowsArpRegistration.Register(state, uninstallPath, estimatedKb);
+        try
+        {
+            WindowsArpRegistration.Register(state, uninstallPath, estimatedKb);
+        }
+        catch
+        {
+            try { File.Delete(uninstallPath); } catch { }
+            throw;
+        }
     }
 
     private static bool IsWindowsAdministrator()
