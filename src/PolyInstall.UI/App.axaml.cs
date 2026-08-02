@@ -8,10 +8,19 @@ using PolyInstall.Hosting;
 
 namespace PolyInstall.UI;
 
+/// <summary>
+/// The main Avalonia application class for the installer UI.
+/// </summary>
 public class App : Application
 {
+    /// <summary>
+    /// Initializes the application by loading the XAML.
+    /// </summary>
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
+    /// <summary>
+    /// Invoked when framework initialization is completed. Sets up the main window and theme.
+    /// </summary>
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)

@@ -6,11 +6,20 @@ using PolyInstall.Pal;
 
 namespace PolyInstall.Install;
 
+/// <summary>
+/// Orchestrates the uninstallation process, including running tasks, removing service registrations,
+/// deleting files, and cleaning up the installation directory.
+/// </summary>
 public static class UninstallCoordinator
 {
     /// <summary>
-    /// Runs uninstall: tasks, ARP removal, file deletion, then schedules removal of the install root (including this process when it lives under the root).
+    /// Runs the uninstallation process.
     /// </summary>
+    /// <param name="state">The current installation state.</param>
+    /// <param name="manifest">The installation manifest.</param>
+    /// <param name="pal">The platform abstraction layer.</param>
+    /// <param name="runningExePath">The path to the currently running executable (to avoid deleting it while running).</param>
+    /// <param name="expectedInstallRoot">Optional expected installation root path for validation.</param>
     public static void Run(
         InstallStateDocument state,
         InstallManifest manifest,
@@ -48,11 +57,17 @@ public static class UninstallCoordinator
                 ? "machine"
                 : "user";
             foreach (var pathEntry in state.AddedToPath)
+            {
+                // State is user-writable: only undo PATH entries that point into this
+                // install. Entries elsewhere must not be removed on our say-so.
+                if (!IsWithinInstallRoot(pathEntry, installRoot))
+                    continue;
                 pal.Path.RemoveFromPath(pathEntry, scope);
+            }
         }
 
         if (OperatingSystem.IsWindows())
-            WindowsArpRegistration.Unregister(state);
+            WindowsArpRegistration.Unregister(state, ProductIdHelper.StableProductGuidString(manifest.Metadata));
 
         DeleteAllFilesExcept(runningExePath, installRoot);
 
@@ -86,13 +101,32 @@ public static class UninstallCoordinator
                 "Install state product id does not match the embedded manifest.");
         }
 
-        if (IsDangerousInstallRoot(installRoot))
+        if (InstallPathPolicy.IsDangerousInstallRoot(installRoot))
         {
             throw new InvalidOperationException(
                 $"Refusing to uninstall from unsafe install root: {installRoot}");
         }
 
         return installRoot;
+    }
+
+    private static bool IsWithinInstallRoot(string pathEntry, string installRoot)
+    {
+        if (string.IsNullOrWhiteSpace(pathEntry))
+            return false;
+
+        try
+        {
+            var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(installRoot));
+            var full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(pathEntry));
+            var comparison = RelativePathGuard.PathComparison;
+            return full.Equals(root, comparison)
+                   || full.StartsWith(root + Path.DirectorySeparatorChar, comparison);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static bool SamePath(string left, string right)
@@ -106,35 +140,6 @@ public static class UninstallCoordinator
         {
             return left.Equals(right, StringComparison.OrdinalIgnoreCase);
         }
-    }
-
-    private static bool IsDangerousInstallRoot(string installRoot)
-    {
-        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(installRoot));
-        var volumeRoot = Path.TrimEndingDirectorySeparator(Path.GetPathRoot(root) ?? "");
-        if (!string.IsNullOrEmpty(volumeRoot)
-            && root.Equals(volumeRoot, StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        return DangerousRoots()
-            .Where(path => !string.IsNullOrWhiteSpace(path))
-            .Select(path => Path.TrimEndingDirectorySeparator(Path.GetFullPath(path)))
-            .Any(path => root.Equals(path, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static IEnumerable<string> DangerousRoots()
-    {
-        yield return Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        yield return Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-        yield return Environment.GetFolderPath(Environment.SpecialFolder.System);
-        yield return Environment.GetFolderPath(Environment.SpecialFolder.SystemX86);
-        yield return Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-        yield return Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
-        yield return Environment.GetFolderPath(Environment.SpecialFolder.CommonProgramFiles);
-        yield return Environment.GetFolderPath(Environment.SpecialFolder.CommonProgramFilesX86);
-        yield return Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
     }
 
     /// <summary>

@@ -67,7 +67,7 @@ public sealed class ProcessManagerPal : IProcessManagerPal
         return matches;
     }
 
-    public void Terminate(IEnumerable<int> processIds)
+    public void Terminate(IEnumerable<int> processIds, string mustBeUnderDirectory)
     {
         var failures = new List<string>();
         foreach (var id in processIds)
@@ -75,6 +75,25 @@ public sealed class ProcessManagerPal : IProcessManagerPal
             try
             {
                 using var process = Process.GetProcessById(id);
+
+                // Re-validate right before killing: the PID discovered earlier may have been
+                // recycled for an unrelated process since the user gave consent.
+                string? imagePath;
+                try
+                {
+                    imagePath = process.MainModule?.FileName;
+                }
+                catch
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrEmpty(imagePath)
+                    || !ProcessPathMatcher.IsUnderDirectory(imagePath, mustBeUnderDirectory))
+                {
+                    continue;
+                }
+
                 process.Kill(entireProcessTree: true);
                 process.WaitForExit(5000);
             }

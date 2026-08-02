@@ -844,8 +844,8 @@ public class TaskEngineTests
     {
         public string AppDirBacking { get; init; } = "";
         public string ProgramFilesBacking { get; init; } = "";
-        public string UserHomeBacking { get; init; } = "";
-        public string DesktopBacking { get; init; } = "";
+        public string UserHomeBacking { get; init; } = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "poly-taskengine-home");
+        public string DesktopBacking { get; init; } = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "poly-taskengine-desktop");
 
         public string AppDir => AppDirBacking;
         public string ProgramFiles => ProgramFilesBacking;

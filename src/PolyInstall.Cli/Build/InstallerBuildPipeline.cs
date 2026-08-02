@@ -19,6 +19,15 @@ namespace PolyInstall.Cli.Build;
 /// </summary>
 public static class InstallerBuildPipeline
 {
+    /// <summary>
+    /// Runs the installer build pipeline.
+    /// </summary>
+    /// <param name="manifestPath">The path to the manifest YAML file.</param>
+    /// <param name="baseDirectory">The base directory for resolving relative paths in the manifest.</param>
+    /// <param name="stubsRoot">Optional path to the directory containing runtime stubs.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>A <see cref="BuildOutputManifest"/> describing the produced installers.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if validation fails or no files are found to pack.</exception>
     public static async Task<BuildOutputManifest> RunAsync(
         string manifestPath,
         string baseDirectory,

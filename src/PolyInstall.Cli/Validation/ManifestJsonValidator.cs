@@ -5,11 +5,20 @@ using PolyInstall.Core.Build.Validation;
 
 namespace PolyInstall.Cli.Validation;
 
+/// <summary>
+/// Provides JSON Schema validation for manifests.
+/// </summary>
 public static class ManifestJsonValidator
 {
     private static readonly Regex TypeMismatch =
         new(@"Value is ""(?<actual>[^""]+)"" but should be ""(?<expected>[^""]+)""", RegexOptions.Compiled);
 
+    /// <summary>
+    /// Validates the manifest JSON against the specified schema and throws an <see cref="InvalidOperationException"/> if validation fails.
+    /// </summary>
+    /// <param name="manifestJson">The JSON content of the manifest.</param>
+    /// <param name="schemaPath">The path to the JSON Schema file.</param>
+    /// <exception cref="InvalidOperationException">Thrown if validation fails.</exception>
     public static void Validate(string manifestJson, string schemaPath)
     {
         var validation = ValidateResult(manifestJson, schemaPath);
@@ -19,6 +28,12 @@ public static class ManifestJsonValidator
                                             string.Join(Environment.NewLine, validation.Diagnostics.Select(d => d.Message)));
     }
 
+    /// <summary>
+    /// Validates the manifest JSON against the specified schema and returns a <see cref="ManifestValidationResult"/>.
+    /// </summary>
+    /// <param name="manifestJson">The JSON content of the manifest.</param>
+    /// <param name="schemaPath">The path to the JSON Schema file.</param>
+    /// <returns>The validation result.</returns>
     public static ManifestValidationResult ValidateResult(string manifestJson, string schemaPath)
     {
         if (string.IsNullOrWhiteSpace(manifestJson))

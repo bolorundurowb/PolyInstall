@@ -176,14 +176,17 @@ public static class TaskEngine
             throw new PlatformNotSupportedException("Shortcuts are not supported on this OS.");
         }
 
-        var dir = !string.IsNullOrEmpty(subfolder)
-            ? Path.Combine(baseDir, subfolder)
-            : baseDir;
+        // Manifest content is untrusted at runtime (unsigned/patched installers): shortcut
+        // names and subfolders must not escape the well-known shortcut base directory.
+        if (!string.IsNullOrEmpty(subfolder))
+            RelativePathGuard.EnsureSimpleRelativePath(subfolder, "create_shortcut 'subfolder'");
+        RelativePathGuard.EnsureSimpleFileName(name, "create_shortcut 'name'");
 
         if (OperatingSystem.IsWindows() && !name.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
             name += ".lnk";
 
-        return Path.Combine(dir, name);
+        return RelativePathGuard.CombineConfined(baseDir,
+            !string.IsNullOrEmpty(subfolder) ? [subfolder, name] : [name]);
     }
 
     /// <summary>

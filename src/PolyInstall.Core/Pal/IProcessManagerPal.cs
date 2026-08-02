@@ -20,9 +20,12 @@ public interface IProcessManagerPal
     IReadOnlyList<RunningProcessInfo> FindProcessesUnderDirectory(string directory);
 
     /// <summary>
-    /// Attempts to terminate the given processes (and their child process trees where supported).
-    /// Processes that have already exited are ignored; unexpected failures are aggregated into
-    /// an <see cref="InvalidOperationException"/>.
+    /// Attempts to terminate the given processes (and their child process trees where
+    /// supported). Before each kill the process image path is re-resolved and the PID is
+    /// skipped when it no longer maps to an executable under
+    /// <paramref name="mustBeUnderDirectory"/> (PID reuse between discovery and termination).
+    /// Processes that have already exited are ignored; unexpected failures are aggregated
+    /// into an <see cref="InvalidOperationException"/>.
     /// </summary>
-    void Terminate(IEnumerable<int> processIds);
+    void Terminate(IEnumerable<int> processIds, string mustBeUnderDirectory);
 }

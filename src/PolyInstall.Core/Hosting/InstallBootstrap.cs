@@ -9,19 +9,33 @@ namespace PolyInstall.Hosting;
 /// </summary>
 public static class InstallBootstrap
 {
+    /// <summary>Gets the installation manifest.</summary>
     public static InstallManifest Manifest { get; private set; } = null!;
+
+    /// <summary>Gets the root directory where the payload has been extracted.</summary>
     public static string ExtractRoot { get; private set; } = "";
+
+    /// <summary>Gets the platform abstraction layer.</summary>
     public static IPolyInstallPal Pal { get; private set; } = null!;
+
+    /// <summary>Gets or sets information about an existing installation, if any.</summary>
     public static ExistingInstallInfo? ExistingInstall { get; set; }
+
+    /// <summary>Gets or sets the selected installation mode.</summary>
     public static InstallMode SelectedInstallMode { get; set; } = InstallMode.Install;
+
+    /// <summary>Gets or sets the target installation directory.</summary>
     public static string? InstallDirectory { get; set; }
 
     /// <summary>
-    /// Feature ids selected for this install run. Populated by the UI's <c>features</c> step
-    /// (or pre-seeded for update/repair) and consumed by <see cref="InstallCoordinator"/>.
+    /// Gets or sets the feature identifiers selected for this installation run.
+    /// Populated by the UI's features step or pre-seeded for update/repair.
     /// </summary>
     public static HashSet<string> SelectedFeatures { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Initializes the bootstrap state with the specified parameters.
+    /// </summary>
     public static void Init(
         InstallManifest manifest,
         string extractRoot,

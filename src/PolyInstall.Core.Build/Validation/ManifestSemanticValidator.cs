@@ -1,4 +1,5 @@
 using PolyInstall.Build;
+using PolyInstall.Install;
 using PolyInstall.Manifest;
 
 namespace PolyInstall.Core.Build.Validation;
@@ -15,6 +16,11 @@ public static class ManifestSemanticValidator
         "windows-x64", "windows-arm64", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64",
     };
 
+    /// <summary>
+    /// Validates the manifest and throws an <see cref="InvalidOperationException"/> if semantic errors are found.
+    /// </summary>
+    /// <param name="manifest">The manifest to validate.</param>
+    /// <exception cref="InvalidOperationException">Thrown if validation fails.</exception>
     public static void Validate(InstallManifest manifest)
     {
         var result = ValidateResult(manifest);
@@ -593,6 +599,10 @@ public static class ManifestSemanticValidator
         var name = GetParamString(task, "name");
         if (string.IsNullOrEmpty(name))
             Add(errors, "PI163", $"{prefix}: create_shortcut requires parameter 'name'.", prefix);
+        else if (!RelativePathGuard.IsSimpleFileName(name))
+            Add(errors, "PI203",
+                $"{prefix}: create_shortcut 'name' must be a simple file name without path separators or '..', got '{name}'.",
+                prefix);
 
         var location = GetParamString(task, "location");
         if (string.IsNullOrEmpty(location))
@@ -689,8 +699,13 @@ public static class ManifestSemanticValidator
                 "Add require: os.isLinux.");
         }
 
-        if (string.IsNullOrEmpty(GetParamString(task, "file_name")))
+        var fileName = GetParamString(task, "file_name");
+        if (string.IsNullOrEmpty(fileName))
             Add(errors, "PI174", $"{prefix}: create_desktop_entry requires parameter 'file_name'.", prefix);
+        else if (!RelativePathGuard.IsSimpleFileName(fileName))
+            Add(errors, "PI204",
+                $"{prefix}: create_desktop_entry 'file_name' must be a simple file name without path separators or '..', got '{fileName}'.",
+                prefix);
         if (string.IsNullOrEmpty(GetParamString(task, "name")))
             Add(errors, "PI175", $"{prefix}: create_desktop_entry requires parameter 'name'.", prefix);
         if (string.IsNullOrEmpty(GetParamString(task, "exec")))
@@ -796,10 +811,7 @@ public static class ManifestSemanticValidator
     }
 
     private static bool IsValidServiceName(string name) =>
-        name.All(c => char.IsLetterOrDigit(c) || c is '.' or '_' or '-')
-        && !name.Contains("..", StringComparison.Ordinal)
-        && !name.Contains(Path.DirectorySeparatorChar)
-        && !name.Contains(Path.AltDirectorySeparatorChar);
+        RuntimeManifestGuard.IsValidServiceName(name);
 
     private static bool IsValidSystemdRestart(string? restart) =>
         string.IsNullOrWhiteSpace(restart)

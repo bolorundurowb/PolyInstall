@@ -179,10 +179,27 @@ After a successful install or update, PolyInstall writes under `<install-dir>/.p
 
 1. Parse `--uninstall` / `--quiet` / optional `--install-location`.
 2. Read state and embedded manifest from `.polyinstall/`.
-3. Relaunch elevated if system-scope Windows services were registered.
+3. Relaunch elevated only when a claimed system-scope Windows service is verified to have its binary inside the install root (`WindowsServiceOwnership`).
 4. `UninstallCoordinator.Run` — uninstall tasks, unregister associations, stop/remove services, remove PATH entries, ARP unregister, delete payload files, schedule install root deletion (including `Uninstall.exe` on Windows).
 
 The self-extracting **installer** stub does not implement `--uninstall`.
+
+## Security model / trust boundaries
+
+`.polyinstall/install-state.json` and `embedded-manifest.json` live inside the install directory and are **user-writable** for per-user installs. Elevated (UAC/root) code paths therefore never take destructive targets from raw state:
+
+- **Service removal** — `sc.exe delete`, `systemctl`, and `launchctl` actions only run against services whose unit binary/plist resolves under the install root; unit/plist paths are recomputed from name + scope, never taken from state.
+- **ARP unregister** — the registry key is recomputed from the verified product id, not from `RegistryUninstallKeyRelative`.
+- **PATH removal** — only entries under the install root are undone.
+- **Elevation** — uninstall elevates only on verified service ownership, not on state claims alone.
+
+Additional runtime invariants (build-time validation is not treated as a security boundary):
+
+- Manifests are re-validated at load time (`RuntimeManifestGuard`): shortcut names/subfolders, desktop entry file names, and service names must be simple, traversal-free segments (`RelativePathGuard`).
+- Install destinations and uninstall roots must pass `InstallPathPolicy` (no volume roots, system directories, or their ancestors/sub-trees).
+- POSIX PATH entries are written with single-quote shell escaping (`PosixPathPal`); control characters are rejected.
+- Payload decompression and zip extraction are capped (`InstallPayloadLimits`) and zip entries are confined to the extract root.
+- Process termination re-validates the executable image path immediately before killing (PID-reuse guard).
 
 ## Stub publishing
 

@@ -14,7 +14,7 @@ public sealed class NoOpProcessManagerPal : IProcessManagerPal
 
     public IReadOnlyList<RunningProcessInfo> FindProcessesUnderDirectory(string directory) => [];
 
-    public void Terminate(IEnumerable<int> processIds) => Terminated.AddRange(processIds);
+    public void Terminate(IEnumerable<int> processIds, string mustBeUnderDirectory) => Terminated.AddRange(processIds);
 }
 
 public static class TestHelpers

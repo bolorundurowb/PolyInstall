@@ -5,8 +5,18 @@ using PolyInstall.Pal;
 
 namespace PolyInstall.Install;
 
+/// <summary>
+/// Orchestrates the installation process, including preparing the destination directory,
+/// resolving features, running tasks, copying files, and registering services.
+/// </summary>
 public static class InstallCoordinator
 {
+    /// <summary>
+    /// Runs the installation operation with the specified options.
+    /// </summary>
+    /// <param name="options">The options defining the installation process.</param>
+    /// <returns>The result of the installation operation.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if no install directory is provided or the path is unsafe.</exception>
     public static InstallOperationResult Run(InstallOperationOptions options)
     {
         ArgumentNullException.ThrowIfNull(options.Manifest);
@@ -15,6 +25,7 @@ public static class InstallCoordinator
         var dest = InstallPathResolver.Expand(options.Destination.Trim(), options.Pal);
         if (string.IsNullOrWhiteSpace(dest))
             throw new InvalidOperationException("No install directory.");
+        InstallPathPolicy.EnsureSafeInstallRoot(dest);
 
         var existing = ResolveExistingInstall(options.Manifest, dest, options.ExistingInstall);
         var mode = ResolveMode(options.Manifest, existing);
@@ -142,6 +153,12 @@ public static class InstallCoordinator
         return InstalledProductLocator.TryReadFromInstallDirectory(manifest, destination);
     }
 
+    /// <summary>
+    /// Resolves the installation mode (Install, Update, or Repair) based on whether an existing installation was found.
+    /// </summary>
+    /// <param name="manifest">The installation manifest.</param>
+    /// <param name="existing">Information about an existing installation, if any.</param>
+    /// <returns>The resolved <see cref="InstallMode"/>.</returns>
     public static InstallMode ResolveMode(InstallManifest manifest, ExistingInstallInfo? existing)
     {
         if (existing is null)
@@ -188,6 +205,12 @@ public static class InstallCoordinator
         return selected;
     }
 
+    /// <summary>
+    /// Maps a manifest file association definition to a platform-specific file association info object.
+    /// </summary>
+    /// <param name="assoc">The manifest file association definition.</param>
+    /// <param name="pal">The platform abstraction layer.</param>
+    /// <returns>A <see cref="FileAssociationInfo"/> object populated with expanded paths.</returns>
     internal static FileAssociationInfo MapToFileAssociationInfo(Manifest.FileAssociation assoc, IPolyInstallPal pal)
     {
         var progId = assoc.ProgId;
@@ -232,6 +255,12 @@ public static class InstallCoordinator
         return services;
     }
 
+    /// <summary>
+    /// Maps a manifest service definition to a platform-specific service registration info object.
+    /// </summary>
+    /// <param name="service">The manifest service definition.</param>
+    /// <param name="pal">The platform abstraction layer.</param>
+    /// <returns>A <see cref="ServiceRegistrationInfo"/> object populated with expanded paths.</returns>
     internal static ServiceRegistrationInfo MapToServiceRegistrationInfo(ServiceDefinition service, IPolyInstallPal pal)
     {
         var hostOs = OperatingSystem.IsWindows()
@@ -324,24 +353,48 @@ public static class InstallCoordinator
                 : "linux";
 }
 
+/// <summary>
+/// Options for the install operation.
+/// </summary>
 public sealed class InstallOperationOptions
 {
+    /// <summary>The manifest of the application being installed.</summary>
     public InstallManifest Manifest { get; init; } = null!;
+
+    /// <summary>The root directory where the payload has been extracted.</summary>
     public string ExtractRoot { get; init; } = "";
+
+    /// <summary>The target destination directory for the installation.</summary>
     public string Destination { get; init; } = "";
+
+    /// <summary>The platform abstraction layer for the current OS.</summary>
     public IPolyInstallPal Pal { get; init; } = null!;
+
+    /// <summary>Information about an existing installation, if any.</summary>
     public ExistingInstallInfo? ExistingInstall { get; init; }
+
+    /// <summary>Optional progress callback.</summary>
     public Action<string>? Progress { get; init; }
+
+    /// <summary>Optional callback invoked after the installation directory is prepared.</summary>
     public Action<InstallDirectoryPreparedInfo>? OnInstallDirectoryPrepared { get; init; }
+
+    /// <summary>The cancellation token for the operation.</summary>
     public CancellationToken CancellationToken { get; init; }
 }
 
+/// <summary>
+/// Information about the prepared installation directory.
+/// </summary>
 public sealed record InstallDirectoryPreparedInfo(
     string InstallDirectory,
     bool ExistedBefore,
     bool CreatedInstallDirectory,
     InstallMode Mode);
 
+/// <summary>
+/// The result of an installation operation.
+/// </summary>
 public sealed record InstallOperationResult(
     string InstallDirectory,
     InstallMode Mode,
@@ -349,9 +402,15 @@ public sealed record InstallOperationResult(
     bool CreatedInstallDirectory,
     InstallStateDocument State);
 
+/// <summary>
+/// Specifies the mode of the installation.
+/// </summary>
 public enum InstallMode
 {
+    /// <summary>A fresh installation.</summary>
     Install,
+    /// <summary>An update to an existing installation.</summary>
     Update,
+    /// <summary>A repair of an existing installation.</summary>
     Repair,
 }

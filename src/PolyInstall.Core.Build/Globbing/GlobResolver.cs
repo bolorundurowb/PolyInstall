@@ -2,13 +2,27 @@ using Microsoft.Extensions.FileSystemGlobbing;
 
 namespace PolyInstall.Core.Build.Globbing;
 
+/// <summary>
+/// Represents a file matched by a glob pattern.
+/// </summary>
+/// <param name="RelativePath">The path relative to the source directory, normalized to forward slashes.</param>
+/// <param name="FullPath">The absolute path to the file on disk.</param>
 public sealed record GlobbedFile(string RelativePath, string FullPath);
 
+/// <summary>
+/// Provides methods to resolve file system globs.
+/// </summary>
 public static class GlobResolver
 {
     /// <summary>
-    /// Resolves <paramref name="include"/> / <paramref name="exclude"/> under <paramref name="sourceDir"/> (absolute or relative to <paramref name="baseDirectory"/>).
+    /// Resolves include and exclude glob patterns under a source directory.
     /// </summary>
+    /// <param name="baseDirectory">The base directory for resolving relative paths.</param>
+    /// <param name="sourceDir">The directory to search for files, absolute or relative to <paramref name="baseDirectory"/>.</param>
+    /// <param name="include">A list of glob patterns to include.</param>
+    /// <param name="exclude">An optional list of glob patterns to exclude.</param>
+    /// <returns>A sorted list of <see cref="GlobbedFile"/> objects.</returns>
+    /// <exception cref="DirectoryNotFoundException">Thrown if the resolved source directory does not exist.</exception>
     public static IReadOnlyList<GlobbedFile> Collect(
         string baseDirectory,
         string sourceDir,

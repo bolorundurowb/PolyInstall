@@ -20,7 +20,7 @@ public static class InstallProcessGuard
         ArgumentNullException.ThrowIfNull(processes);
         ArgumentNullException.ThrowIfNull(toTerminate);
 
-        processes.Terminate(toTerminate.Select(p => p.Id));
+        processes.Terminate(toTerminate.Select(p => p.Id), directory);
         return processes.FindProcessesUnderDirectory(directory);
     }
 }

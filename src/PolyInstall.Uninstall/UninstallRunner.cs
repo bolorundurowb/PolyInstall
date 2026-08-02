@@ -8,8 +8,16 @@ using PolyInstall.Pal;
 
 namespace PolyInstall.Uninstall;
 
+/// <summary>
+/// Orchestrates the uninstallation process on Windows.
+/// </summary>
 internal static class UninstallRunner
 {
+    /// <summary>
+    /// Executes the uninstallation process.
+    /// </summary>
+    /// <param name="cmd">The parsed command-line arguments.</param>
+    /// <returns>The exit code (0 for success, 1 for error).</returns>
     public static int Run(UninstallCommandLine cmd)
     {
         if (!OperatingSystem.IsWindows())
@@ -61,7 +69,7 @@ internal static class UninstallRunner
             return 1;
         }
 
-        if (ShouldRelaunchElevated(state) && RelaunchElevated(exe, Environment.GetCommandLineArgs().Skip(1)))
+        if (ShouldRelaunchElevated(state, installRoot) && RelaunchElevated(exe, Environment.GetCommandLineArgs().Skip(1)))
             return 0;
 
         if (!cmd.Quiet && !WindowsUninstallPrompt.Confirm(state.DisplayName))
@@ -84,12 +92,16 @@ internal static class UninstallRunner
         return null;
     }
 
-    private static bool ShouldRelaunchElevated(InstallStateDocument state)
+    private static bool ShouldRelaunchElevated(InstallStateDocument state, string installRoot)
     {
+        // install-state.json is user-writable, so it cannot by itself authorize elevation.
+        // Elevation is only requested when at least one claimed system service is verified
+        // to have its binary inside this install root (i.e. it was really installed by us).
         return OperatingSystem.IsWindows()
                && state.RegisteredServices?.Any(s =>
                    s.Platform.Equals("windows", StringComparison.OrdinalIgnoreCase)
-                   && s.Scope.Equals("system", StringComparison.OrdinalIgnoreCase)) == true
+                   && s.Scope.Equals("system", StringComparison.OrdinalIgnoreCase)
+                   && WindowsServiceOwnership.IsOwnedByInstallRoot(s.Name, installRoot)) == true
                && !IsWindowsAdministrator();
     }
 

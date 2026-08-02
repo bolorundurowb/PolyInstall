@@ -28,4 +28,43 @@ public class WindowsElevationTests
             isWindows: true,
             isAdministrator: true).Must().BeFalse();
     }
+
+    [Fact]
+    public void ShouldRelaunchElevated_WhenStateClaimsUnverifiableSystemService_ReturnsFalse()
+    {
+        if (OperatingSystem.IsWindows())
+            return; // Ownership verification only runs on Windows; elsewhere it always fails closed.
+
+        var manifest = TestHelpers.Manifest("SampleApp", "2.0.0", installScope: "user");
+        var installRoot = TestHelpers.NewTempDir();
+        try
+        {
+            var state = TestHelpers.StateFor(manifest, installRoot, "1.0.0");
+            state.RegisteredServices =
+            [
+                new RegisteredServiceInfo
+                {
+                    Name = "Spooler",
+                    Scope = "system",
+                    Platform = "windows",
+                },
+            ];
+            var existing = new ExistingInstallInfo
+            {
+                InstallLocation = installRoot,
+                InstallScope = "user",
+                State = state,
+            };
+
+            WindowsElevation.ShouldRelaunchElevated(
+                manifest,
+                existing,
+                isWindows: true,
+                isAdministrator: false).Must().BeFalse();
+        }
+        finally
+        {
+            TestHelpers.TryDeleteDirectory(installRoot);
+        }
+    }
 }

@@ -99,7 +99,7 @@ public static class PayloadArchive
         using var input = new MemoryStream(compressed);
         using var brotli = new BrotliStream(input, CompressionMode.Decompress);
         using var output = new MemoryStream();
-        CopyToWithCancellation(brotli, output, ct);
+        InstallPayloadLimits.CopyWithLimit(brotli, output, InstallPayloadLimits.MaxDecompressedPayloadBytes, ct);
         return output.ToArray();
     }
 
@@ -117,7 +117,7 @@ public static class PayloadArchive
         using var input = new MemoryStream(compressed);
         using var gz = new GZipStream(input, CompressionMode.Decompress);
         using var output = new MemoryStream();
-        CopyToWithCancellation(gz, output, ct);
+        InstallPayloadLimits.CopyWithLimit(gz, output, InstallPayloadLimits.MaxDecompressedPayloadBytes, ct);
         return output.ToArray();
     }
 

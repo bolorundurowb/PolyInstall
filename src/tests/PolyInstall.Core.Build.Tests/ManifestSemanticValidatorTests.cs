@@ -1113,6 +1113,58 @@ public class ManifestSemanticValidatorTests
         ManifestSemanticValidator.Validate(manifest);
     }
 
+    [Fact]
+    public void Validate_ShortcutNameWithTraversal_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall =
+            [
+                new InstallTask
+                {
+                    Action = "create_shortcut",
+                    Require = "os.isWindows",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        ["name"] = "../../Startup/evil",
+                        ["location"] = "start_menu",
+                        ["target_path"] = "{AppDir}/app.exe",
+                    },
+                },
+            ],
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Must().Contain("create_shortcut 'name' must be a simple file name");
+    }
+
+    [Fact]
+    public void Validate_DesktopEntryFileNameWithTraversal_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall =
+            [
+                new InstallTask
+                {
+                    Action = "create_desktop_entry",
+                    Require = "os.isLinux",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        ["file_name"] = "../autostart/evil",
+                        ["name"] = "App",
+                        ["exec"] = "{AppDir}/app",
+                    },
+                },
+            ],
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Must().Contain("create_desktop_entry 'file_name' must be a simple file name");
+    }
+
     private static InstallManifest CreateBaseManifest(string installScope)
     {
         return new InstallManifest

@@ -56,14 +56,39 @@ internal sealed class MacOsLaunchdServiceManagerPal(ICommandRunner? runner = nul
 
     public void Remove(RegisteredServiceInfo service)
     {
+        // Install state is user-writable; never let it aim privileged actions at plists that
+        // were not installed from this install root.
+        if (!Manifest.RuntimeManifestGuard.IsValidServiceName(service.Name))
+            return;
+
         var label = service.Name;
-        var plistPath = service.UnitPath ?? GetPlistPath(service.Scope, label);
+        // The plist path is recomputed from name+scope; the state-provided UnitPath is not trusted.
+        var plistPath = GetPlistPath(service.Scope, label);
+        if (IsSystemScope(service.Scope) && !PlistReferencesInstallRoot(plistPath))
+            return;
 
         LaunchctlBestEffort("bootout", Target(service.Scope), plistPath);
         LaunchctlBestEffort("disable", ServiceTarget(service.Scope, label));
 
         if (File.Exists(plistPath))
             File.Delete(plistPath);
+    }
+
+    private static bool PlistReferencesInstallRoot(string plistPath)
+    {
+        var installRoot = Hosting.InstallBootstrap.InstallDirectory;
+        if (string.IsNullOrWhiteSpace(installRoot) || !File.Exists(plistPath))
+            return false;
+
+        try
+        {
+            var content = File.ReadAllText(plistPath);
+            return content.Contains(Path.GetFullPath(installRoot), StringComparison.Ordinal);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     internal static string BuildPlistContent(ServiceRegistrationInfo service)

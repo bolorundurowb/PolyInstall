@@ -36,7 +36,9 @@ public static class InstallStateIo
     {
         var path = InstallStatePaths.EmbeddedManifestPath(installRoot);
         var json = File.ReadAllText(path);
-        return JsonSerializer.Deserialize(json, InstallJsonContext.Default.InstallManifest)
-               ?? throw new InvalidOperationException("Invalid embedded-manifest.json.");
+        var manifest = JsonSerializer.Deserialize(json, InstallJsonContext.Default.InstallManifest)
+                       ?? throw new InvalidOperationException("Invalid embedded-manifest.json.");
+        RuntimeManifestGuard.Validate(manifest);
+        return manifest;
     }
 }
