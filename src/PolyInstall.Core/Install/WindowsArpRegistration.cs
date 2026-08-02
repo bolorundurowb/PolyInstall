@@ -65,15 +65,25 @@ public static class WindowsArpRegistration
     }
 
     [SupportedOSPlatform("windows")]
-    public static void Unregister(InstallStateDocument state)
+    public static void Unregister(InstallStateDocument state, string? expectedProductId = null)
     {
         if (!OperatingSystem.IsWindows())
             return;
 
         try
         {
+            // The product id binds the deleted key to the manifest being uninstalled; the
+            // relative key is recomputed from it instead of trusting the (user-writable)
+            // state value RegistryUninstallKeyRelative.
+            if (expectedProductId is not null
+                && !state.ProductId.Equals(expectedProductId, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            var relativeKey = RegistryKeyRelativeForProductId(state.ProductId);
             var root = GetHive(state);
-            root.DeleteSubKeyTree(state.RegistryUninstallKeyRelative, throwOnMissingSubKey: false);
+            root.DeleteSubKeyTree(relativeKey, throwOnMissingSubKey: false);
         }
         catch
         {

@@ -4,6 +4,7 @@ internal static class PosixPathPal
 {
     public static void AddToPath(string directory, string scope)
     {
+        ValidateDirectory(directory);
         if (scope.Equals("machine", StringComparison.OrdinalIgnoreCase))
         {
             if (OperatingSystem.IsMacOS())
@@ -21,14 +22,14 @@ internal static class PosixPathPal
                     Directory.CreateDirectory(profilePath);
                 var fileName = SanitizeFileName(directory) + ".sh";
                 File.WriteAllText(Path.Combine(profilePath, fileName),
-                    $"export PATH=\"$PATH:{directory}\"\n");
+                    BuildPathExportEntry(directory) + "\n");
             }
         }
         else
         {
             var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             var profileFile = FindShellProfile(home);
-            var entry = $"export PATH=\"$PATH:{directory}\"";
+            var entry = BuildPathExportEntry(directory);
             if (File.Exists(profileFile) && File.ReadAllText(profileFile).Contains(entry, StringComparison.Ordinal))
                 return;
             File.AppendAllText(profileFile, $"\n{entry}\n");
@@ -62,12 +63,47 @@ internal static class PosixPathPal
             var profileFile = FindShellProfile(home);
             if (!File.Exists(profileFile))
                 return;
-            var entry = $"export PATH=\"$PATH:{directory}\"";
+            string entry;
+            try
+            {
+                entry = BuildPathExportEntry(directory);
+            }
+            catch (ArgumentException)
+            {
+                // Nothing safe to remove: an invalid directory can never have produced a
+                // well-formed entry written by this installer.
+                return;
+            }
             var lines = File.ReadAllLines(profileFile)
                 .Where(l => !l.Trim().Equals(entry, StringComparison.Ordinal))
                 .ToArray();
             File.WriteAllLines(profileFile, lines);
         }
+    }
+
+    /// <summary>
+    /// Builds the shell line appended to POSIX shell profiles. The directory is emitted as a
+    /// single-quoted literal concatenated with the double-quoted <c>$PATH</c> reference, so
+    /// shell metacharacters in install directories (<c>"</c>, <c>$</c>, backticks, <c>;</c>,
+    /// <c>|</c>, <c>&amp;</c>, <c>!</c>, …) cannot break out and inject commands.
+    /// </summary>
+    internal static string BuildPathExportEntry(string directory)
+    {
+        ValidateDirectory(directory);
+        return "export PATH=\"$PATH\":" + ShellSingleQuote(directory);
+    }
+
+    internal static string ShellSingleQuote(string value) =>
+        "'" + value.Replace("'", "'\\''", StringComparison.Ordinal) + "'";
+
+    private static void ValidateDirectory(string directory)
+    {
+        if (string.IsNullOrWhiteSpace(directory))
+            throw new ArgumentException("PATH directory must be non-empty.", nameof(directory));
+        if (directory.Any(c => c is '\n' or '\r' or '\0'))
+            throw new ArgumentException(
+                "PATH directory contains unsupported control characters and cannot be safely added to PATH.",
+                nameof(directory));
     }
 
     public static string FindShellProfile(string home)

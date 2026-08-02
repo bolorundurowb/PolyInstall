@@ -15,6 +15,7 @@ public static class InstallCoordinator
         var dest = InstallPathResolver.Expand(options.Destination.Trim(), options.Pal);
         if (string.IsNullOrWhiteSpace(dest))
             throw new InvalidOperationException("No install directory.");
+        InstallPathPolicy.EnsureSafeInstallRoot(dest);
 
         var existing = ResolveExistingInstall(options.Manifest, dest, options.ExistingInstall);
         var mode = ResolveMode(options.Manifest, existing);

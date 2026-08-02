@@ -43,6 +43,18 @@ internal sealed class WindowsServiceManagerPal(ICommandRunner? runner = null) : 
 
     public void Remove(RegisteredServiceInfo service)
     {
+        // Install state is user-writable; never let it aim elevated sc.exe calls at services
+        // that were not installed from this install root.
+        if (!Manifest.RuntimeManifestGuard.IsValidServiceName(service.Name))
+            return;
+
+        var installRoot = Hosting.InstallBootstrap.InstallDirectory;
+        if (string.IsNullOrWhiteSpace(installRoot)
+            || !WindowsServiceOwnership.IsOwnedByInstallRoot(service.Name, installRoot))
+        {
+            return;
+        }
+
         RunBestEffort("stop", service.Name);
         RunBestEffort("config", service.Name, "start=", "disabled");
         RunBestEffort("delete", service.Name);

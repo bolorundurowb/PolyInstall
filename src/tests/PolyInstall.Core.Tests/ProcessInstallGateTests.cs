@@ -108,6 +108,6 @@ public class ProcessInstallGateTests
 
         public IReadOnlyList<RunningProcessInfo> FindProcessesUnderDirectory(string directory) => afterTerminate;
 
-        public void Terminate(IEnumerable<int> processIds) => Terminated.AddRange(processIds);
+        public void Terminate(IEnumerable<int> processIds, string mustBeUnderDirectory) => Terminated.AddRange(processIds);
     }
 }

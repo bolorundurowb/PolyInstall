@@ -40,15 +40,41 @@ internal sealed class LinuxSystemdServiceManagerPal(ICommandRunner? runner = nul
 
     public void Remove(RegisteredServiceInfo service)
     {
+        // Install state is user-writable; never let it aim privileged actions at units that
+        // were not installed from this install root.
+        if (!Manifest.RuntimeManifestGuard.IsValidServiceName(service.Name))
+            return;
+
         var unitName = NormalizeUnitName(service.Name);
+        // The unit path is recomputed from name+scope; the state-provided UnitPath is not trusted.
+        var unitPath = GetUnitPath(service.Scope, unitName);
+        if (IsSystemScope(service.Scope) && !UnitFileReferencesInstallRoot(unitPath))
+            return;
+
         SystemctlBestEffort(service.Scope, "stop", unitName);
         SystemctlBestEffort(service.Scope, "disable", unitName);
 
-        var unitPath = service.UnitPath ?? GetUnitPath(service.Scope, unitName);
         if (File.Exists(unitPath))
             File.Delete(unitPath);
 
         SystemctlBestEffort(service.Scope, "daemon-reload");
+    }
+
+    private static bool UnitFileReferencesInstallRoot(string unitPath)
+    {
+        var installRoot = Hosting.InstallBootstrap.InstallDirectory;
+        if (string.IsNullOrWhiteSpace(installRoot) || !File.Exists(unitPath))
+            return false;
+
+        try
+        {
+            var content = File.ReadAllText(unitPath);
+            return content.Contains(Path.GetFullPath(installRoot), StringComparison.Ordinal);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     internal static string BuildUnitContent(ServiceRegistrationInfo service)

@@ -77,19 +77,42 @@ public partial class MainWindow : Window
 
     private static Bitmap? TryLoadBitmapFromManifestPath(string? configuredPath)
     {
-        if (string.IsNullOrWhiteSpace(configuredPath))
+        var full = ResolvePackagedFilePath(configuredPath);
+        if (full is null)
             return null;
 
         try
         {
-            var full = Path.IsPathRooted(configuredPath)
-                ? configuredPath
-                : Path.Combine(InstallBootstrap.ExtractRoot, configuredPath.Replace('/', Path.DirectorySeparatorChar));
             if (!File.Exists(full))
                 return null;
             if (Path.GetExtension(full).Equals(".svg", StringComparison.OrdinalIgnoreCase))
                 return TryLoadSvgBitmapFromFile(full);
             return TryLoadBitmapFromFile(full);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Resolves a manifest-configured file (logo, EULA) to a path strictly under the payload
+    /// extract root. Rooted paths and traversal outside the payload are rejected so a
+    /// manifest cannot make the wizard read arbitrary files from the user's machine.
+    /// </summary>
+    private static string? ResolvePackagedFilePath(string? configuredPath)
+    {
+        if (string.IsNullOrWhiteSpace(configuredPath) || Path.IsPathRooted(configuredPath))
+            return null;
+
+        try
+        {
+            var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(InstallBootstrap.ExtractRoot));
+            var full = Path.GetFullPath(Path.Combine(root, configuredPath.Replace('/', Path.DirectorySeparatorChar)));
+            var comparison = OperatingSystem.IsWindows()
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal;
+            return full.StartsWith(root + Path.DirectorySeparatorChar, comparison) ? full : null;
         }
         catch
         {
@@ -363,12 +386,9 @@ public partial class MainWindow : Window
 
     private Control BuildEula(WizardStep step)
     {
-        var path = step.Source;
-        if (string.IsNullOrWhiteSpace(path))
+        var full = ResolvePackagedFilePath(step.Source);
+        if (full is null)
             return new TextBlock { Text = "No EULA source configured." };
-        var full = Path.IsPathRooted(path)
-            ? path
-            : Path.Combine(InstallBootstrap.ExtractRoot, path.Replace('/', Path.DirectorySeparatorChar));
         if (!File.Exists(full))
             return new TextBlock { Text = $"EULA file not found: {full}" };
         return new ScrollViewer
@@ -938,7 +958,7 @@ public partial class MainWindow : Window
                 return;
             var state = InstallStateIo.ReadState(installDirectory);
 #pragma warning disable CA1416 // Guarded by OperatingSystem.IsWindows()
-            WindowsArpRegistration.Unregister(state);
+            WindowsArpRegistration.Unregister(state, ProductIdHelper.StableProductGuidString(InstallBootstrap.Manifest.Metadata));
 #pragma warning restore CA1416
         }
         catch

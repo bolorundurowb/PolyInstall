@@ -25,6 +25,7 @@ public static class InstallBundleReader
         stream.ReadExactly(payload);
         var manifest = System.Text.Json.JsonSerializer.Deserialize(json, InstallJsonContext.Default.InstallManifest)
                        ?? throw new InvalidOperationException("Invalid embedded manifest JSON.");
+        RuntimeManifestGuard.Validate(manifest);
         return (manifest, payload);
     }
 
@@ -39,8 +40,10 @@ public static class InstallBundleReader
         var (manifestLen, payloadLen, footerStart) = InstallPayloadTrailer.ReadFooterWithOffset(stream);
         var (manifestStart, _) = InstallPayloadTrailer.GetBlobOffsetsFromFooter(footerStart, manifestLen, payloadLen);
         var json = InstallPayloadTrailer.ReadManifestUtf8(stream, manifestStart, manifestLen);
-        return System.Text.Json.JsonSerializer.Deserialize(json, InstallJsonContext.Default.InstallManifest)
-               ?? throw new InvalidOperationException("Invalid embedded manifest JSON.");
+        var manifest = System.Text.Json.JsonSerializer.Deserialize(json, InstallJsonContext.Default.InstallManifest)
+                       ?? throw new InvalidOperationException("Invalid embedded manifest JSON.");
+        RuntimeManifestGuard.Validate(manifest);
+        return manifest;
     }
 
     public static byte[] DecompressPayload(InstallManifest manifest, byte[] compressed)
@@ -64,7 +67,7 @@ public static class InstallBundleReader
         using var limitedPayload = new LimitedReadStream(fs, payloadLen);
         using var decompressed = CreateDecompressionStream(limitedPayload, PayloadArchive.ParseCompression(manifest.Build.Compression));
         using var output = File.Create(outputZipPath);
-        CopyToWithCancellation(decompressed, output, ct);
+        InstallPayloadLimits.CopyWithLimit(decompressed, output, InstallPayloadLimits.MaxDecompressedPayloadBytes, ct);
     }
 
     private static Stream CreateDecompressionStream(Stream input, PayloadCompression compression)
@@ -75,17 +78,6 @@ public static class InstallBundleReader
             PayloadCompression.GZip => new GZipStream(input, CompressionMode.Decompress, leaveOpen: false),
             _ => throw new ArgumentOutOfRangeException(nameof(compression)),
         };
-    }
-
-    private static void CopyToWithCancellation(Stream source, Stream destination, CancellationToken ct)
-    {
-        var buffer = new byte[1024 * 128];
-        int read;
-        while ((read = source.Read(buffer, 0, buffer.Length)) > 0)
-        {
-            ct.ThrowIfCancellationRequested();
-            destination.Write(buffer, 0, read);
-        }
     }
 
     private sealed class LimitedReadStream(Stream inner, long length) : Stream
