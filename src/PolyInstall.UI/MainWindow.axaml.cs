@@ -16,6 +16,9 @@ using Svg.Skia;
 
 namespace PolyInstall.UI;
 
+/// <summary>
+/// The main window of the installer wizard, managing navigation between steps and the installation process.
+/// </summary>
 public partial class MainWindow : Window
 {
     private const string DefaultBrandLogoSvgAvares = "avares://PolyInstall.UI/Assets/polyinstall-logo.svg";
@@ -38,6 +41,9 @@ public partial class MainWindow : Window
     private string? _activeInstallDirectory;
     private InstallMode _activeInstallMode = InstallMode.Install;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MainWindow"/> class.
+    /// </summary>
     public MainWindow()
     {
         InitializeComponent();

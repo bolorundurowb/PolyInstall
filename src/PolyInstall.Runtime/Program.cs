@@ -14,6 +14,9 @@ namespace PolyInstall.Runtime;
 
 internal static class Program
 {
+    /// <summary>
+    /// Entry point for the self-extracting installer.
+    /// </summary>
     [STAThread]
     private static void Main(string[] args)
     {
@@ -72,6 +75,9 @@ internal static class Program
         }
     }
 
+    /// <summary>
+    /// Attempts to re-launch the process with elevated privileges if required for machine-wide installation on Windows.
+    /// </summary>
     private static bool RelaunchElevatedForMachineInstall(
         string exe,
         string[] args,
@@ -105,6 +111,9 @@ internal static class Program
         return true;
     }
 
+    /// <summary>
+    /// Checks if the current process is running with Windows Administrator privileges.
+    /// </summary>
     [SupportedOSPlatform("windows")]
     private static bool IsWindowsAdministrator()
     {

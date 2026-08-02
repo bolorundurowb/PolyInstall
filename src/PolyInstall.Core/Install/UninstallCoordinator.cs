@@ -6,11 +6,20 @@ using PolyInstall.Pal;
 
 namespace PolyInstall.Install;
 
+/// <summary>
+/// Orchestrates the uninstallation process, including running tasks, removing service registrations,
+/// deleting files, and cleaning up the installation directory.
+/// </summary>
 public static class UninstallCoordinator
 {
     /// <summary>
-    /// Runs uninstall: tasks, ARP removal, file deletion, then schedules removal of the install root (including this process when it lives under the root).
+    /// Runs the uninstallation process.
     /// </summary>
+    /// <param name="state">The current installation state.</param>
+    /// <param name="manifest">The installation manifest.</param>
+    /// <param name="pal">The platform abstraction layer.</param>
+    /// <param name="runningExePath">The path to the currently running executable (to avoid deleting it while running).</param>
+    /// <param name="expectedInstallRoot">Optional expected installation root path for validation.</param>
     public static void Run(
         InstallStateDocument state,
         InstallManifest manifest,

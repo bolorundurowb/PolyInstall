@@ -8,10 +8,23 @@ namespace PolyInstall.Payload;
 /// </summary>
 public static class InstallPayloadTrailer
 {
+    /// <summary>
+    /// The size of the footer in bytes.
+    /// </summary>
     public const int FooterSize = 20;
     private const int ScanChunkSize = 64 * 1024;
+
+    /// <summary>
+    /// The magic bytes identifying a PolyInstall bundle.
+    /// </summary>
     public static ReadOnlySpan<byte> Magic => "POLYIN01"u8;
 
+    /// <summary>
+    /// Writes the payload footer to the specified stream.
+    /// </summary>
+    /// <param name="stream">The stream to write to.</param>
+    /// <param name="manifestLength">The length of the manifest in bytes.</param>
+    /// <param name="payloadLength">The length of the compressed payload in bytes.</param>
     public static void WriteFooter(Stream stream, int manifestLength, long payloadLength)
     {
         Span<byte> footer = stackalloc byte[FooterSize];
@@ -119,6 +132,14 @@ public static class InstallPayloadTrailer
         return GetBlobOffsetsFromFooter(footerStart, manifestLength, payloadLength);
     }
 
+    /// <summary>
+    /// Calculates the absolute stream offsets of manifest and payload blobs from the footer location.
+    /// </summary>
+    /// <param name="footerStart">The absolute position where the footer starts.</param>
+    /// <param name="manifestLength">The length of the manifest.</param>
+    /// <param name="payloadLength">The length of the payload.</param>
+    /// <returns>A tuple containing the manifest start and payload start offsets.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the trailer lengths are invalid.</exception>
     public static (long ManifestStart, long PayloadStart) GetBlobOffsetsFromFooter(
         long footerStart,
         int manifestLength,
@@ -131,6 +152,14 @@ public static class InstallPayloadTrailer
         return (manifestStart, payloadStart);
     }
 
+    /// <summary>
+    /// Reads the manifest from the stream and decodes it as UTF-8.
+    /// </summary>
+    /// <param name="stream">The stream to read from.</param>
+    /// <param name="manifestStart">The absolute start offset of the manifest.</param>
+    /// <param name="manifestLength">The length of the manifest in bytes.</param>
+    /// <returns>The decoded manifest string.</returns>
+    /// <exception cref="EndOfStreamException">Thrown if the end of the stream is reached unexpectedly.</exception>
     public static string ReadManifestUtf8(Stream stream, long manifestStart, int manifestLength)
     {
         stream.Seek(manifestStart, SeekOrigin.Begin);

@@ -4,6 +4,9 @@ using YamlDotNet.Serialization.NamingConventions;
 
 namespace PolyInstall.Core.Build.Manifest;
 
+/// <summary>
+/// Provides methods to parse YAML manifests into <see cref="InstallManifest"/> objects.
+/// </summary>
 public static class ManifestYaml
 {
     private static readonly IDeserializer Deserializer = new DeserializerBuilder()
@@ -20,6 +23,9 @@ public static class ManifestYaml
         return DtoToManifest(intermediate);
     }
 
+    /// <summary>
+    /// Converts a <see cref="YamlManifestDto"/> to an <see cref="InstallManifest"/>.
+    /// </summary>
     private static InstallManifest DtoToManifest(YamlManifestDto dto)
     {
         var m = new InstallManifest

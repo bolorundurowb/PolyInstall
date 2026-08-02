@@ -4,14 +4,27 @@ using InstallJsonContext = PolyInstall.Manifest.InstallJsonContext;
 
 namespace PolyInstall.Payload;
 
+/// <summary>
+/// Provides methods for reading the installation manifest and payload from a bundle file or stream.
+/// </summary>
 public static class InstallBundleReader
 {
+    /// <summary>
+    /// Reads the manifest and compressed payload from a seekable file.
+    /// </summary>
+    /// <param name="filePath">The path to the bundle file.</param>
+    /// <returns>A tuple containing the deserialized <see cref="InstallManifest"/> and the compressed payload bytes.</returns>
     public static (InstallManifest Manifest, byte[] CompressedPayload) ReadFromSeekableFile(string filePath)
     {
         using var fs = File.OpenRead(filePath);
         return ReadFromStream(fs);
     }
 
+    /// <summary>
+    /// Reads the manifest and compressed payload from a stream.
+    /// </summary>
+    /// <param name="stream">The seekable stream containing the bundle.</param>
+    /// <returns>A tuple containing the deserialized <see cref="InstallManifest"/> and the compressed payload bytes.</returns>
     public static (InstallManifest Manifest, byte[] CompressedPayload) ReadFromStream(Stream stream)
     {
         var (manifestLen, payloadLen, footerStart) = InstallPayloadTrailer.ReadFooterWithOffset(stream);
@@ -29,12 +42,22 @@ public static class InstallBundleReader
         return (manifest, payload);
     }
 
+    /// <summary>
+    /// Reads only the manifest from a seekable bundle file.
+    /// </summary>
+    /// <param name="filePath">The path to the bundle file.</param>
+    /// <returns>The deserialized <see cref="InstallManifest"/>.</returns>
     public static InstallManifest ReadManifestFromSeekableFile(string filePath)
     {
         using var fs = File.OpenRead(filePath);
         return ReadManifestFromStream(fs);
     }
 
+    /// <summary>
+    /// Reads only the manifest from a seekable stream.
+    /// </summary>
+    /// <param name="stream">The seekable stream containing the bundle.</param>
+    /// <returns>The deserialized <see cref="InstallManifest"/>.</returns>
     public static InstallManifest ReadManifestFromStream(Stream stream)
     {
         var (manifestLen, payloadLen, footerStart) = InstallPayloadTrailer.ReadFooterWithOffset(stream);
@@ -46,12 +69,25 @@ public static class InstallBundleReader
         return manifest;
     }
 
+    /// <summary>
+    /// Decompresses the compressed payload bytes.
+    /// </summary>
+    /// <param name="manifest">The installation manifest defining the compression type.</param>
+    /// <param name="compressed">The compressed payload bytes.</param>
+    /// <returns>The decompressed payload bytes.</returns>
     public static byte[] DecompressPayload(InstallManifest manifest, byte[] compressed)
     {
         var kind = PayloadArchive.ParseCompression(manifest.Build.Compression);
         return PayloadArchive.Decompress(compressed, kind);
     }
 
+    /// <summary>
+    /// Decompresses the payload from a bundle file directly to a ZIP file on disk.
+    /// </summary>
+    /// <param name="bundlePath">The path to the bundle file.</param>
+    /// <param name="manifest">The installation manifest.</param>
+    /// <param name="outputZipPath">The path where the decompressed ZIP should be written.</param>
+    /// <param name="ct">A cancellation token.</param>
     public static void DecompressPayloadToFile(
         string bundlePath,
         InstallManifest manifest,

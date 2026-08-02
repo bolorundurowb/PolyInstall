@@ -8,8 +8,16 @@ using PolyInstall.Pal;
 
 namespace PolyInstall.Uninstall;
 
+/// <summary>
+/// Orchestrates the uninstallation process on Windows.
+/// </summary>
 internal static class UninstallRunner
 {
+    /// <summary>
+    /// Executes the uninstallation process.
+    /// </summary>
+    /// <param name="cmd">The parsed command-line arguments.</param>
+    /// <returns>The exit code (0 for success, 1 for error).</returns>
     public static int Run(UninstallCommandLine cmd)
     {
         if (!OperatingSystem.IsWindows())

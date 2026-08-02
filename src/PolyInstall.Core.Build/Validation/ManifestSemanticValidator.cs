@@ -16,6 +16,11 @@ public static class ManifestSemanticValidator
         "windows-x64", "windows-arm64", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64",
     };
 
+    /// <summary>
+    /// Validates the manifest and throws an <see cref="InvalidOperationException"/> if semantic errors are found.
+    /// </summary>
+    /// <param name="manifest">The manifest to validate.</param>
+    /// <exception cref="InvalidOperationException">Thrown if validation fails.</exception>
     public static void Validate(InstallManifest manifest)
     {
         var result = ValidateResult(manifest);

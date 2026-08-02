@@ -4,6 +4,9 @@ using PolyInstall.Manifest;
 
 namespace PolyInstall.Cli.Build;
 
+/// <summary>
+/// Provides methods to package Linux applications as AppImage.
+/// </summary>
 public static class AppImagePackager
 {
     private static readonly HttpClient Http = new();
@@ -15,6 +18,18 @@ public static class AppImagePackager
         ["linux-arm64"] = "https://github.com/AppImage/AppImageKit/releases/download/12/runtime-aarch64",
     };
 
+    /// <summary>
+    /// Creates an AppImage for the specified bundle.
+    /// </summary>
+    /// <param name="bundleElfPath">The path to the main application executable ELF.</param>
+    /// <param name="manifest">The installation manifest.</param>
+    /// <param name="manifestTargetToken">The target RID token (e.g., "linux-x64").</param>
+    /// <param name="safeBaseName">A safe base name for the output file.</param>
+    /// <param name="outputDirectory">The directory where the AppImage will be saved.</param>
+    /// <param name="workspaceBaseDirectory">The base directory for resolving relative paths.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>The path to the created AppImage.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if not running on Linux or if mksquashfs is missing.</exception>
     public static async Task<string> CreateAsync(
         string bundleElfPath,
         InstallManifest manifest,
