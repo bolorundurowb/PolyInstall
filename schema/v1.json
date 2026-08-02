@@ -5,16 +5,32 @@
   "additionalProperties": false,
   "properties": {
     "metadata": {
-      "$ref": "#/definitions/ManifestMetadata"
+      "description": "Core metadata for the application, such as name and version.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/ManifestMetadata"
+        }
+      ]
     },
     "build": {
-      "$ref": "#/definitions/BuildConfiguration"
+      "description": "Build-time configuration settings.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/BuildConfiguration"
+        }
+      ]
     },
     "ui": {
-      "$ref": "#/definitions/UiConfiguration"
+      "description": "User interface configuration for the installer.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/UiConfiguration"
+        }
+      ]
     },
     "files": {
       "type": "array",
+      "description": "Collection of file entries to be installed.",
       "items": {
         "$ref": "#/definitions/FilesEntry"
       }
@@ -24,6 +40,7 @@
         "array",
         "null"
       ],
+      "description": "Optional list of file associations to be registered on the target system.",
       "items": {
         "$ref": "#/definitions/FileAssociation"
       }
@@ -33,11 +50,13 @@
         "array",
         "null"
       ],
+      "description": "Optional list of services to be registered and managed.",
       "items": {
         "$ref": "#/definitions/ServiceDefinition"
       }
     },
     "tasks": {
+      "description": "Optional configuration for pre-install and post-install tasks.",
       "oneOf": [
         {
           "type": "null"
@@ -52,6 +71,7 @@
         "array",
         "null"
       ],
+      "description": "Optional list of features that can be selectively installed.",
       "items": {
         "$ref": "#/definitions/FeatureDefinition"
       }
@@ -73,22 +93,26 @@
       "additionalProperties": false,
       "properties": {
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "Display name of the application."
         },
         "version": {
-          "type": "string"
+          "type": "string",
+          "description": "Version of the application."
         },
         "id": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Unique identifier for the application."
         },
         "publisher": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Name of the application publisher."
         }
       }
     },
@@ -97,19 +121,23 @@
       "additionalProperties": false,
       "properties": {
         "output_dir": {
-          "type": "string"
+          "type": "string",
+          "description": "Directory where the built installer will be placed."
         },
         "output_name": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Base name for the output installer file."
         },
         "compression": {
-          "type": "string"
+          "type": "string",
+          "description": "Compression algorithm used for the payload (e.g., \u0027brotli\u0027, \u0027gzip\u0027)."
         },
         "targets": {
           "type": "array",
+          "description": "List of target platforms to build for.",
           "items": {
             "type": "string"
           }
@@ -118,15 +146,18 @@
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Specific target platform for the installer."
         },
         "stub_path": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Path to the runtime stub executable."
         },
         "signing": {
+          "description": "Signing options for the installer.",
           "oneOf": [
             {
               "type": "null"
@@ -137,6 +168,7 @@
           ]
         },
         "windows": {
+          "description": "Windows-specific build options.",
           "oneOf": [
             {
               "type": "null"
@@ -147,6 +179,7 @@
           ]
         },
         "linux": {
+          "description": "Linux-specific build options.",
           "oneOf": [
             {
               "type": "null"
@@ -157,6 +190,7 @@
           ]
         },
         "macos": {
+          "description": "macOS-specific build options.",
           "oneOf": [
             {
               "type": "null"
@@ -173,6 +207,7 @@
       "additionalProperties": false,
       "properties": {
         "windows": {
+          "description": "Windows-specific signing options.",
           "oneOf": [
             {
               "type": "null"
@@ -183,6 +218,7 @@
           ]
         },
         "linux": {
+          "description": "Linux-specific signing options.",
           "oneOf": [
             {
               "type": "null"
@@ -193,6 +229,7 @@
           ]
         },
         "macos": {
+          "description": "macOS-specific signing options.",
           "oneOf": [
             {
               "type": "null"
@@ -212,61 +249,72 @@
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Optional path to signtool.exe. Defaults to resolving signtool from PATH."
         },
         "certificate_path": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Path to a certificate file, commonly a PFX, resolved after environment substitution."
         },
         "certificate_thumbprint": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Certificate SHA-1 thumbprint in the Windows certificate store."
         },
         "certificate_subject": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Certificate subject name in the Windows certificate store."
         },
         "store_name": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Certificate store name used with store-based signing, for example \u0027My\u0027."
         },
         "store_location": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Certificate store location: current_user or local_machine."
         },
         "certificate_password_env": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Name of an environment variable containing the certificate password."
         },
         "certificate_password": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Plaintext passwords are not supported; use certificate_password_env."
         },
         "timestamp_url": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "The timestamp server URL."
         },
         "file_digest_algorithm": {
-          "type": "string"
+          "type": "string",
+          "description": "The digest algorithm to use for the file."
         },
         "timestamp_digest_algorithm": {
-          "type": "string"
+          "type": "string",
+          "description": "The digest algorithm to use for the timestamp."
         }
       }
     },
@@ -282,43 +330,51 @@
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Optional path to codesign. Defaults to resolving codesign from PATH."
         },
         "xcrun_path": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Optional path to xcrun. Defaults to resolving xcrun from PATH."
         },
         "identity": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Developer ID or other codesign identity."
         },
         "keychain": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Optional keychain path or name to pass to codesign."
         },
         "timestamp": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Whether to include a secure timestamp."
         },
         "options": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Optional codesign flags."
         },
         "notarization_profile": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Optional notarytool keychain profile. Requires a DMG package target."
         },
         "staple": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Whether to staple the notarization ticket to the application."
         }
       }
     },
@@ -327,10 +383,12 @@
       "additionalProperties": false,
       "properties": {
         "install_scope": {
-          "type": "string"
+          "type": "string",
+          "description": "Installation scope: user (HKCU) or machine (HKLM)."
         },
         "register_arp": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Whether to register the application in Add/Remove Programs (Windows only)."
         }
       }
     },
@@ -339,7 +397,8 @@
       "additionalProperties": false,
       "properties": {
         "package": {
-          "type": "string"
+          "type": "string",
+          "description": "Package type: none (raw ELF and bundle) or appimage."
         }
       }
     },
@@ -348,7 +407,8 @@
       "additionalProperties": false,
       "properties": {
         "package": {
-          "type": "string"
+          "type": "string",
+          "description": "Package type: none (raw Mach-O and bundle) or dmg."
         }
       }
     },
@@ -357,25 +417,29 @@
       "additionalProperties": false,
       "properties": {
         "theme": {
-          "type": "string"
+          "type": "string",
+          "description": "Theme for the installer UI (e.g., \u0027system\u0027, \u0027light\u0027, \u0027dark\u0027)."
         },
         "logo_path": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Path to the logo image file, relative to the payload."
         },
         "assets": {
           "type": [
             "array",
             "null"
           ],
+          "description": "List of UI assets (e.g., license files, images).",
           "items": {
             "$ref": "#/definitions/UiAssetEntry"
           }
         },
         "wizard_steps": {
           "type": "array",
+          "description": "Sequence of steps in the installation wizard.",
           "items": {
             "$ref": "#/definitions/WizardStep"
           }
@@ -387,10 +451,12 @@
       "additionalProperties": false,
       "properties": {
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "Identifier for the asset."
         },
         "path": {
-          "type": "string"
+          "type": "string",
+          "description": "Path to the asset file, relative to the payload."
         }
       }
     },
@@ -399,30 +465,33 @@
       "additionalProperties": false,
       "properties": {
         "type": {
-          "type": "string"
+          "type": "string",
+          "description": "Type of the wizard step (e.g., \u0027welcome\u0027, \u0027license\u0027, \u0027features\u0027, \u0027install\u0027)."
         },
         "title": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Title shown at the top of the wizard step."
         },
         "source": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Source content for the step (e.g., an asset ID for a license step)."
         },
         "default_path": {
           "type": [
             "null",
             "string"
-          ]
+          ],
+          "description": "Default path for path selection steps."
         },
         "show_logs": {
           "type": "boolean",
-          "default": true,
-          "description": "Whether the progress step displays its detailed install log."
+          "description": "Whether to show logs during the progress step. Defaults to true."
         }
       }
     },
@@ -431,10 +500,12 @@
       "additionalProperties": false,
       "properties": {
         "source_dir": {
-          "type": "string"
+          "type": "string",
+          "description": "Source directory for the files, relative to the project root."
         },
         "include": {
           "type": "array",
+          "description": "List of glob patterns to include.",
           "items": {
             "type": "string"
           }
@@ -444,6 +515,7 @@
             "array",
             "null"
           ],
+          "description": "List of glob patterns to exclude.",
           "items": {
             "type": "string"
           }
@@ -453,7 +525,7 @@
             "array",
             "null"
           ],
-          "description": "Optional list of feature ids this entry belongs to. When null or empty, the matched files are always installed (core). When set, the matched files are only installed if at least one referenced feature is selected.",
+          "description": "Optional list of feature identifiers this entry belongs to. When null or empty, the matched files are always installed (core). When set, the matched files are only installed if at least one referenced feature is selected.",
           "items": {
             "type": "string"
           }
@@ -466,7 +538,7 @@
       "properties": {
         "extension": {
           "type": "string",
-          "description": "The file extension, including the leading dot (e.g., \u0027.oef\u0027)."
+          "description": "The file extension, including the leading dot (e.g., \u0027.txt\u0027)."
         },
         "description": {
           "type": "string",
@@ -477,39 +549,39 @@
             "null",
             "string"
           ],
-          "description": "Optional: The ProgID for the file association (e.g., \u0027MyApp.oef.1\u0027). If omitted, one will be generated based on the application name and extension."
+          "description": "Optional ProgID for the file association (e.g., \u0027MyApp.oef.1\u0027). If omitted, one will be generated based on the application name and extension."
         },
         "icon": {
           "type": [
             "null",
             "string"
           ],
-          "description": "The path to the icon file for this file type, relative to the install directory."
+          "description": "The path to the icon file for this file type, relative to the installation directory."
         },
         "command": {
           "type": "string",
-          "description": "The command to execute when opening a file of this type. Use \u0027%1\u0027 as a placeholder for the file path."
+          "description": "The command to execute when opening a file of this type. Use %1 as a placeholder for the file path."
         },
         "mime_type": {
           "type": [
             "null",
             "string"
           ],
-          "description": "Optional: The MIME type for this file association (Linux only). If omitted, one will be derived from the extension (e.g., \u0027.oef\u0027 -\u003E \u0027application/x-oef\u0027)."
+          "description": "Optional MIME type for this file association (Linux only). If omitted, one will be derived from the extension."
         },
         "bundle_path": {
           "type": [
             "null",
             "string"
           ],
-          "description": "macOS only: Path to the .app bundle to register associations for."
+          "description": "Optional path to the .app bundle to register associations for (macOS only)."
         },
         "features": {
           "type": [
             "array",
             "null"
           ],
-          "description": "Optional list of feature ids that gate this association. When null or empty, the association is always registered. When set, it is only registered if at least one referenced feature is selected.",
+          "description": "Optional list of feature identifiers that gate this association. When null or empty, the association is always registered.",
           "items": {
             "type": "string"
           }
@@ -525,7 +597,7 @@
             "null",
             "string"
           ],
-          "description": "Optional OS predicate that must be true for this service to be installed. Use os.isWindows, os.isLinux, or os.isMacOS/os.isOSX to target the platform service manager."
+          "description": "Optional OS predicate that must be true for this service to be installed. Supported values: os.isWindows, os.isLinux, os.isMacOS, or os.isOSX."
         },
         "name": {
           "type": "string",
@@ -559,7 +631,7 @@
         },
         "executable": {
           "type": "string",
-          "description": "Path to the service executable. String values support PolyInstall path placeholders."
+          "description": "Path to the service executable. Supports PolyInstall path placeholders."
         },
         "arguments": {
           "type": [
@@ -576,7 +648,7 @@
             "null",
             "string"
           ],
-          "description": "Optional working directory. String values support PolyInstall path placeholders."
+          "description": "Optional working directory. Supports PolyInstall path placeholders."
         },
         "restart": {
           "type": [
@@ -590,7 +662,7 @@
             "null",
             "object"
           ],
-          "description": "Optional environment variables for service managers that support them.",
+          "description": "Optional environment variables for the service.",
           "additionalProperties": {
             "type": "string"
           }
@@ -600,7 +672,7 @@
             "array",
             "null"
           ],
-          "description": "Optional feature ids that gate this service. When null or empty, the service always applies.",
+          "description": "Optional list of feature identifiers that gate this service. When null or empty, the service is always installed.",
           "items": {
             "type": "string"
           }
@@ -616,7 +688,7 @@
             "array",
             "null"
           ],
-          "description": "Tasks that run after the user confirms the install destination, before any files are copied to disk.",
+          "description": "Tasks that run after the user confirms the installation destination, but before any files are copied to disk.",
           "items": {
             "$ref": "#/definitions/InstallTask"
           }
@@ -626,7 +698,7 @@
             "array",
             "null"
           ],
-          "description": "Tasks that run after all files have been copied to the install directory and the installation is complete.",
+          "description": "Tasks that run after all files have been copied to the installation directory and the installation is complete.",
           "items": {
             "$ref": "#/definitions/InstallTask"
           }
@@ -636,7 +708,7 @@
             "array",
             "null"
           ],
-          "description": "Tasks that run at the very start of uninstall, before the Add/Remove Programs entry is removed and before any installed files are deleted from disk. Installed files are still fully accessible here.",
+          "description": "Tasks that run at the very start of uninstallation, before files are deleted.",
           "items": {
             "$ref": "#/definitions/InstallTask"
           }
@@ -646,7 +718,7 @@
             "array",
             "null"
           ],
-          "description": "Tasks that run after pre_uninstall tasks \u2014 but STILL BEFORE files are deleted from disk and BEFORE the Add/Remove Programs entry is removed. Despite its name, post_uninstall does not execute after the installation has been cleaned up. Both pre_uninstall and post_uninstall run while installed files are still present. Use post_uninstall for tasks that must follow pre_uninstall sequentially (e.g., stopping a service before removing its config) rather than for tasks that need the install tree to be gone.",
+          "description": "Tasks that run after pre-uninstallation tasks, but still before files are deleted.",
           "items": {
             "$ref": "#/definitions/InstallTask"
           }
@@ -662,18 +734,18 @@
             "null",
             "string"
           ],
-          "description": "Optional OS predicate that must be true for this task to run. Supported values: os.isWindows/os.is_windows, os.isLinux/os.is_linux, os.isOSX/os.is_osx, os.isMacOS/os.is_macos, os.isUnix/os.is_unix (Linux or macOS). If omitted the task always runs."
+          "description": "Optional OS predicate that must be true for this task to run. Supported values: os.isWindows, os.isLinux, os.isMacOS, os.isUnix, etc."
         },
         "action": {
           "type": "string",
-          "description": "The action to perform. One of: create_shortcut, write_registry (Windows only), create_desktop_entry (Linux only), set_permissions (Linux/macOS only), add_to_path, file_association."
+          "description": "Action to perform. Supported actions: create_shortcut, write_registry, create_desktop_entry, set_permissions, add_to_path, file_association."
         },
         "parameters": {
           "type": [
             "null",
             "object"
           ],
-          "description": "Key/value map of parameters for the chosen action. Keys are snake_case strings.",
+          "description": "Key/value map of parameters for the chosen action.",
           "additionalProperties": {}
         },
         "features": {
@@ -681,7 +753,7 @@
             "array",
             "null"
           ],
-          "description": "Optional list of feature ids that gate this task. When null or empty, the task always runs (subject to require). When set, the task only runs if at least one referenced feature is selected.",
+          "description": "Optional list of feature identifiers that gate this task. When null or empty, the task always runs (subject to the Require predicate).",
           "items": {
             "type": "string"
           }
@@ -694,7 +766,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier referenced by files[], tasks[], and file_associations[] entries. Lowercase snake_case is recommended."
+          "description": "Unique identifier for the feature. This ID is referenced by files, tasks, and file associations. Lowercase snake_case is recommended."
         },
         "name": {
           "type": "string",
