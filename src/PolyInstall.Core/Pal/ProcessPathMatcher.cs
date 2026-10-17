@@ -8,7 +8,7 @@ namespace PolyInstall.Pal;
 public static class ProcessPathMatcher
 {
     // Executable and directory comparisons are case-insensitive to match the plan's
-    // "case-insensitive, normalized full paths" behavior across platforms.
+    // "case-insensitive, normalized full paths" behaviour across platforms.
     private const StringComparison Comparison = StringComparison.OrdinalIgnoreCase;
 
     /// <summary>
