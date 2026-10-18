@@ -80,7 +80,7 @@ Payload compression is **Brotli** or **GZip** (configured by `build.compression`
 |-------|--------|----------|
 | Authoring | YAML, snake_case keys | User manifest file |
 | Parse | C# `InstallManifest` and related models | `PolyInstall.Core/Manifest/` |
-| Env substitution | `${VAR}` / `${VAR:-default}` on all string values | `EnvironmentSubstitution` (CLI `build`/`validate` only) |
+| Env substitution | `${VAR}` / `${VAR:-default}` on all string values | `EnvironmentSubstitution` (`PolyInstall.Core.Build/Manifest/`; CLI `build`/`validate` only) |
 | JSON Schema validation | `schema/v1.json` | `ManifestJsonValidator` (Cli) |
 | Semantic validation | Cross-field rules beyond schema | `ManifestSemanticValidator` (Core.Build) |
 | Embedded runtime JSON | snake_case JSON in bundle | Serialized by CLI; read by stub |
