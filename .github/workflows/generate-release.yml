@@ -120,6 +120,7 @@ jobs:
             -r "${RID}" \
             --self-contained true \
             -p:PublishSingleFile=true \
+            -p:EnableCompressionInSingleFile=true \
             -p:IncludeNativeLibrariesForSelfExtract=true \
             -p:DebugType=none \
             -o "${stubs_root}/${RID}"
@@ -175,6 +176,7 @@ jobs:
             -r ${{ matrix.rid }} \
             --self-contained true \
             -p:PublishSingleFile=true \
+            -p:EnableCompressionInSingleFile=true \
             -p:IncludeNativeLibrariesForSelfExtract=true \
             -p:DebugType=none \
             -o "${out}"
