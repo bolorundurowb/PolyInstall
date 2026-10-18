@@ -11,14 +11,11 @@ using PolyInstall.Hosting;
 using PolyInstall.Install;
 using PolyInstall.Manifest;
 using PolyInstall.Pal;
-using SkiaSharp;
-using Svg.Skia;
 
 namespace PolyInstall.UI;
 
 public partial class MainWindow : Window
 {
-    private const string DefaultBrandLogoSvgAvares = "avares://PolyInstall.UI/Assets/polyinstall-logo.svg";
     private const string DefaultBrandLogoPngAvares = "avares://PolyInstall.UI/Assets/polyinstall-icon.png";
     private int _stepIndex;
     private TextBox? _destinationBox;
@@ -63,7 +60,6 @@ public partial class MainWindow : Window
     {
         var manifestPath = InstallBootstrap.Manifest.Ui.LogoPath?.Trim();
         var logo = TryLoadBitmapFromManifestPath(manifestPath)
-                   ?? TryLoadBitmapFromAvares(DefaultBrandLogoSvgAvares)
                    ?? TryLoadBitmapFromAvares(DefaultBrandLogoPngAvares);
         if (logo is null)
         {
@@ -87,8 +83,7 @@ public partial class MainWindow : Window
                 : Path.Combine(InstallBootstrap.ExtractRoot, configuredPath.Replace('/', Path.DirectorySeparatorChar));
             if (!File.Exists(full))
                 return null;
-            if (Path.GetExtension(full).Equals(".svg", StringComparison.OrdinalIgnoreCase))
-                return TryLoadSvgBitmapFromFile(full);
+            // SVG logos are rasterised to PNG at build time; an SVG path here fails to decode and the logo is hidden.
             return TryLoadBitmapFromFile(full);
         }
         catch
@@ -102,8 +97,6 @@ public partial class MainWindow : Window
         try
         {
             using var stream = AssetLoader.Open(new Uri(avaresPath));
-            if (avaresPath.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
-                return TryLoadSvgBitmapFromStream(stream);
             return CreateBitmapCopy(stream);
         }
         catch
@@ -118,52 +111,6 @@ public partial class MainWindow : Window
         {
             using var stream = File.OpenRead(filePath);
             return CreateBitmapCopy(stream);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static Bitmap? TryLoadSvgBitmapFromFile(string filePath)
-    {
-        try
-        {
-            using var stream = File.OpenRead(filePath);
-            return TryLoadSvgBitmapFromStream(stream);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static Bitmap? TryLoadSvgBitmapFromStream(Stream stream)
-    {
-        try
-        {
-            var svg = new SKSvg();
-            svg.Load(stream);
-            var picture = svg.Picture;
-            if (picture is null)
-                return null;
-
-            var bounds = picture.CullRect;
-            var width = Math.Max(1, (int)Math.Ceiling(bounds.Width));
-            var height = Math.Max(1, (int)Math.Ceiling(bounds.Height));
-            using var surface = SKSurface.Create(new SKImageInfo(width, height));
-            var canvas = surface.Canvas;
-            canvas.Clear(SKColors.Transparent);
-            canvas.Translate(-bounds.Left, -bounds.Top);
-            canvas.DrawPicture(picture);
-            canvas.Flush();
-
-            using var image = surface.Snapshot();
-            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-            if (data is null)
-                return null;
-            using var output = new MemoryStream(data.ToArray());
-            return new Bitmap(output);
         }
         catch
         {
