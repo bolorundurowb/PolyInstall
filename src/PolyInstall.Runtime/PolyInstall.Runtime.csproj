@@ -8,6 +8,7 @@
     <Description>PolyInstall installer stub host.</Description>
     <!-- Append-bundle installers embed only this executable; must be single-file self-contained. -->
     <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <SelfContained>true</SelfContained>
     <PublishTrimmed>true</PublishTrimmed>
@@ -22,6 +23,8 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
+    <!-- Win32 uses software rendering (see Program.BuildAvaloniaApp), so the ~5 MB ANGLE natives are not needed. -->
+    <PackageReference Include="Avalonia.Angle.Windows.Natives" Version="2.1.27548.20260419" ExcludeAssets="All" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\PolyInstall.Core\PolyInstall.Core.csproj" />

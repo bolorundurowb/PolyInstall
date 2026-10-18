@@ -44,6 +44,7 @@ internal static class Program
     private static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>()
             .UsePlatformDetect()
+            .With(new Win32PlatformOptions { RenderingMode = [Win32RenderingMode.Software] })
             .LogToTrace();
 
     private static void TryDeleteFile(string path)
