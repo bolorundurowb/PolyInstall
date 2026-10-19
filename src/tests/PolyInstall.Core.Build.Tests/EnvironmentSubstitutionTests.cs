@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using PolyInstall.Manifest;
 
-namespace PolyInstall.Core.Tests;
+namespace PolyInstall.Core.Build.Tests;
 
 public class EnvironmentSubstitutionTests
 {

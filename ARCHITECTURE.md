@@ -80,7 +80,7 @@ Payload compression is **Brotli** or **GZip** (configured by `build.compression`
 |-------|--------|----------|
 | Authoring | YAML, snake_case keys | User manifest file |
 | Parse | C# `InstallManifest` and related models | `PolyInstall.Core/Manifest/` |
-| Env substitution | `${VAR}` / `${VAR:-default}` on all string values | `EnvironmentSubstitution` (CLI `build`/`validate` only) |
+| Env substitution | `${VAR}` / `${VAR:-default}` on all string values | `EnvironmentSubstitution` (`PolyInstall.Core.Build/Manifest/`; CLI `build`/`validate` only) |
 | JSON Schema validation | `schema/v1.json` | `ManifestJsonValidator` (Cli) |
 | Semantic validation | Cross-field rules beyond schema | `ManifestSemanticValidator` (Core.Build) |
 | Embedded runtime JSON | snake_case JSON in bundle | Serialized by CLI; read by stub |
@@ -109,6 +109,14 @@ Per `build.targets` entry:
 8. Optionally package AppImage (`AppImagePackager`, Linux host + `mksquashfs`) or DMG (`DmgPackager`, macOS host + `hdiutil`).
 
 Manifest target tokens map to .NET RIDs via `RidMapping` (e.g. `windows-x64` → `win-x64`).
+
+### SVG logo rasterisation
+
+The runtime stub only decodes raster images, so an SVG `ui.logo_path` is converted to PNG by the CLI (`LogoRasterizer`, using `Svg.Skia`) before the payload is packed, and `logo_path` is rewritten to the PNG.
+
+SkiaSharp needs a native library per host OS. `Svg.Skia` only brings the Windows and macOS ones, so `PolyInstall.Cli.csproj` references `SkiaSharp.NativeAssets.Linux` explicitly; its version must match the `SkiaSharp` version that `Svg.Skia` resolves, so bump both together.
+
+**Risk:** `SkiaSharp.NativeAssets.Linux` links dynamically against the host's `libfontconfig` and `libfreetype`. GitHub's `ubuntu-latest` runners have them, but minimal containers (Alpine, distroless, slim Debian images) usually don't, and SVG conversion (and `LogoRasterizerTests`) then fails with a `DllNotFoundException` for `libSkiaSharp.so`. Either install `fontconfig` and `libfreetype6` on the build host, or switch to `SkiaSharp.NativeAssets.Linux.NoDependencies`, which bundles them. Raster logos are unaffected.
 
 ## Runtime installer flow
 

@@ -25,6 +25,25 @@ public static class InstallerBuildPipeline
         string? stubsRoot,
         CancellationToken ct)
     {
+        var buildTempPaths = new List<string>();
+        try
+        {
+            return await RunCoreAsync(manifestPath, baseDirectory, stubsRoot, buildTempPaths, ct);
+        }
+        finally
+        {
+            foreach (var path in buildTempPaths)
+                TryDelete(path);
+        }
+    }
+
+    private static async Task<BuildOutputManifest> RunCoreAsync(
+        string manifestPath,
+        string baseDirectory,
+        string? stubsRoot,
+        List<string> buildTempPaths,
+        CancellationToken ct)
+    {
         baseDirectory = Path.GetFullPath(baseDirectory);
         manifestPath = Path.GetFullPath(manifestPath);
         BuildLog.Info($"Building from manifest {manifestPath}");
@@ -91,6 +110,8 @@ public static class InstallerBuildPipeline
 
         if (baseFiles.Count == 0)
             throw new InvalidOperationException("No files matched manifest files entries; nothing to pack.");
+
+        RasterizeSvgLogo(manifest, baseDirectory, baseFiles, featureIndex, buildTempPaths);
 
         if (featureIndex is not null)
         {
@@ -220,6 +241,60 @@ public static class InstallerBuildPipeline
 
         BuildLog.Info("Build finished.");
         return new BuildOutputManifest(manifest.Metadata.Name, manifest.Metadata.Version, artifacts);
+    }
+
+    /// <summary>
+    /// The runtime stub only decodes raster logos. When <c>ui.logo_path</c> points at an SVG, render it to PNG, add the
+    /// PNG to the payload as a core file and rewrite <c>logo_path</c> to the PNG entry.
+    /// </summary>
+    internal static void RasterizeSvgLogo(
+        InstallManifest manifest,
+        string baseDirectory,
+        List<(string EntryName, string FullPath)> baseFiles,
+        PayloadFeatureIndex? featureIndex,
+        List<string> temporaryPaths)
+    {
+        var logoPath = manifest.Ui.LogoPath?.Trim();
+        if (!LogoRasterizer.IsSvg(logoPath))
+            return;
+
+        var logoEntry = logoPath!.Replace('\\', '/').TrimStart('/');
+        var pngEntry = LogoRasterizer.ToPngPath(logoEntry);
+
+        var sourcePath = baseFiles
+            .Where(f => string.Equals(f.EntryName.Replace('\\', '/'), logoEntry, StringComparison.OrdinalIgnoreCase))
+            .Select(f => f.FullPath)
+            .FirstOrDefault();
+        if (sourcePath is null)
+        {
+            var candidate = Path.GetFullPath(Path.Combine(baseDirectory, logoEntry.Replace('/', Path.DirectorySeparatorChar)));
+            if (File.Exists(candidate))
+                sourcePath = candidate;
+        }
+
+        if (sourcePath is null)
+        {
+            throw new InvalidOperationException(
+                $"ui.logo_path '{logoPath}' was not found in the payload files or under '{baseDirectory}'.");
+        }
+
+        if (baseFiles.Any(f => string.Equals(f.EntryName.Replace('\\', '/'), pngEntry, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException(
+                $"Cannot convert SVG logo '{logoPath}': payload already contains '{pngEntry}'. Rename one of them.");
+        }
+
+        BuildLog.Info($"Converting SVG logo '{logoPath}' to PNG…");
+        var tempDir = Path.Combine(Path.GetTempPath(), "polyinstall-logo-" + Guid.NewGuid().ToString("n"));
+        Directory.CreateDirectory(tempDir);
+        temporaryPaths.Add(tempDir);
+        var pngPath = Path.Combine(tempDir, Path.GetFileName(pngEntry));
+        LogoRasterizer.RasterizeToPng(sourcePath, pngPath);
+
+        baseFiles.Add((pngEntry, pngPath));
+        featureIndex?.CoreFiles.Add(pngEntry);
+        manifest.Ui.LogoPath = pngEntry;
+        BuildLog.VerboseLine($"  logo_path rewritten to '{pngEntry}'");
     }
 
     /// <summary>

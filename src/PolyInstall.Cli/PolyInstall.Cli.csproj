@@ -10,6 +10,12 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="JsonSchema.Net" Version="9.4.1" />
+    <!-- Rasterises SVG logos to PNG at build time (keeps SVG support out of the runtime stub). -->
+    <PackageReference Include="Svg.Skia" Version="5.2.3" />
+    <!-- Svg.Skia's SkiaSharp dependency ships Win32/macOS natives only; without this, building on
+         Linux (and running PolyInstall.Core.Build.Tests on Linux CI) throws DllNotFoundException
+         for libSkiaSharp.so when rasterising an SVG logo. -->
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="4.148.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\PolyInstall.Core\PolyInstall.Core.csproj" />
