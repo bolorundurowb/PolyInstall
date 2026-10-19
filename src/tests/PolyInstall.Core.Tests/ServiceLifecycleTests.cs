@@ -127,6 +127,7 @@ public class ServiceLifecycleTests
         public IFileAssociationPal? FileAssociations => null;
         public IServiceManagerPal? Services { get; } = services;
         public IProcessManagerPal Processes { get; } = new NoOpProcessManagerPal();
+        public IElevationPal Elevation { get; } = new NoOpElevationPal();
     }
 
     private sealed class RecordingServiceManagerPal : IServiceManagerPal

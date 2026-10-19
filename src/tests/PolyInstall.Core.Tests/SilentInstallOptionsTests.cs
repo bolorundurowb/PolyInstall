@@ -39,7 +39,7 @@ public class SilentInstallOptionsTests
     }
 
     [Fact]
-    public void TryParse_RelativeInstallDir_Fails()
+    public void TryParse_ShouldFail_WhenInstallDirIsRelative()
     {
         SilentInstallOptions.TryParse(["--install-dir", "relative/path"], out _, out var error)
             .Must().BeFalse();
@@ -47,7 +47,7 @@ public class SilentInstallOptionsTests
     }
 
     [Fact]
-    public void TryParse_InstallDirWithDotDot_Fails()
+    public void TryParse_ShouldFail_WhenInstallDirContainsParentSegments()
     {
         var rooted = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "a", "..", "b"));
         // Even if GetFullPath collapses '..', the raw argument with '..' segments is rejected.
@@ -58,28 +58,28 @@ public class SilentInstallOptionsTests
     }
 
     [Fact]
-    public void TryParse_UnknownFlag_Fails()
+    public void TryParse_ShouldFail_WhenFlagIsUnrecognised()
     {
         SilentInstallOptions.TryParse(["--not-real"], out _, out var error).Must().BeFalse();
         error.Must().Contain("Unrecognised");
     }
 
     [Fact]
-    public void TryParse_Help_Succeeds()
+    public void TryParse_ShouldSetHelp_WhenHelpFlagIsSupplied()
     {
         SilentInstallOptions.TryParse(["--help"], out var options, out _).Must().BeTrue();
         options.Help.Must().BeTrue();
     }
 
     [Fact]
-    public void ValidateInstallDir_AbsolutePath_ReturnsNull()
+    public void ValidateInstallDir_ShouldReturnNull_WhenPathIsAbsolute()
     {
         var path = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "ok"));
         SilentInstallOptions.ValidateInstallDir(path).Must().BeNull();
     }
 
     [Fact]
-    public void BuildForwardedArgs_IncludesLogAppend()
+    public void BuildForwardedArgs_ShouldIncludeLogAppend_WhenLogPathIsSupplied()
     {
         var options = new SilentInstallOptions
         {

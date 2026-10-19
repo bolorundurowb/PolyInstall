@@ -36,7 +36,7 @@ public class ManifestYamlTests
     }
 
     [Fact]
-    public void Parse_WithSilentMode_SetsMode()
+    public void Parse_ShouldSetSilentMode_WhenUiModeIsSilent()
     {
         var yaml = """
             metadata:

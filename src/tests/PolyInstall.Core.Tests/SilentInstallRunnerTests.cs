@@ -9,7 +9,7 @@ namespace PolyInstall.Core.Tests;
 public class SilentInstallRunnerTests
 {
     [Fact]
-    public void Run_Help_ReturnsSuccess()
+    public void Run_ShouldReturnSuccess_WhenHelpIsRequested()
     {
         var stdout = new StringWriter();
         var code = SilentInstallRunner.Run(
@@ -24,7 +24,7 @@ public class SilentInstallRunnerTests
     }
 
     [Fact]
-    public void Run_EulaWithoutAccept_ReturnsEulaNotAccepted()
+    public void Run_ShouldReturnEulaNotAccepted_WhenEulaIsNotAccepted()
     {
         var extract = TestHelpers.NewTempDir();
         var installDir = TestHelpers.NewTempDir();
@@ -59,7 +59,7 @@ public class SilentInstallRunnerTests
     }
 
     [Fact]
-    public void Run_FreshInstall_Succeeds()
+    public void Run_ShouldInstallPayload_WhenInstallIsFresh()
     {
         var extract = TestHelpers.NewTempDir();
         var installDir = TestHelpers.NewTempDir();
@@ -96,7 +96,7 @@ public class SilentInstallRunnerTests
     }
 
     [Fact]
-    public void Run_UnknownFeature_ReturnsInvalidArguments()
+    public void Run_ShouldReturnInvalidArguments_WhenFeatureIsUnknown()
     {
         var extract = TestHelpers.NewTempDir();
         var installDir = TestHelpers.NewTempDir();
@@ -127,7 +127,7 @@ public class SilentInstallRunnerTests
     }
 
     [Fact]
-    public void Run_RunningProcessesWithoutCloseApps_ReturnsProcessesRunning()
+    public void Run_ShouldReturnProcessesRunning_WhenProcessesRunWithoutCloseApps()
     {
         var extract = TestHelpers.NewTempDir();
         var installDir = TestHelpers.NewTempDir();
@@ -159,7 +159,7 @@ public class SilentInstallRunnerTests
     }
 
     [Fact]
-    public void Run_CancellationDuringInstall_ReturnsCancelledAndCleansUp()
+    public void Run_ShouldReturnCancelled_WhenCancellationIsRequested()
     {
         var extract = TestHelpers.NewTempDir();
         var installDir = TestHelpers.NewTempDir();
@@ -190,7 +190,7 @@ public class SilentInstallRunnerTests
     }
 
     [Fact]
-    public void Run_ElevationDenied_ReturnsElevationRequired()
+    public void Run_ShouldReturnElevationRequired_WhenElevationIsDenied()
     {
         if (!OperatingSystem.IsWindows())
             return; // ShouldRelaunchElevated is Windows-only
@@ -224,7 +224,7 @@ public class SilentInstallRunnerTests
     }
 
     [Fact]
-    public void SilentLogSink_CreateNew_ThenRefuseExisting()
+    public void Open_ShouldThrow_WhenLogFileAlreadyExists()
     {
         var dir = TestHelpers.NewTempDir();
         try
@@ -245,7 +245,7 @@ public class SilentInstallRunnerTests
     }
 
     [Fact]
-    public void SilentLogSink_AppendAfterCreate_Succeeds()
+    public void Open_ShouldAppendToLog_WhenAppendIsTrue()
     {
         var dir = TestHelpers.NewTempDir();
         try

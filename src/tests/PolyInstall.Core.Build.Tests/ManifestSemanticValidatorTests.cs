@@ -644,7 +644,7 @@ public class ManifestSemanticValidatorTests
     }
 
     [Fact]
-    public void Validate_UnknownUiMode_Throws()
+    public void Validate_ShouldThrow_WhenUiModeIsUnknown()
     {
         var manifest = CreateBaseManifest("user");
         manifest.Ui.Mode = "headless";
@@ -655,7 +655,7 @@ public class ManifestSemanticValidatorTests
     }
 
     [Fact]
-    public void ValidateResult_UnknownUiMode_EmitsPI144()
+    public void ValidateResult_ShouldEmitPI144_WhenUiModeIsUnknown()
     {
         var manifest = CreateBaseManifest("user");
         manifest.Ui.Mode = "headless";
@@ -665,7 +665,7 @@ public class ManifestSemanticValidatorTests
     }
 
     [Fact]
-    public void ValidateResult_SilentWithEula_EmitsWarning()
+    public void ValidateResult_ShouldEmitPI145Warning_WhenSilentModeHasEulaStep()
     {
         var manifest = CreateBaseManifest("user");
         manifest.Ui.Mode = "silent";
@@ -684,7 +684,7 @@ public class ManifestSemanticValidatorTests
     }
 
     [Fact]
-    public void Validate_SilentMode_Passes()
+    public void Validate_ShouldPass_WhenUiModeIsSilent()
     {
         var manifest = CreateBaseManifest("user");
         manifest.Ui.Mode = "silent";
