@@ -17,6 +17,21 @@ var schema = generator.Generate(typeof(InstallManifest));
 var json = schema.ToJson();
 var node = JsonNode.Parse(json)!.AsObject();
 node["$schema"] = "https://json-schema.org/draft/2020-12/schema";
+
+// NJsonSchema emits unconstrained strings for C# string properties. Constrain ui.mode here so
+// Core stays free of NJsonSchema attributes (AGENTS.md §2 dependency law).
+if (node["definitions"]?["UiConfiguration"]?["properties"] is JsonObject uiProps)
+{
+    uiProps["mode"] = new JsonObject
+    {
+        ["type"] = "string",
+        ["enum"] = new JsonArray("wizard", "silent"),
+        ["default"] = "wizard",
+        ["description"] =
+            "Installer presentation mode. 'wizard' (default) selects the Avalonia UI stub; 'silent' selects the UI-less stub.",
+    };
+}
+
 var final = node.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
 File.WriteAllText(outPath, final);
 Console.WriteLine($"Wrote {outPath}");
