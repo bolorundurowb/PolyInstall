@@ -106,6 +106,23 @@ jobs:
           -p:DebugType=embedded
           -o "./publish/${{ matrix.artifact }}"
 
+      - name: Install llvm-lipo for macOS native thinning
+        if: startsWith(matrix.rid, 'osx-')
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y llvm
+          if command -v llvm-lipo >/dev/null 2>&1; then
+            echo "LIPO_TOOL=llvm-lipo" >> "${GITHUB_ENV}"
+          else
+            tool="$(command -v llvm-lipo-18 || command -v llvm-lipo-17 || command -v llvm-lipo-16 || true)"
+            if [[ -z "${tool}" ]]; then
+              echo "::error::llvm-lipo not found after installing llvm"
+              exit 1
+            fi
+            echo "LIPO_TOOL=${tool}" >> "${GITHUB_ENV}"
+          fi
+
       - name: Publish runtime stub for host RID
         shell: bash
         env:
@@ -114,8 +131,26 @@ jobs:
         run: |
           set -euo pipefail
           stubs_root="./publish/${ARTIFACT}/stubs"
+          LIPO_ARGS=()
+          if [[ "${RID}" == osx-* ]]; then
+            LIPO_ARGS+=(-p:PolyInstallThinMacNatives=true)
+            if [[ -n "${LIPO_TOOL:-}" ]]; then
+              LIPO_ARGS+=(-p:PolyInstallLipoTool="${LIPO_TOOL}")
+            fi
+          fi
           echo "Publishing PolyInstall.Runtime for ${RID}..."
           dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj \
+            -c Release \
+            -r "${RID}" \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:EnableCompressionInSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:DebugType=none \
+            "${LIPO_ARGS[@]}" \
+            -o "${stubs_root}/${RID}"
+          echo "Publishing PolyInstall.Runtime.Silent for ${RID}..."
+          dotnet publish src/PolyInstall.Runtime.Silent/PolyInstall.Runtime.Silent.csproj \
             -c Release \
             -r "${RID}" \
             --self-contained true \
@@ -167,13 +202,48 @@ jobs:
           dotnet-version: |
             10.0.x
 
+      - name: Install llvm-lipo for macOS native thinning
+        if: startsWith(matrix.rid, 'osx-')
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y llvm
+          if command -v llvm-lipo >/dev/null 2>&1; then
+            echo "LIPO_TOOL=llvm-lipo" >> "${GITHUB_ENV}"
+          else
+            tool="$(command -v llvm-lipo-18 || command -v llvm-lipo-17 || command -v llvm-lipo-16 || true)"
+            if [[ -z "${tool}" ]]; then
+              echo "::error::llvm-lipo not found after installing llvm"
+              exit 1
+            fi
+            echo "LIPO_TOOL=${tool}" >> "${GITHUB_ENV}"
+          fi
+
       - name: Publish runtime stub (${{ matrix.rid }})
         run: |
           set -euo pipefail
           out="./stubs-output/${{ matrix.rid }}"
+          RID="${{ matrix.rid }}"
+          LIPO_ARGS=()
+          if [[ "${RID}" == osx-* ]]; then
+            LIPO_ARGS+=(-p:PolyInstallThinMacNatives=true)
+            if [[ -n "${LIPO_TOOL:-}" ]]; then
+              LIPO_ARGS+=(-p:PolyInstallLipoTool="${LIPO_TOOL}")
+            fi
+          fi
           dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj \
             -c Release \
-            -r ${{ matrix.rid }} \
+            -r "${RID}" \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:EnableCompressionInSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:DebugType=none \
+            "${LIPO_ARGS[@]}" \
+            -o "${out}"
+          dotnet publish src/PolyInstall.Runtime.Silent/PolyInstall.Runtime.Silent.csproj \
+            -c Release \
+            -r "${RID}" \
             --self-contained true \
             -p:PublishSingleFile=true \
             -p:EnableCompressionInSingleFile=true \
@@ -217,18 +287,26 @@ jobs:
             artifact: polyinstall-win-x64
             exe: polyinstall.exe
             runtime: PolyInstall.Runtime.exe
+            silent: PolyInstall.Runtime.Silent.exe
+            manifest_target: windows-x64
           - os: ubuntu-latest
             rid: linux-x64
             artifact: polyinstall-linux-x64
             exe: polyinstall
             runtime: PolyInstall.Runtime
+            silent: PolyInstall.Runtime.Silent
+            manifest_target: linux-x64
           - os: macos-latest
             rid: osx-arm64
             artifact: polyinstall-osx-arm64
             exe: polyinstall
             runtime: PolyInstall.Runtime
+            silent: PolyInstall.Runtime.Silent
+            manifest_target: osx-arm64
     runs-on: ${{ matrix.os }}
     steps:
+      - uses: actions/checkout@v6
+
       - name: Download CLI artifact
         uses: actions/download-artifact@v7
         with:
@@ -250,6 +328,7 @@ jobs:
           $artifact = '${{ matrix.artifact }}'
           $exeName = '${{ matrix.exe }}'
           $runtimeName = '${{ matrix.runtime }}'
+          $silentName = '${{ matrix.silent }}'
 
           $cliZip = Join-Path 'cli-artifact' "$artifact-$tag.zip"
           $stubZip = Join-Path 'stub-artifact' "stubs-$rid-$tag.zip"
@@ -260,11 +339,16 @@ jobs:
           Expand-Archive -LiteralPath $stubZip -DestinationPath 'stub-extract' -Force
 
           $exePath = Join-Path (Join-Path 'cli-extract' $artifact) $exeName
-          $bundledRuntime = Join-Path (Join-Path (Join-Path (Join-Path 'cli-extract' $artifact) 'stubs') $rid) $runtimeName
+          $stubsDir = Join-Path (Join-Path (Join-Path 'cli-extract' $artifact) 'stubs') $rid
+          $bundledRuntime = Join-Path $stubsDir $runtimeName
+          $bundledSilent = Join-Path $stubsDir $silentName
           $stubRuntime = Join-Path (Join-Path 'stub-extract' $rid) $runtimeName
+          $stubSilent = Join-Path (Join-Path 'stub-extract' $rid) $silentName
           if (!(Test-Path -LiteralPath $exePath)) { throw "polyinstall executable not found: $exePath" }
           if (!(Test-Path -LiteralPath $bundledRuntime)) { throw "bundled runtime stub not found: $bundledRuntime" }
+          if (!(Test-Path -LiteralPath $bundledSilent)) { throw "bundled silent stub not found: $bundledSilent" }
           if (!(Test-Path -LiteralPath $stubRuntime)) { throw "standalone runtime stub not found: $stubRuntime" }
+          if (!(Test-Path -LiteralPath $stubSilent)) { throw "standalone silent stub not found: $stubSilent" }
 
           if ($rid -eq 'win-x64') {
             $bundledUninstall = Join-Path (Split-Path -Parent $bundledRuntime) 'PolyInstall.Uninstall.exe'
@@ -275,6 +359,10 @@ jobs:
 
           if ($IsLinux -or $IsMacOS) {
             chmod +x $exePath
+            chmod +x $bundledRuntime
+            chmod +x $bundledSilent
+            chmod +x $stubRuntime
+            chmod +x $stubSilent
           }
 
           if ($rid -eq 'osx-arm64') {
@@ -283,9 +371,105 @@ jobs:
               Write-Host "Skipping osx-arm64 execution on $arch runner after layout verification."
               exit 0
             }
+
+            # Extract single-file natives and assert they are arm64-only with intact ad-hoc signatures.
+            $extractBase = Join-Path $env:RUNNER_TEMP "polyinstall-thin-check"
+            if (Test-Path -LiteralPath $extractBase) { Remove-Item -LiteralPath $extractBase -Recurse -Force }
+            New-Item -ItemType Directory -Path $extractBase | Out-Null
+            $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR = $extractBase
+            & $stubRuntime 2>$null | Out-Null
+            Remove-Item Env:DOTNET_BUNDLE_EXTRACT_BASE_DIR -ErrorAction SilentlyContinue
+            $dylibs = Get-ChildItem -Path $extractBase -Filter '*.dylib' -Recurse -ErrorAction SilentlyContinue
+            if ($dylibs.Count -eq 0) { throw "No .dylib files extracted from osx-arm64 stub under $extractBase" }
+            foreach ($dylib in $dylibs) {
+              $archs = (& lipo -archs $dylib.FullName).Trim()
+              if ($archs -ne 'arm64') {
+                throw "Expected thinned dylib $($dylib.Name) to be arm64-only, got: $archs"
+              }
+              & codesign --verify $dylib.FullName
+              if ($LASTEXITCODE -ne 0) {
+                throw "codesign --verify failed for $($dylib.FullName)"
+              }
+              Write-Host "Thinned OK: $($dylib.Name) ($archs)"
+            }
           }
 
           & $exePath --version
+
+          # End-to-end silent install: build a silent installer and run it.
+          $target = '${{ matrix.manifest_target }}'
+          $work = Join-Path $env:RUNNER_TEMP "polyinstall-silent-smoke"
+          if (Test-Path -LiteralPath $work) { Remove-Item -LiteralPath $work -Recurse -Force }
+          New-Item -ItemType Directory -Path $work | Out-Null
+          $manifestPath = Join-Path $work 'silent.yaml'
+          $payloadDir = Join-Path $work 'payload'
+          New-Item -ItemType Directory -Path $payloadDir | Out-Null
+          Set-Content -LiteralPath (Join-Path $payloadDir 'hello.txt') -Value 'hello-silent'
+          $stubsForBuild = Join-Path (Join-Path 'cli-extract' $artifact) 'stubs'
+          $manifestLines = @(
+            'metadata:'
+            '  name: SilentSmoke'
+            '  version: 0.0.1'
+            '  publisher: CI'
+            'build:'
+            '  output_dir: dist'
+            '  compression: brotli'
+            '  targets:'
+            "    - $target"
+            '  windows:'
+            '    install_scope: user'
+            '    register_arp: false'
+            'ui:'
+            '  mode: silent'
+            '  wizard_steps:'
+            '    - type: destination'
+            '      default_path: "{LocalAppData}/SilentSmoke"'
+            '    - type: progress'
+            'files:'
+            '  - source_dir: payload'
+            '    include: ["**/*"]'
+          )
+          Set-Content -LiteralPath $manifestPath -Value $manifestLines
+
+          & $exePath build $manifestPath --base $work --stubs $stubsForBuild
+          if ($LASTEXITCODE -ne 0) { throw "polyinstall build (silent) failed with exit $LASTEXITCODE" }
+
+          $installer = Get-ChildItem -Path (Join-Path $work 'dist') -File | Select-Object -First 1
+          if ($null -eq $installer) { throw "Silent installer was not produced under dist/" }
+          if ($IsLinux -or $IsMacOS) { chmod +x $installer.FullName }
+
+          $installDir = Join-Path $work 'install-root'
+          New-Item -ItemType Directory -Path $installDir | Out-Null
+          & $installer.FullName --install-dir $installDir
+          if ($LASTEXITCODE -ne 0) { throw "Silent installer failed with exit $LASTEXITCODE" }
+          if (!(Test-Path -LiteralPath (Join-Path $installDir 'hello.txt'))) {
+            throw "Silent install did not copy hello.txt"
+          }
+          if (!(Test-Path -LiteralPath (Join-Path (Join-Path $installDir '.polyinstall') 'install-state.json'))) {
+            throw "Silent install did not write install-state.json"
+          }
+
+          # Wizard stub --silent should also succeed against a fresh destination.
+          $installDir2 = Join-Path $work 'install-root-wizard-silent'
+          New-Item -ItemType Directory -Path $installDir2 | Out-Null
+          # Rebuild with wizard mode so the wizard stub is used, then pass --silent.
+          $wizardManifest = Join-Path $work 'wizard.yaml'
+          (Get-Content -LiteralPath $manifestPath -Raw) -replace 'mode: silent', 'mode: wizard' |
+            Set-Content -LiteralPath $wizardManifest
+          Remove-Item -LiteralPath (Join-Path $work 'dist') -Recurse -Force -ErrorAction SilentlyContinue
+          & $exePath build $wizardManifest --base $work --stubs $stubsForBuild
+          if ($LASTEXITCODE -ne 0) { throw "polyinstall build (wizard) failed with exit $LASTEXITCODE" }
+          $wizardInstaller = Get-ChildItem -Path (Join-Path $work 'dist') -File | Select-Object -First 1
+          if ($IsLinux -or $IsMacOS) { chmod +x $wizardInstaller.FullName }
+          & $wizardInstaller.FullName --silent --install-dir $installDir2
+          if ($LASTEXITCODE -ne 0) { throw "Wizard stub --silent failed with exit $LASTEXITCODE" }
+          if (!(Test-Path -LiteralPath (Join-Path $installDir2 'hello.txt'))) {
+            throw "Wizard --silent install did not copy hello.txt"
+          }
+
+          # Negative: unknown argument → exit 2
+          & $installer.FullName --not-a-real-flag
+          if ($LASTEXITCODE -ne 2) { throw "Expected exit 2 for invalid args, got $LASTEXITCODE" }
 
   release:
     needs: [version-check, publish, publish-stubs, smoke-release-artifacts]

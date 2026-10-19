@@ -30,6 +30,9 @@ build:
   #     keychain: "${MACOS_KEYCHAIN_PATH}"
   #     notarization_profile: "polyinstall-notary"    # optional; requires macos.package: dmg
 ui:
+  # mode: wizard (default) selects the Avalonia stub; mode: silent selects the UI-less stub
+  # (~9 MB smaller). Silent installers accept --install-dir, --features, --accept-eula, etc.
+  # mode: silent
   theme: system
   # Optional branding image shown in installer top-left.
   # Raster files (PNG, JPEG, ...) are used as-is; SVG logos are converted to PNG at build time.
