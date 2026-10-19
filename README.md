@@ -59,6 +59,22 @@ For detailed guides, manifest reference, examples, CLI options, and troubleshoot
 Built files land under `build.output_dir` from the manifest (relative to `--base`). For CI integration, signing,
 manifest schema, and building from source, see the [documentation](https://bolorundurowb.github.io/PolyInstall/).
 
+### GitHub Actions
+
+The `setup-polyinstall` action downloads a release, verifies its checksums, and puts `polyinstall` on `PATH`. The CLI
+zip only carries stubs for the runner's own platform; list any other targets in `stub-rids` so one runner can build
+installers for all of them:
+
+```yaml
+- uses: bolorundurowb/PolyInstall/.github/actions/setup-polyinstall@master
+  with:
+    version: latest          # or v2.3.0
+    stub-rids: win-x64 osx-arm64   # or "all"
+- run: polyinstall build polyinstall.yaml --base .
+```
+
+Outputs: `polyinstall-path`, `install-dir`, `stubs-dir`, `version`, and `rid`.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and pull request guidance.
