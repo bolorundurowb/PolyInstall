@@ -4,8 +4,8 @@
     <Description>Avalonia wizard views for PolyInstall.</Description>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="12.1.0" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.0" />
+    <PackageReference Include="Avalonia" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
     <PackageReference Include="Svg.Skia" Version="5.2.3" />
   </ItemGroup>
   <ItemGroup>
