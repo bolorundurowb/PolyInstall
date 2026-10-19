@@ -7,7 +7,15 @@
     <ProjectReference Include="..\..\PolyInstall.Core.Build\PolyInstall.Core.Build.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Update="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageReference Update="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageReference Update="OmniAssert" Version="2.3.0" />
+    <PackageReference Update="coverlet.msbuild" Version="10.1.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Update="xunit.runner.visualstudio" Version="4.0.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 </Project>

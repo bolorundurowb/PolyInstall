@@ -22,7 +22,7 @@
     <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
     <!-- Win32 uses software rendering (see Program.BuildAvaloniaApp), so the ~5 MB ANGLE natives are not needed. -->
     <PackageReference Include="Avalonia.Angle.Windows.Natives" Version="2.1.27548.20260419" ExcludeAssets="All" />
   </ItemGroup>

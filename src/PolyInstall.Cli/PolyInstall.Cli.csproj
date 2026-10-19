@@ -9,9 +9,9 @@
     <InternalsVisibleTo Include="PolyInstall.Core.Build.Tests" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="JsonSchema.Net" Version="9.2.2" />
+    <PackageReference Include="JsonSchema.Net" Version="9.4.1" />
     <!-- Rasterises SVG logos to PNG at build time (keeps SVG support out of the runtime stub). -->
-    <PackageReference Include="Svg.Skia" Version="5.1.1" />
+    <PackageReference Include="Svg.Skia" Version="5.2.3" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\PolyInstall.Core\PolyInstall.Core.csproj" />
