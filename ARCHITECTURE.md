@@ -34,7 +34,8 @@ Solution file: `src/PolyInstall.slnx`.
 | **`PolyInstall.Core`** | Shared manifest models, bundle read/write, install/uninstall coordinators, task engine, platform abstraction (PAL), conditions, path placeholders. No YAML or Avalonia dependencies. |
 | **`PolyInstall.Core.Build`** | Build-only utilities: YAML parsing (`YamlDotNet`), file globbing, semantic manifest validation. Keeps runtime stubs free of these dependencies. |
 | **`PolyInstall.Cli`** | `polyinstall` executable: `build` and `validate` commands, installer pipeline, AppImage/DMG packaging, signing. References Core + Core.Build. |
-| **`PolyInstall.Runtime`** | Published **installer stub**: self-contained, trimmed, single-file Avalonia host. References Core + UI. |
+| **`PolyInstall.Runtime`** | Published **wizard installer stub**: self-contained, trimmed, single-file Avalonia host. References Core + UI. Also accepts `--silent` to run without the UI. |
+| **`PolyInstall.Runtime.Silent`** | Published **UI-less installer stub**: Core only (no Avalonia). Selected when `ui.mode: silent`. |
 | **`PolyInstall.UI`** | Avalonia wizard (`MainWindow`, `App`). Reads `InstallBootstrap` populated by the runtime host. |
 | **`PolyInstall.Uninstall`** | Windows-only trimmed uninstall host (no appended payload). Reads `.polyinstall/` state from disk. |
 | **`PolyInstall.SchemaGen`** | Generates `schema/v1.json` from C# manifest models via NJsonSchema. |
@@ -45,12 +46,13 @@ Solution file: `src/PolyInstall.slnx`.
 
 ```
 PolyInstall.Cli ──► PolyInstall.Core.Build ──► PolyInstall.Core
-PolyInstall.Runtime ──► PolyInstall.UI ──► PolyInstall.Core
-PolyInstall.Uninstall ──► PolyInstall.Core
-PolyInstall.SchemaGen ──► PolyInstall.Core
+PolyInstall.Runtime ───────► PolyInstall.UI ──► PolyInstall.Core
+PolyInstall.Runtime.Silent ───────────────────► PolyInstall.Core
+PolyInstall.Uninstall ────────────────────────► PolyInstall.Core
+PolyInstall.SchemaGen ────────────────────────► PolyInstall.Core
 ```
 
-**Design intent:** Runtime and uninstall stubs depend only on `PolyInstall.Core` (and UI for the installer). Build-time parsing and validation live in `PolyInstall.Core.Build` and `PolyInstall.Cli` so published stubs stay small and dependency-light.
+**Design intent:** Wizard and silent stubs depend only on `PolyInstall.Core` (plus UI for the wizard stub). Build-time parsing and validation live in `PolyInstall.Core.Build` and `PolyInstall.Cli` so published stubs stay small and dependency-light.
 
 ## Bundle binary format
 
@@ -120,14 +122,29 @@ SkiaSharp needs a native library per host OS. `Svg.Skia` only brings the Windows
 
 ## Runtime installer flow
 
-Entry: `PolyInstall.Runtime/Program.cs`.
+Entry: `PolyInstall.Runtime/Program.cs` (wizard) or `PolyInstall.Runtime.Silent/Program.cs` (silent).
+
+Shared host logic lives in `InstallerHost` / `SilentInstallRunner` under `PolyInstall.Core/Hosting/`.
 
 1. Read embedded manifest from own executable (`InstallBundleReader.ReadManifestFromSeekableFile`).
 2. Create `DefaultPolyInstallPal`; locate existing install via `InstalledProductLocator` (product id / version).
-3. On Windows machine-scope installs or Windows services, relaunch elevated via UAC when needed.
+3. On Windows machine-scope installs or Windows services, relaunch elevated via UAC when needed (`IElevationPal`). Silent mode waits for the elevated child and forwards its exit code; the wizard path is fire-and-forget.
 4. Decompress payload to temp zip, extract to temp directory (`ZipPayloadExtractor`).
 5. `InstallBootstrap.Init(manifest, extractRoot, pal, existingInstall)` — shared state for UI and install logic.
-6. Start Avalonia (`PolyInstall.UI`).
+6. Wizard stub: start Avalonia (`PolyInstall.UI`). Silent stub / `--silent`: run `SilentInstallRunner`.
+
+### `ui.mode`
+
+| Value | Stub selected by `polyinstall build` | Behaviour |
+|-------|--------------------------------------|-----------|
+| `wizard` (default) | `PolyInstall.Runtime` | Interactive Avalonia wizard. Pass `--silent` to skip the UI at runtime. |
+| `silent` | `PolyInstall.Runtime.Silent` | Always UI-less. No Avalonia / Skia in the stub (~9 MB smaller). |
+
+Silent CLI arguments: `--silent`, `--install-dir <absolute>`, `--features <a,b\|all\|default>`, `--accept-eula`, `--close-apps`, `--log <absolute>`, `--help`.
+
+Silent exit codes: `0` success, `1` unexpected error, `2` invalid arguments, `3` elevation denied/unsupported/failed, `4` blocking processes, `5` cancelled, `6` EULA not accepted, `7` existing install blocks.
+
+Machine-scope elevation relaunch is **Windows-only**. On Linux/macOS a system-scope service install by a non-root user exits `3` with guidance to re-run under `sudo`.
 
 ### Wizard UI
 
@@ -166,6 +183,7 @@ Supported actions include `create_shortcut`, `write_registry`, `create_desktop_e
 | File associations | `WindowsFileAssociationPal` | `LinuxFileAssociationPal` | `MacOsFileAssociationPal` |
 | Services | `WindowsServiceManagerPal` (`sc.exe`) | `LinuxSystemdServiceManagerPal` | `MacOsLaunchdServiceManagerPal` |
 | PATH | `PathPal` | `PathPal` | `PathPal` |
+| Elevation | `WindowsElevationPal` (UAC `runas`) | `PosixElevationPal` (detect root; no auto-sudo) | `PosixElevationPal` |
 
 `DefaultPolyInstallPal` wires implementations based on `OperatingSystem` checks. Path placeholders (`{AppDir}`, `{ProgramFiles}`, `{LocalAppData}`, `{UserHome}`, `{Desktop}`) are expanded via `InstallPathResolver` / PAL `AppDir`. `{LocalAppData}` resolves to .NET's local application-data directory (and falls back to the user home directory when unavailable).
 
@@ -198,6 +216,7 @@ Stubs are published per .NET RID before building installers:
 
 ```bash
 dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r win-x64 -o stubs/win-x64
+dotnet publish src/PolyInstall.Runtime.Silent/PolyInstall.Runtime.Silent.csproj -c Release -r win-x64 -o stubs/win-x64
 ```
 
 Windows targets with `register_arp: true` also need the uninstall stub in the same folder:
@@ -212,19 +231,25 @@ Expected layout:
 stubs/
   win-x64/
     PolyInstall.Runtime.exe
+    PolyInstall.Runtime.Silent.exe
     PolyInstall.Uninstall.exe    # Windows + register_arp
   linux-x64/
     PolyInstall.Runtime
+    PolyInstall.Runtime.Silent
   osx-arm64/
     PolyInstall.Runtime
+    PolyInstall.Runtime.Silent
 ```
 
-`PolyInstall.Runtime` is configured for single-file, self-contained, trimmed publish (`PublishSingleFile`, `PublishTrimmed`, `SelfContained`).
+Both runtime stubs are single-file, self-contained, and trimmed (`PublishSingleFile`, `PublishTrimmed`, `SelfContained`, `EnableCompressionInSingleFile`).
+
+On `osx-*` publishes, `ThinMacOsNatives.targets` thins universal `.dylib` files (Skia, HarfBuzz, AvaloniaNative) to the RID architecture via `lipo` / `llvm-lipo` before single-file bundling. Opt out with `-p:PolyInstallThinMacNatives=false`. Cross-compiling from Linux without LLVM skips thinning with a high-importance message; release CI installs LLVM and asserts the result.
 
 ### Local smoke test
 
 ```bash
 dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r win-x64 -o stubs/win-x64
+dotnet publish src/PolyInstall.Runtime.Silent/PolyInstall.Runtime.Silent.csproj -c Release -r win-x64 -o stubs/win-x64
 dotnet publish src/PolyInstall.Uninstall/PolyInstall.Uninstall.csproj -c Release -r win-x64 -o stubs/win-x64
 dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj -- build examples/polyinstall.sample.yaml --base examples --stubs stubs
 ```
