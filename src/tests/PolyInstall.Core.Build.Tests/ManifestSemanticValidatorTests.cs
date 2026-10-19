@@ -644,6 +644,54 @@ public class ManifestSemanticValidatorTests
     }
 
     [Fact]
+    public void Validate_ShouldThrow_WhenUiModeIsUnknown()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Ui.Mode = "headless";
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ManifestSemanticValidator.Validate(manifest));
+        ex.Message.Must().Contain("ui.mode");
+        ex.Message.Must().Contain("headless");
+    }
+
+    [Fact]
+    public void ValidateResult_ShouldEmitPI144_WhenUiModeIsUnknown()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Ui.Mode = "headless";
+        var result = ManifestSemanticValidator.ValidateResult(manifest);
+        result.IsValid.Must().BeFalse();
+        result.Diagnostics.Any(d => d.Code == "PI144").Must().BeTrue();
+    }
+
+    [Fact]
+    public void ValidateResult_ShouldEmitPI145Warning_WhenSilentModeHasEulaStep()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Ui.Mode = "silent";
+        manifest.Ui.WizardSteps =
+        [
+            new WizardStep { Type = "eula", Source = "eula.txt" },
+            new WizardStep { Type = "destination" },
+            new WizardStep { Type = "progress" },
+        ];
+
+        var result = ManifestSemanticValidator.ValidateResult(manifest);
+        result.IsValid.Must().BeTrue();
+        result.Diagnostics.Must().HaveCount(1);
+        result.Diagnostics[0].Code.Must().Be("PI145");
+        result.Diagnostics[0].Severity.Must().Be(DiagnosticSeverity.Warning);
+    }
+
+    [Fact]
+    public void Validate_ShouldPass_WhenUiModeIsSilent()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Ui.Mode = "silent";
+        ManifestSemanticValidator.Validate(manifest);
+    }
+
+    [Fact]
     public void Validate_DesktopEntryWithoutOsPredicate_Throws()
     {
         var manifest = CreateBaseManifest("user");

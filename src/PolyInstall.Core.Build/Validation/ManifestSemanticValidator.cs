@@ -21,7 +21,9 @@ public static class ManifestSemanticValidator
         if (result.IsValid)
             return;
 
-        var msg = string.Join(Environment.NewLine, result.Diagnostics.Select(d => d.Message));
+        var msg = string.Join(
+            Environment.NewLine,
+            result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).Select(d => d.Message));
         throw new InvalidOperationException(
             $"Manifest semantic validation failed:{Environment.NewLine}{msg}");
     }
@@ -29,18 +31,18 @@ public static class ManifestSemanticValidator
     /// <summary>Collects semantic validation failures without throwing for invalid manifest content.</summary>
     public static ManifestValidationResult ValidateResult(InstallManifest manifest)
     {
-        var errors = new List<ManifestDiagnostic>();
-        ValidateMetadata(manifest, errors);
-        ValidateBuild(manifest, errors);
-        ValidateFeatures(manifest, errors);
-        ValidateFiles(manifest, errors);
-        ValidateWizardSteps(manifest, errors);
-        ValidateTasks(manifest, errors);
-        ValidateServices(manifest, errors);
-        ValidateFileAssociations(manifest, errors);
-        return errors.Count == 0
+        var diagnostics = new List<ManifestDiagnostic>();
+        ValidateMetadata(manifest, diagnostics);
+        ValidateBuild(manifest, diagnostics);
+        ValidateFeatures(manifest, diagnostics);
+        ValidateFiles(manifest, diagnostics);
+        ValidateUi(manifest, diagnostics);
+        ValidateTasks(manifest, diagnostics);
+        ValidateServices(manifest, diagnostics);
+        ValidateFileAssociations(manifest, diagnostics);
+        return diagnostics.Count == 0
             ? ManifestValidationResult.Success
-            : new ManifestValidationResult(errors);
+            : new ManifestValidationResult(diagnostics);
     }
 
     private static void Add(
@@ -48,8 +50,9 @@ public static class ManifestSemanticValidator
         string code,
         string message,
         string? path = null,
-        string? help = null)
-        => errors.Add(new ManifestDiagnostic(code, message, path, help));
+        string? help = null,
+        DiagnosticSeverity severity = DiagnosticSeverity.Error)
+        => errors.Add(new ManifestDiagnostic(code, message, path, help, Severity: severity));
 
     private static void ValidateFeatures(InstallManifest manifest, List<ManifestDiagnostic> errors)
     {
@@ -396,9 +399,29 @@ public static class ManifestSemanticValidator
         }
     }
 
-    private static void ValidateWizardSteps(InstallManifest manifest, List<ManifestDiagnostic> errors)
+    private static void ValidateUi(InstallManifest manifest, List<ManifestDiagnostic> errors)
     {
+        var mode = (manifest.Ui.Mode ?? "wizard").Trim();
+        if (!mode.Equals("wizard", StringComparison.OrdinalIgnoreCase)
+            && !mode.Equals("silent", StringComparison.OrdinalIgnoreCase))
+        {
+            Add(errors, "PI144",
+                $"ui.mode '{manifest.Ui.Mode}' is not recognised. Valid values are 'wizard' and 'silent'.",
+                "ui.mode",
+                "Set ui.mode to 'wizard' (interactive Avalonia installer) or 'silent' (UI-less stub).");
+        }
+
         var steps = manifest.Ui.WizardSteps;
+        if (manifest.Ui.IsSilent && steps.Any(s =>
+                string.Equals(s.Type?.Trim(), "eula", StringComparison.OrdinalIgnoreCase)))
+        {
+            Add(errors, "PI145",
+                "ui.mode is 'silent' and wizard_steps includes an 'eula' step. Every unattended run will require --accept-eula.",
+                "ui.mode",
+                "Pass --accept-eula to the silent installer, or remove the eula step when packaging for unattended deployment.",
+                DiagnosticSeverity.Warning);
+        }
+
         if (steps.Count == 0)
             return; // UI uses default steps
 

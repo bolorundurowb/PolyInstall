@@ -36,6 +36,11 @@ public sealed class DefaultPolyInstallPal : IPolyInstallPal
                     : null;
         Path = new PathPal();
         Processes = new ProcessManagerPal();
+        Elevation = OperatingSystem.IsWindows()
+#pragma warning disable CA1416 // Guarded by OperatingSystem.IsWindows()
+            ? new WindowsElevationPal()
+#pragma warning restore CA1416
+            : new PosixElevationPal();
     }
 
     public string AppDir => InstallBootstrap.InstallDirectory ?? InstallBootstrap.ExtractRoot;
@@ -51,4 +56,5 @@ public sealed class DefaultPolyInstallPal : IPolyInstallPal
     public IPathPal? Path { get; }
     public IServiceManagerPal? Services { get; }
     public IProcessManagerPal Processes { get; }
+    public IElevationPal Elevation { get; }
 }

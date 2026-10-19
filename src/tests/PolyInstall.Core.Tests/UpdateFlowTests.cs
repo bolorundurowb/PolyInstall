@@ -396,6 +396,7 @@ public class UpdateFlowTests
         public IFileAssociationPal? FileAssociations => null;
         public IServiceManagerPal? Services => null;
         public IProcessManagerPal Processes { get; } = new NoOpProcessManagerPal();
+        public IElevationPal Elevation { get; } = new NoOpElevationPal();
     }
 
     private sealed class NoOpShortcutPal : IShortcutPal

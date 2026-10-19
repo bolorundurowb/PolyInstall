@@ -1,155 +1,119 @@
-﻿using System.ComponentModel;
-using System.Diagnostics;
-using System.Runtime.Versioning;
-using System.Security.Principal;
+﻿using System.Runtime.InteropServices;
 using Avalonia;
 using PolyInstall.Hosting;
-using PolyInstall.Install;
-using PolyInstall.Manifest;
-using PolyInstall.Pal;
-using PolyInstall.Payload;
 using PolyInstall.UI;
 
 namespace PolyInstall.Runtime;
 
 internal static class Program
 {
-    [STAThread]
-    private static void Main(string[] args)
-    {
-        var exe = Environment.ProcessPath ?? throw new InvalidOperationException("Cannot resolve host executable path.");
-        var manifest = InstallBundleReader.ReadManifestFromSeekableFile(exe);
-        var pal = new DefaultPolyInstallPal();
-        var existingInstall = InstalledProductLocator.Find(manifest, pal);
-        if (RelaunchElevatedForMachineInstall(exe, args, manifest, existingInstall))
-            return;
+    private const int AttachParentProcess = -1;
 
-        var extract = Path.Combine(Path.GetTempPath(), "polyinstall-" + Guid.NewGuid().ToString("n"));
-        var zipPath = Path.Combine(Path.GetTempPath(), "polyinstall-payload-" + Guid.NewGuid().ToString("n") + ".zip");
+    [STAThread]
+    private static int Main(string[] args)
+    {
+        var silentRequested = args.Any(a =>
+            a.Equals("--silent", StringComparison.OrdinalIgnoreCase)
+            || a.Equals("/S", StringComparison.OrdinalIgnoreCase)
+            || a.Equals("/silent", StringComparison.OrdinalIgnoreCase)
+            || a.Equals("--help", StringComparison.OrdinalIgnoreCase)
+            || a.Equals("-h", StringComparison.OrdinalIgnoreCase));
+
+        if (silentRequested)
+            return RunSilent(args);
+
+        return RunWizard(args);
+    }
+
+    private static int RunSilent(string[] args)
+    {
+        TryAttachParentConsole();
+
+        using var cts = new CancellationTokenSource();
+        Console.CancelKeyPress += (_, e) =>
+        {
+            e.Cancel = true;
+            cts.Cancel();
+        };
+
+        PosixSignalRegistration? sigTerm = null;
+        if (!OperatingSystem.IsWindows())
+        {
+            try
+            {
+                sigTerm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, _ => cts.Cancel());
+            }
+            catch
+            {
+                // Best-effort
+            }
+        }
+
         try
         {
-            Directory.CreateDirectory(extract);
-            InstallBundleReader.DecompressPayloadToFile(exe, manifest, zipPath);
-            ZipPayloadExtractor.ExtractFileToDirectory(zipPath, extract);
-            InstallBootstrap.Init(manifest, extract, pal, existingInstall);
-            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            using var session = InstallerHost.Open();
+            return InstallerHost.RunSilent(session, args, cts.Token);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine("error: " + ex.Message);
+            return SilentExitCodes.UnexpectedError;
         }
         finally
         {
-            TryDeleteFile(zipPath);
-            TryDeleteDirectory(extract);
+            sigTerm?.Dispose();
+        }
+    }
+
+    private static int RunWizard(string[] args)
+    {
+        try
+        {
+            var probe = InstallerHost.Probe();
+            if (InstallerHost.TryRelaunchElevatedForWizard(probe, args))
+                return 0;
+
+            using var session = InstallerHost.Open(probe);
+            InstallBootstrap.Init(session.Manifest, session.ExtractRoot, session.Pal, session.ExistingInstall);
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine("error: " + ex.Message);
+            return 1;
         }
     }
 
     private static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>()
             .UsePlatformDetect()
-            .With(new Win32PlatformOptions { RenderingMode = [Win32RenderingMode.Software] })
+            .With(new Win32PlatformOptions
+            {
+                // ANGLE natives are excluded from the publish (see PolyInstall.Runtime.csproj);
+                // software rendering is sufficient for the installer wizard.
+                RenderingMode = [Win32RenderingMode.Software],
+            })
             .LogToTrace();
 
-    private static void TryDeleteFile(string path)
+    private static void TryAttachParentConsole()
     {
+        if (!OperatingSystem.IsWindows())
+            return;
+
         try
         {
-            if (File.Exists(path))
-                File.Delete(path);
+#pragma warning disable CA1416
+            AttachConsole(AttachParentProcess);
+#pragma warning restore CA1416
         }
         catch
         {
-            // best-effort cleanup
+            // No parent console (double-click); progress still goes to --log when supplied.
         }
     }
 
-    private static void TryDeleteDirectory(string path)
-    {
-        try
-        {
-            if (Directory.Exists(path))
-                Directory.Delete(path, recursive: true);
-        }
-        catch
-        {
-            // best-effort cleanup
-        }
-    }
-
-    private static bool RelaunchElevatedForMachineInstall(
-        string exe,
-        string[] args,
-        InstallManifest manifest,
-        ExistingInstallInfo? existingInstall)
-    {
-        if (!WindowsElevation.ShouldRelaunchElevated(
-                manifest,
-                existingInstall,
-                OperatingSystem.IsWindows(),
-                OperatingSystem.IsWindows() && IsWindowsAdministrator()))
-        {
-            return false;
-        }
-
-        try
-        {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = exe,
-                Arguments = JoinArguments(args),
-                UseShellExecute = true,
-                Verb = "runas",
-            });
-        }
-        catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
-        {
-            // UAC prompt was cancelled; leave the non-elevated process instead of continuing to a doomed install.
-        }
-
-        return true;
-    }
-
-    [SupportedOSPlatform("windows")]
-    private static bool IsWindowsAdministrator()
-    {
-        using var wi = WindowsIdentity.GetCurrent();
-        var wp = new WindowsPrincipal(wi);
-        return wp.IsInRole(WindowsBuiltInRole.Administrator);
-    }
-
-    private static string JoinArguments(IEnumerable<string> args) => string.Join(" ", args.Select(QuoteArgument));
-
-    private static string QuoteArgument(string arg)
-    {
-        if (arg.Length == 0)
-            return "\"\"";
-        if (!arg.Any(char.IsWhiteSpace) && !arg.Contains('"'))
-            return arg;
-
-        var quoted = new System.Text.StringBuilder();
-        quoted.Append('"');
-        var pendingBackslashes = 0;
-        foreach (var c in arg)
-        {
-            if (c == '\\')
-            {
-                pendingBackslashes++;
-                continue;
-            }
-
-            if (c == '"')
-            {
-                quoted.Append('\\', pendingBackslashes * 2 + 1);
-                quoted.Append('"');
-            }
-            else
-            {
-                quoted.Append('\\', pendingBackslashes);
-                quoted.Append(c);
-            }
-
-            pendingBackslashes = 0;
-        }
-
-        quoted.Append('\\', pendingBackslashes * 2);
-        quoted.Append('"');
-        return quoted.ToString();
-    }
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    private static extern bool AttachConsole(int dwProcessId);
 }

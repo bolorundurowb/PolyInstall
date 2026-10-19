@@ -30,6 +30,7 @@
     <ProjectReference Include="..\PolyInstall.Core\PolyInstall.Core.csproj" />
     <ProjectReference Include="..\PolyInstall.UI\PolyInstall.UI.csproj" />
   </ItemGroup>
+  <Import Project="ThinMacOsNatives.targets" />
   <!-- Remove native PDB sidecar files from publish output (they bloat stubs directory) -->
   <Target Name="RemoveNativePdbs" AfterTargets="Publish">
     <ItemGroup>

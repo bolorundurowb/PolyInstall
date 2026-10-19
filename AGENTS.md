@@ -44,7 +44,8 @@ src/
   PolyInstall.Core           # shared models, bundle format, coordinators, PAL contracts  (no YAML, no Avalonia)
   PolyInstall.Core.Build     # YAML parsing, globbing, semantic validation               (build time only)
   PolyInstall.Cli            # `polyinstall` CLI: build / validate / package / sign
-  PolyInstall.Runtime        # published installer stub (self-extracting installer)
+  PolyInstall.Runtime        # published wizard installer stub (Avalonia)
+  PolyInstall.Runtime.Silent # published UI-less installer stub (ui.mode: silent)
   PolyInstall.Uninstall      # Windows uninstall host (no appended bundle)
   PolyInstall.UI             # Avalonia wizard
   PolyInstall.SchemaGen      # generates schema/v1.json from Core manifest models
@@ -58,6 +59,7 @@ examples/                    # sample manifest + sample payload
 ```text
 Cli ──► Core.Build ──► Core
 Runtime ──► UI ──► Core
+Runtime.Silent ──► Core
 Uninstall ──► Core
 SchemaGen ──► Core
 ```
@@ -89,8 +91,9 @@ dotnet test    src/PolyInstall.slnx -c Release --no-build /p:CollectCoverage=tru
 dotnet run --project src/PolyInstall.SchemaGen/PolyInstall.SchemaGen.csproj
 
 # Build stubs for local installer smoke tests
-dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj   -c Release -r win-x64 -o stubs/win-x64
-dotnet publish src/PolyInstall.Uninstall/PolyInstall.Uninstall.csproj -c Release -r win-x64 -o stubs/win-x64   # Windows + register_arp
+dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj        -c Release -r win-x64 -o stubs/win-x64
+dotnet publish src/PolyInstall.Runtime.Silent/PolyInstall.Runtime.Silent.csproj -c Release -r win-x64 -o stubs/win-x64
+dotnet publish src/PolyInstall.Uninstall/PolyInstall.Uninstall.csproj    -c Release -r win-x64 -o stubs/win-x64   # Windows + register_arp
 
 # End-to-end smoke loop
 dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj -- build examples/polyinstall.sample.yaml --base examples --stubs stubs
@@ -165,9 +168,10 @@ Follow what the codebase already does; consistency beats personal preference.
 
 ### Tests
 
-- Framework: xUnit + OmniAssert. Use the fluent `Must()` form; xUnit `Assert` only where OmniAssert has no equivalent.
-- Naming: `SubjectUnderTest_Behaviour_ExpectedOutcome` or `Method_WhenCondition_Result`
-  (e.g. `ReadFooter_WhenSignatureBytesFollowFooter_FindsBundleFooter`). No `Test`/`Test1` suffixes, no `Should`.
+- Every test follows the established conventions and best practice for C# and xUnit. Framework: xUnit + OmniAssert.
+  Use the fluent `Must()` form; xUnit `Assert` only where OmniAssert has no equivalent.
+- Naming: `<MethodUnderTest>_Should<Outcome>_When<Condition>`, in PascalCase so the name is a valid C# method
+  (e.g. `ReadFooter_ShouldFindBundleFooter_WhenSignatureBytesFollowFooter`). No `Test` or `Test1` suffixes.
 - Tests live in `src/tests/PolyInstall.Core.Tests` or `src/tests/PolyInstall.Core.Build.Tests`, mirroring the source
   folder structure. Core internals are visible to tests via `InternalsVisibleTo` — prefer testing through internal seams
   over making things public just to test them.
@@ -301,6 +305,30 @@ behaviour where unsupported? Are new manifest keys optional and backward compati
 - Rewrite large areas opportunistically. Refactors are separate from behaviour changes unless the refactor is required
   to make the change correct.
 
-**Branch/commit style:** `ft/…`, `ch/…`, `doc/…`, `tst/…`, `fix/…` prefixes; short imperative intent-revealing messages
-(e.g. `ft: add localappdata install target`). Releases are triggered only by bumping `<Version>` in
-`src/Directory.Build.props`; never hand-edit release assets.
+**Branch names** use a type prefix: `ft/…`, `ch/…`, `doc/…`, `tst/…`, `fix/…`.
+
+**Commit messages** have a subject line, one blank line, then an itemised list of every change in the commit.
+
+1. Read `$GIT_BRANCH_NAME`. If it contains a GitHub issue id (`#123`, or a numeric issue segment such as `ft/123-…`) or a
+   Jira ticket id (an uppercase project key, a hyphen, and digits, such as `PI-14`), use that id alone as the subject.
+   When several ids are present, use the first one.
+2. If no issue or ticket id can be extracted, use the change type, a colon, and a brief single-line summary of the whole
+   changeset. Types match the branch prefixes: `ft`, `ch`, `tst`, `doc`, `fix` (for example
+   `ft: add localappdata install target`).
+3. Leave one blank line, then list each change on its own line.
+
+```text
+PI-14
+
+- accept {LocalAppData} as an install target
+- document the placeholder in the sample manifest
+```
+
+```text
+ft: add localappdata install target
+
+- accept {LocalAppData} as an install target
+- document the placeholder in the sample manifest
+```
+
+Releases are triggered only by bumping `<Version>` in `src/Directory.Build.props`; never hand-edit release assets.

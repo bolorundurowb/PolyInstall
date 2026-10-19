@@ -1,0 +1,71 @@
+<Project>
+  <!--
+    Thin universal (fat) macOS .dylib files to the publish RID's architecture before the
+    single-file bundler runs. Saves ~3–4 MB compressed on osx-arm64 / osx-x64 stubs.
+    Opt out with -p:PolyInstallThinMacNatives=false. When lipo/llvm-lipo is missing, emit a
+    high-importance message and leave the fat binaries unchanged (so local stub publishes on
+    Windows/Linux without LLVM still succeed); CI asserts thinning actually happened.
+  -->
+  <PropertyGroup Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('osx-'))">
+    <PolyInstallThinMacNatives Condition="'$(PolyInstallThinMacNatives)' == ''">true</PolyInstallThinMacNatives>
+    <_PolyThinArch Condition="$(RuntimeIdentifier.EndsWith('-arm64'))">arm64</_PolyThinArch>
+    <_PolyThinArch Condition="$(RuntimeIdentifier.EndsWith('-x64'))">x86_64</_PolyThinArch>
+    <PolyInstallLipoTool Condition="'$(PolyInstallLipoTool)' == '' AND $([MSBuild]::IsOSPlatform('OSX'))">lipo</PolyInstallLipoTool>
+    <PolyInstallLipoTool Condition="'$(PolyInstallLipoTool)' == ''">llvm-lipo</PolyInstallLipoTool>
+  </PropertyGroup>
+
+  <Target Name="PolyInstallThinMacOsNatives"
+          AfterTargets="ComputeResolvedFilesToPublishList"
+          BeforeTargets="GenerateSingleFileBundle"
+          Condition="'$(PolyInstallThinMacNatives)' == 'true' AND '$(_PolyThinArch)' != ''">
+    <PropertyGroup>
+      <_PolyThinDir>$([System.IO.Path]::Combine('$(IntermediateOutputPath)', 'thin-natives'))</_PolyThinDir>
+      <_PolyLipoAvailable>false</_PolyLipoAvailable>
+      <_PolyThinScript>$(MSBuildThisFileDirectory)thin-macos-natives.sh</_PolyThinScript>
+    </PropertyGroup>
+
+    <Exec Command="command -v &quot;$(PolyInstallLipoTool)&quot;"
+          IgnoreExitCode="true"
+          StandardOutputImportance="low"
+          StandardErrorImportance="low"
+          ConsoleToMSBuild="true">
+      <Output TaskParameter="ExitCode" PropertyName="_PolyLipoExitCode" />
+    </Exec>
+
+    <PropertyGroup>
+      <_PolyLipoAvailable Condition="'$(_PolyLipoExitCode)' == '0'">true</_PolyLipoAvailable>
+    </PropertyGroup>
+
+    <Message Importance="high"
+             Text="PolyInstall: skipping macOS native thinning — '$(PolyInstallLipoTool)' was not found. Install LLVM (llvm-lipo) or set -p:PolyInstallLipoTool=..., or pass -p:PolyInstallThinMacNatives=false to silence this. Fat .dylib files will be published unchanged."
+             Condition="'$(_PolyLipoAvailable)' != 'true'" />
+
+    <ItemGroup Condition="'$(_PolyLipoAvailable)' == 'true'">
+      <_PolyCandidateDylib Include="@(ResolvedFileToPublish)"
+                           Condition="'%(Extension)' == '.dylib' AND Exists('%(Identity)')">
+        <ThinPath>$(_PolyThinDir)/%(Filename)%(Extension)</ThinPath>
+      </_PolyCandidateDylib>
+    </ItemGroup>
+
+    <MakeDir Directories="$(_PolyThinDir)"
+             Condition="'$(_PolyLipoAvailable)' == 'true' AND '@(_PolyCandidateDylib)' != ''" />
+
+    <Exec Condition="'$(_PolyLipoAvailable)' == 'true' AND '@(_PolyCandidateDylib)' != ''"
+          Command="chmod +x &quot;$(_PolyThinScript)&quot; &amp;&amp; sh &quot;$(_PolyThinScript)&quot; &quot;$(PolyInstallLipoTool)&quot; &quot;$(_PolyThinArch)&quot; &quot;$(_PolyThinDir)&quot; @(_PolyCandidateDylib->'&quot;%(FullPath)&quot;', ' ')"
+          ConsoleToMSBuild="true"
+          StandardOutputImportance="high"
+          StandardErrorImportance="high" />
+
+    <ItemGroup Condition="'$(_PolyLipoAvailable)' == 'true' AND '@(_PolyCandidateDylib)' != ''">
+      <_PolyThinned Include="@(_PolyCandidateDylib)" Condition="Exists('%(ThinPath)')" />
+      <ResolvedFileToPublish Remove="@(_PolyThinned)" />
+      <ResolvedFileToPublish Include="@(_PolyThinned->'%(ThinPath)')">
+        <RelativePath>%(RelativePath)</RelativePath>
+        <CopyToPublishDirectory>%(CopyToPublishDirectory)</CopyToPublishDirectory>
+        <DestinationSubDirectory>%(DestinationSubDirectory)</DestinationSubDirectory>
+        <DestinationSubPath>%(DestinationSubPath)</DestinationSubPath>
+        <AssetType>%(AssetType)</AssetType>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+</Project>

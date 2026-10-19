@@ -66,8 +66,11 @@ public static class InstallerBuildPipeline
         var diagnostics = ManifestJsonValidator.ValidateResult(json, schemaPath).Diagnostics
             .Concat(ManifestSemanticValidator.ValidateResult(manifest).Diagnostics);
         var prepared = ManifestDiagnosticPipeline.Prepare(diagnostics, yaml);
-        if (prepared.Count > 0)
-            throw new InvalidOperationException(DiagnosticFormatter.Format(prepared, manifestPath, yaml));
+        var errors = prepared.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
+        foreach (var warning in prepared.Where(d => d.Severity == DiagnosticSeverity.Warning))
+            BuildLog.Info($"warning[{warning.Code}]: {warning.Message}");
+        if (errors.Count > 0)
+            throw new InvalidOperationException(DiagnosticFormatter.Format(errors, manifestPath, yaml));
         BuildLog.Info("Manifest schema and semantic validation passed.");
 
         BuildLog.Info("Collecting files from manifest entries…");
@@ -149,9 +152,16 @@ public static class InstallerBuildPipeline
             BuildLog.VerboseLine($"  .NET RID: {rid}");
             var stubPath = ResolveStubPath(manifest, stubRoot, rid);
             if (!File.Exists(stubPath))
-                throw new FileNotFoundException($"Stub binary not found for target '{target}' (RID {rid}): {stubPath}. Publish PolyInstall.Runtime for this RID into stubs/{rid}/.");
+            {
+                var project = manifest.Ui.IsSilent ? "PolyInstall.Runtime.Silent" : "PolyInstall.Runtime";
+                throw new FileNotFoundException(
+                    $"Stub binary not found for target '{target}' (RID {rid}): {stubPath}. " +
+                    $"Publish {project} for this RID into stubs/{rid}/, for example:{Environment.NewLine}" +
+                    $"  dotnet publish src/{project}/{project}.csproj -c Release -r {rid} " +
+                    $"--self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o stubs/{rid}");
+            }
 
-            StubPublishValidator.ValidateRuntimeStub(stubPath);
+            StubPublishValidator.ValidateRuntimeStub(stubPath, silent: manifest.Ui.IsSilent);
             var stubSize = new FileInfo(stubPath).Length;
             BuildLog.Info($"Using runtime stub: {stubPath} ({BuildLog.FormatBytes(stubSize)})");
 
@@ -323,12 +333,16 @@ public static class InstallerBuildPipeline
         if (!string.IsNullOrWhiteSpace(manifest.Build.StubPath))
         {
             var p = manifest.Build.StubPath.Replace("{rid}", dotnetRid, StringComparison.OrdinalIgnoreCase);
-            return Path.GetFullPath(p);
+            var resolved = Path.GetFullPath(p);
+            BuildLog.Info(
+                $"Using build.stub_path override (ui.mode={manifest.Ui.Mode}): {resolved}");
+            return resolved;
         }
 
         var isWinTarget = dotnetRid.StartsWith("win-", StringComparison.OrdinalIgnoreCase);
         var ext = isWinTarget ? ".exe" : "";
-        return Path.GetFullPath(Path.Combine(stubRoot, dotnetRid, $"PolyInstall.Runtime{ext}"));
+        var stubName = manifest.Ui.IsSilent ? "PolyInstall.Runtime.Silent" : "PolyInstall.Runtime";
+        return Path.GetFullPath(Path.Combine(stubRoot, dotnetRid, $"{stubName}{ext}"));
     }
 
     private static async Task AddTargetSpecificFilesAsync(

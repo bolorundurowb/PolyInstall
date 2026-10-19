@@ -1,0 +1,2 @@
+# Shell scripts used by MSBuild on Linux CI must keep LF endings.
+src/PolyInstall.Runtime/thin-macos-natives.sh text eol=lf

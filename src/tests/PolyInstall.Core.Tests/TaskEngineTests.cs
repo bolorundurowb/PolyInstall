@@ -861,6 +861,7 @@ public class TaskEngineTests
         public IFileAssociationPal? FileAssociations { get; }
         public IServiceManagerPal? Services => null;
         public IProcessManagerPal Processes { get; } = new NoOpProcessManagerPal();
+        public IElevationPal Elevation { get; } = new NoOpElevationPal();
 
         public List<(string Target, string Shortcut, string? Description, string? Icon)> ShortcutCalls { get; } = [];
         public List<(string KeyPath, string? ValueName, string Value, string ValueKind)> RegistryCalls { get; } = [];
@@ -949,6 +950,7 @@ public class TaskEngineTests
         public IFileAssociationPal? FileAssociations => null;
         public IServiceManagerPal? Services => null;
         public IProcessManagerPal Processes { get; } = new NoOpProcessManagerPal();
+        public IElevationPal Elevation { get; } = new NoOpElevationPal();
     }
 
     private sealed class NullShortcutPal : IShortcutPal

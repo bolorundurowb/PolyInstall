@@ -32,6 +32,29 @@ public class ManifestYamlTests
         m.Build.Targets.Must().HaveCount(1);
         m.Ui.LogoPath.Must().Be("branding/logo.png");
         m.Ui.WizardSteps[0].Type.Must().Be("welcome");
+        m.Ui.Mode.Must().Be("wizard");
+    }
+
+    [Fact]
+    public void Parse_ShouldSetSilentMode_WhenUiModeIsSilent()
+    {
+        var yaml = """
+            metadata:
+              name: T
+              version: 1.0.0
+            build:
+              targets:
+                - windows-x64
+            ui:
+              mode: silent
+            files:
+              - source_dir: .
+                include:
+                  - "*.txt"
+            """;
+        var m = ManifestYaml.Parse(yaml);
+        m.Ui.Mode.Must().Be("silent");
+        m.Ui.IsSilent.Must().BeTrue();
     }
 
     [Fact]

@@ -3,13 +3,14 @@ namespace PolyInstall.Core.Build.Validation;
 /// <summary>1-based source location within a YAML manifest (end column is exclusive).</summary>
 public readonly record struct SourceSpan(int Line, int Column, int EndLine, int EndColumn);
 
-/// <summary>Diagnostic severity. Only errors are emitted today; warnings are reserved for later.</summary>
+/// <summary>Diagnostic severity.</summary>
 public enum DiagnosticSeverity
 {
     Error = 0,
+    Warning = 1,
 }
 
-/// <summary>A machine-readable validation error emitted while reading a manifest.</summary>
+/// <summary>A machine-readable validation diagnostic emitted while reading a manifest.</summary>
 public sealed record ManifestDiagnostic(
     string Code,
     string Message,
@@ -22,7 +23,7 @@ public sealed record ManifestDiagnostic(
 public sealed class ManifestValidationResult(IReadOnlyList<ManifestDiagnostic> diagnostics)
 {
     public IReadOnlyList<ManifestDiagnostic> Diagnostics { get; } = diagnostics;
-    public bool IsValid => Diagnostics.Count == 0;
+    public bool IsValid => Diagnostics.All(d => d.Severity != DiagnosticSeverity.Error);
 
     public static ManifestValidationResult Success { get; } = new(Array.Empty<ManifestDiagnostic>());
 }
