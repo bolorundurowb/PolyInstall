@@ -4,6 +4,7 @@
     <Project Path="PolyInstall.Core/PolyInstall.Core.csproj" />
     <Project Path="PolyInstall.Core.Build/PolyInstall.Core.Build.csproj" />
     <Project Path="PolyInstall.Runtime/PolyInstall.Runtime.csproj" />
+    <Project Path="PolyInstall.Runtime.Silent/PolyInstall.Runtime.Silent.csproj" />
     <Project Path="PolyInstall.Uninstall/PolyInstall.Uninstall.csproj" />
     <Project Path="PolyInstall.SchemaGen/PolyInstall.SchemaGen.csproj" />
     <Project Path="PolyInstall.UI/PolyInstall.UI.csproj" />

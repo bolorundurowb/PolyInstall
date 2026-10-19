@@ -15,7 +15,8 @@ public static class DiagnosticFormatter
 
         foreach (var diagnostic in all)
         {
-            lines.Add($"error[{diagnostic.Code}]: {diagnostic.Message}");
+            var label = diagnostic.Severity == DiagnosticSeverity.Warning ? "warning" : "error";
+            lines.Add($"{label}[{diagnostic.Code}]: {diagnostic.Message}");
 
             if (diagnostic.Span is { } span)
             {
@@ -35,7 +36,12 @@ public static class DiagnosticFormatter
             lines.Add(string.Empty);
         }
 
-        lines.Add($"error: manifest validation failed with {all.Count} error{(all.Count == 1 ? string.Empty : "s")}");
+        var errorCount = all.Count(d => d.Severity == DiagnosticSeverity.Error);
+        var warningCount = all.Count(d => d.Severity == DiagnosticSeverity.Warning);
+        if (errorCount > 0)
+            lines.Add($"error: manifest validation failed with {errorCount} error{(errorCount == 1 ? string.Empty : "s")}");
+        else if (warningCount > 0)
+            lines.Add($"warning: manifest validation completed with {warningCount} warning{(warningCount == 1 ? string.Empty : "s")}");
         return string.Join(Environment.NewLine, lines);
     }
 

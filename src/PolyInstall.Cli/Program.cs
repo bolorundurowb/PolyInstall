@@ -126,9 +126,13 @@ try
                 var diagnostics = ManifestJsonValidator.ValidateResult(json, schemaPath).Diagnostics
                     .Concat(ManifestSemanticValidator.ValidateResult(m).Diagnostics);
                 var prepared = ManifestDiagnosticPipeline.Prepare(diagnostics, yaml);
-                if (prepared.Count > 0)
+                var errors = prepared.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
+                var warnings = prepared.Where(d => d.Severity == DiagnosticSeverity.Warning).ToList();
+                if (warnings.Count > 0)
+                    Console.Error.WriteLine(DiagnosticFormatter.Format(warnings, manifestPath, yaml));
+                if (errors.Count > 0)
                 {
-                    Console.Error.WriteLine(DiagnosticFormatter.Format(prepared, manifestPath, yaml));
+                    Console.Error.WriteLine(DiagnosticFormatter.Format(errors, manifestPath, yaml));
                     return 1;
                 }
                 Console.WriteLine("Manifest is valid.");
