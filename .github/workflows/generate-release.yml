@@ -283,7 +283,9 @@ jobs:
           Expand-Archive -LiteralPath $stubZip -DestinationPath 'stub-extract' -Force
 
           $exePath = Join-Path (Join-Path 'cli-extract' $artifact) $exeName
-          $stubsDir = Join-Path (Join-Path (Join-Path 'cli-extract' $artifact) 'stubs') $rid
+          # silent-smoke wants the stubs root. The CLI appends <rid>/ itself (ResolveStubPath).
+          $stubsRoot = Join-Path (Join-Path 'cli-extract' $artifact) 'stubs'
+          $stubsDir = Join-Path $stubsRoot $rid
           $bundledRuntime = Join-Path $stubsDir $runtimeName
           $bundledSilent = Join-Path $stubsDir $silentName
           $stubRuntime = Join-Path (Join-Path 'stub-extract' $rid) $runtimeName
@@ -340,7 +342,7 @@ jobs:
           & $exePath --version
 
           Add-Content -Path $env:GITHUB_OUTPUT -Value "exe-path=$exePath"
-          Add-Content -Path $env:GITHUB_OUTPUT -Value "stubs-dir=$stubsDir"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "stubs-dir=$stubsRoot"
 
       - name: Silent install smoke (release artifacts)
         uses: ./.github/actions/silent-smoke
