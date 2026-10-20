@@ -32,6 +32,26 @@ runs:
       run: |
         $ErrorActionPreference = 'Stop'
 
+        # PowerShell's '&' call operator does not reliably block for a WinExe-subsystem process (the wizard
+        # stub, PolyInstall.Runtime, built with ui.mode: wizard): it can return before the child actually
+        # finishes, leaving $LASTEXITCODE empty and racing ahead of the install. Process.WaitForExit() blocks
+        # correctly for every stub subsystem, so every stub invocation below goes through this helper instead
+        # of '&'.
+        function Invoke-Stub {
+          param(
+            [Parameter(Mandatory)] [string] $Path,
+            [string[]] $Arguments = @()
+          )
+
+          $psi = [System.Diagnostics.ProcessStartInfo]::new($Path)
+          foreach ($argument in $Arguments) { $psi.ArgumentList.Add($argument) }
+          $psi.UseShellExecute = $false
+
+          $process = [System.Diagnostics.Process]::Start($psi)
+          $process.WaitForExit()
+          return $process.ExitCode
+        }
+
         $polyinstallPath = $env:POLYINSTALL_PATH
         $stubsDir = $env:STUBS_DIR
         $target = $env:MANIFEST_TARGET
@@ -87,14 +107,20 @@ runs:
 
         $installDir = Join-Path $work 'install-root'
         New-Item -ItemType Directory -Path $installDir | Out-Null
-        & $installer.FullName --install-dir $installDir
-        if ($LASTEXITCODE -ne 0) { throw "Silent installer failed with exit $LASTEXITCODE" }
+        $exitCode = Invoke-Stub -Path $installer.FullName -Arguments @('--install-dir', $installDir)
+        if ($exitCode -ne 0) { throw "Silent installer failed with exit $exitCode" }
         if (!(Test-Path -LiteralPath (Join-Path $installDir 'hello.txt'))) {
           throw "Silent install did not copy hello.txt"
         }
         if (!(Test-Path -LiteralPath (Join-Path (Join-Path $installDir '.polyinstall') 'install-state.json'))) {
           throw "Silent install did not write install-state.json"
         }
+
+        # Negative: unknown argument -> exit 2. Checked against the silent installer before the dist/ folder is
+        # wiped and rebuilt below — both builds share the same default output_name ("{name}-{target}"), so
+        # $installer's path would otherwise end up pointing at the wizard stub's bytes by the time this runs.
+        $exitCode = Invoke-Stub -Path $installer.FullName -Arguments @('--not-a-real-flag')
+        if ($exitCode -ne 2) { throw "Expected exit 2 for invalid args, got $exitCode" }
 
         # Wizard stub --silent should also succeed against a fresh destination.
         $installDir2 = Join-Path $work 'install-root-wizard-silent'
@@ -107,14 +133,10 @@ runs:
         if ($LASTEXITCODE -ne 0) { throw "polyinstall build (wizard) failed with exit $LASTEXITCODE" }
         $wizardInstaller = Get-ChildItem -Path (Join-Path $work 'dist') -File | Select-Object -First 1
         if ($IsLinux -or $IsMacOS) { chmod +x $wizardInstaller.FullName }
-        & $wizardInstaller.FullName --silent --install-dir $installDir2
-        if ($LASTEXITCODE -ne 0) { throw "Wizard stub --silent failed with exit $LASTEXITCODE" }
+        $exitCode = Invoke-Stub -Path $wizardInstaller.FullName -Arguments @('--silent', '--install-dir', $installDir2)
+        if ($exitCode -ne 0) { throw "Wizard stub --silent failed with exit $exitCode" }
         if (!(Test-Path -LiteralPath (Join-Path $installDir2 'hello.txt'))) {
           throw "Wizard --silent install did not copy hello.txt"
         }
-
-        # Negative: unknown argument -> exit 2.
-        & $installer.FullName --not-a-real-flag
-        if ($LASTEXITCODE -ne 2) { throw "Expected exit 2 for invalid args, got $LASTEXITCODE" }
 
         Write-Host "Silent install smoke OK ($target)."
