@@ -356,6 +356,15 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "wizard",
+            "silent"
+          ],
+          "default": "wizard",
+          "description": "Installer presentation mode. \u0027wizard\u0027 (default) selects the Avalonia UI stub; \u0027silent\u0027 selects the UI-less stub."
+        },
         "theme": {
           "type": "string"
         },
@@ -421,8 +430,8 @@
         },
         "show_logs": {
           "type": "boolean",
-          "default": true,
-          "description": "Whether the progress step displays its detailed install log."
+          "description": "Whether the progress step displays its detailed install log.",
+          "default": true
         }
       }
     },

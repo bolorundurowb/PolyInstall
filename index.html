@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en-GB">
+<html lang="en-NG">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="PolyInstall documentation: build self-contained cross-platform installers from a YAML manifest.">
+  <meta name="description" content="PolyInstall documentation: build self-contained Windows, Linux, and macOS installers for any application from a single YAML manifest, with an interactive wizard or a silent, unattended mode.">
   <title>PolyInstall Documentation</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -462,6 +462,12 @@
       margin-bottom: 0.2rem;
     }
 
+    .muted {
+      color: var(--muted);
+      font-size: 0.85em;
+      font-weight: 400;
+    }
+
     .steps {
       counter-reset: step;
       display: grid;
@@ -722,21 +728,27 @@
         <a href="#installation">Install</a>
         <a href="#quick-start">Quick start</a>
         <a href="#advanced">Advanced</a>
+        <a href="#silent-installs">Silent installs</a>
+        <a href="#lifecycle">Lifecycle</a>
         <a href="#github-actions">GitHub Actions</a>
         <a href="#schema-reference">Schema</a>
         <a href="#faq">FAQ</a>
+        <a href="#release-notes">Releases</a>
         <a href="#contributing">Contribute</a>
       </nav>
     </header>
 
     <section class="hero" id="top">
       <div>
-        <span class="eyebrow">Current release: v2.1.0</span>
+        <span class="eyebrow">Current release: v2.3.0</span>
         <h1>Build native-feeling installers from one YAML manifest.</h1>
         <p class="hero-copy">
           PolyInstall is a cross-platform installer builder for teams that want predictable packaging without maintaining
           separate Windows, Linux, and macOS installer projects. Describe your application once, bundle the payload with
-          Brotli compression, and produce self-contained installer binaries with a configurable Avalonia wizard UI.
+          Brotli compression, and produce self-contained installer binaries with either a configurable Avalonia wizard or a
+          lean, UI-less silent installer for unattended deployment. Any payload that fits in a folder can be packaged —
+          Node, Python, Go, Rust, Java, Electron, static sites, scripts, or game assets — and end users need nothing
+          pre-installed to run the result.
         </p>
         <div class="hero-actions">
           <a class="button primary" href="#installation">Start installing</a>
@@ -758,19 +770,22 @@
 polyinstall validate manifest.yaml --base .
 
 # Build installers from the same manifest
-polyinstall build manifest.yaml --base .</code></pre>
+polyinstall build manifest.yaml --base .
+
+# Run a built installer without the wizard
+./dist/MyApp-linux-x64 --silent --install-dir "$HOME/.local/share/MyApp"</code></pre>
         </div>
       </aside>
     </section>
 
     <section class="stats-grid" aria-label="Project highlights">
       <div class="stat">
-        <strong>2.1.0</strong>
+        <strong>2.3.0</strong>
         <span>Current stable release.</span>
       </div>
       <div class="stat">
-        <strong>.NET 10</strong>
-        <span>C# across the CLI, core library, runtime, UI, uninstaller, and schema generator.</span>
+        <strong>Any payload</strong>
+        <span>If it fits in a folder, it ships. Installers are self-contained; target machines need no runtime or SDK.</span>
       </div>
       <div class="stat">
         <strong>Release zips</strong>
@@ -790,10 +805,14 @@ polyinstall build manifest.yaml --base .</code></pre>
         <a href="#installation">3. Installation guide</a>
         <a href="#quick-start">4. Quick start</a>
         <a href="#advanced">5. Advanced usage</a>
-        <a href="#github-actions">6. GitHub Actions</a>
-        <a href="#schema-reference">7. Schema reference</a>
-        <a href="#faq">8. Troubleshooting and FAQ</a>
-        <a href="#contributing">9. Contributing and support</a>
+        <a href="#silent-installs">6. Silent installs</a>
+        <a href="#lifecycle">7. Install lifecycle</a>
+        <a href="#github-actions">8. GitHub Actions</a>
+        <a href="#schema-reference">9. Schema reference</a>
+        <a href="#diagnostics">10. Diagnostic codes</a>
+        <a href="#faq">11. Troubleshooting and FAQ</a>
+        <a href="#release-notes">12. Release notes</a>
+        <a href="#contributing">13. Contributing and support</a>
       </aside>
 
       <main>
@@ -808,11 +827,12 @@ polyinstall build manifest.yaml --base .</code></pre>
 
           <div class="callout">
             <strong>Current project state</strong>
-            The repository is at <code>v2.1.0</code>, targets <code>net10.0</code>, uses
-            Avalonia <code>12.0.4</code> for the installer UI, and runs CI restore/build/test with coverage on GitHub
-            Actions. The release pipeline publishes self-contained CLI zips for <code>win-x64</code>,
-            <code>linux-x64</code>, and <code>osx-arm64</code>; each CLI zip carries its host stub, while separate
-            <code>stubs-&lt;rid&gt;</code> archives are available when you need to build installers for another target.
+            The repository is at <code>v2.3.0</code> and uses Avalonia 12 for the installer wizard. The release pipeline
+            publishes self-contained CLI zips for <code>win-x64</code>, <code>linux-x64</code>, and
+            <code>osx-arm64</code>. Each CLI zip carries the wizard stub, the silent stub, and (on Windows) the uninstall
+            stub for its own RID; separate <code>stubs-&lt;rid&gt;</code> archives are available when you need to build
+            installers for another target. Every release is smoke-tested end to end on Windows, Linux, and macOS before
+            it is published.
           </div>
 
           <h3 style="margin-top: 1.6rem;">How to use PolyInstall</h3>
@@ -821,7 +841,10 @@ polyinstall build manifest.yaml --base .</code></pre>
             <li>Point your editor at the published schema so typos and shape errors show up while you edit.</li>
             <li>Run <code>polyinstall validate</code> to collect schema and semantic issues in one pass.</li>
             <li>Run <code>polyinstall build</code> to produce installer binaries (and optional AppImage/DMG packaging).</li>
-            <li>Ship the generated installer; the Avalonia wizard installs files, runs post-install tasks, and records uninstall state.</li>
+            <li>Ship the generated installer. In wizard mode the user walks through the Avalonia wizard; in silent mode (or
+              with <code>--silent</code>) the installer runs unattended from a terminal, script, or deployment tool. Either way
+              it copies files, runs tasks, registers services and associations, and records state for update, repair, and
+              uninstall.</li>
           </ol>
           <p>
             Think of the manifest as the single source of truth. The CLI packages it with your payload; the runtime
@@ -830,13 +853,19 @@ polyinstall build manifest.yaml --base .</code></pre>
           </p>
 
           <div class="callout">
-            <strong>What's new in v2.1.0</strong>
+            <strong>What's new in v2.3.0</strong>
             <ul style="margin: 0.5rem 0 0; padding-left: 1.2rem;">
-              <li><code>{LocalAppData}</code> path placeholder for per-user install roots across Windows, Linux, and macOS.</li>
-              <li>Windows <code>install_scope: user</code> defaults under the local application-data directory.</li>
-              <li>Collect-all validation with rustc-style <code>error[PIxxx]</code> reports, YAML carets, and help notes.</li>
-              <li>Progress wizard step <code>show_logs</code> (default <code>true</code>) to show or hide the scrolling install log.</li>
+              <li><a href="#silent-installs">Silent installs</a>: set <code>ui.mode: silent</code> to build with a UI-less
+                stub that is about 9 MB smaller, or pass <code>--silent</code> to any wizard installer. Unattended runs
+                support <code>--install-dir</code>, <code>--features</code>, <code>--accept-eula</code>,
+                <code>--close-apps</code>, <code>--log</code>, and documented exit codes.</li>
+              <li>Windows elevation for silent installs now waits for the elevated child and forwards its exit code.</li>
+              <li>Cancelling a fresh install (wizard or silent) offers or runs a cleanup of the partially copied files.</li>
+              <li>SVG logos are converted to PNG at build time, so the installer stub no longer carries an SVG renderer.</li>
+              <li>macOS stubs are thinned to a single CPU architecture, making <code>osx-*</code> installers smaller.</li>
+              <li>Validation can now emit warnings (<code>warning[PIxxx]</code>) as well as errors; warnings do not fail a build.</li>
             </ul>
+            <p style="margin-top: 0.6rem;">See <a href="#release-notes">release notes</a> for v2.2.0, v2.1.1, and earlier changes.</p>
           </div>
 
           <div class="grid three">
@@ -853,9 +882,10 @@ polyinstall build manifest.yaml --base .</code></pre>
               </p>
             </div>
             <div class="card">
-              <h3>Friendly install flow</h3>
+              <h3>Wizard or silent</h3>
               <p>
-                Ship an Avalonia wizard with welcome, licence, destination, progress, and finish steps.
+                Ship an Avalonia wizard with welcome, licence, destination, features, progress, and finish steps, or a
+                UI-less installer for scripted and fleet deployment.
               </p>
             </div>
           </div>
@@ -877,15 +907,23 @@ polyinstall build manifest.yaml --base .</code></pre>
             <tbody>
               <tr>
                 <td><code>PolyInstall.Core</code></td>
-                <td>Shared manifest models, packaging logic, validation, and task/runtime primitives.</td>
+                <td>Shared manifest models, bundle format, install/update/uninstall coordinators, task engine, and the platform abstraction layer. Dependency-free so every installer stays small.</td>
+              </tr>
+              <tr>
+                <td><code>PolyInstall.Core.Build</code></td>
+                <td>Build-time only: YAML parsing, file globbing, and semantic manifest validation. Never shipped inside an installer.</td>
               </tr>
               <tr>
                 <td><code>PolyInstall.Cli</code></td>
-                <td>Build tool that validates manifests, gathers files, compresses payloads, and emits installers.</td>
+                <td>The <code>polyinstall</code> command: validates manifests, gathers files, compresses payloads, signs, packages AppImage/DMG, and emits installers.</td>
               </tr>
               <tr>
                 <td><code>PolyInstall.Runtime</code></td>
-                <td>The generated installer host that reads its appended bundle and launches the install flow.</td>
+                <td>The wizard installer stub. Reads its appended bundle and shows the Avalonia wizard, or runs unattended when passed <code>--silent</code>.</td>
+              </tr>
+              <tr>
+                <td><code>PolyInstall.Runtime.Silent</code></td>
+                <td>The UI-less installer stub selected by <code>ui.mode: silent</code>. Contains no Avalonia or Skia code, so it is roughly 9 MB smaller.</td>
               </tr>
               <tr>
                 <td><code>PolyInstall.UI</code></td>
@@ -917,17 +955,19 @@ polyinstall build manifest.yaml --base .</code></pre>
               <ul>
                 <li>A 64-bit host OS that matches the downloaded CLI archive.</li>
                 <li>A YAML manifest describing your application.</li>
-                <li>A payload directory containing the files you want to install.</li>
-                <li>The included host RID stub, a downloaded <code>stubs-&lt;rid&gt;</code> archive, or a custom <code>stubs/</code> directory.</li>
+                <li>A payload directory containing the files you want to install. It can be built with any language or toolchain.</li>
+                <li>The included host RID stubs, a downloaded <code>stubs-&lt;rid&gt;</code> archive, or a custom <code>stubs/</code> directory.</li>
+                <li><code>mksquashfs</code> from <code>squashfs-tools</code> on a Linux host for AppImage output.</li>
+                <li><code>hdiutil</code> on a macOS host for DMG output.</li>
+                <li>On Linux build hosts that convert an SVG <code>ui.logo_path</code>: <code>libfontconfig</code> and <code>libfreetype</code> (present on most desktop distributions and GitHub's Ubuntu runners, often missing in slim containers).</li>
               </ul>
             </div>
             <div class="card">
               <h3>For source builds</h3>
               <ul>
-                <li>.NET SDK 10.x, aligned with the repository target framework.</li>
+                <li>.NET SDK 10.x, aligned with the repository target framework. This is only needed to build PolyInstall itself, never to build or run your installers.</li>
                 <li>Git for cloning and contributing.</li>
-                <li><code>mksquashfs</code> from <code>squashfs-tools</code> for Linux AppImage output.</li>
-                <li><code>hdiutil</code> on macOS for DMG output.</li>
+                <li><code>lipo</code> (macOS) or <code>llvm-lipo</code> (Linux) when publishing <code>osx-*</code> wizard stubs, so native libraries are thinned to one architecture. Without it, thinning is skipped and the stub is larger.</li>
               </ul>
             </div>
           </div>
@@ -935,7 +975,9 @@ polyinstall build manifest.yaml --base .</code></pre>
           <div class="callout">
             <strong>Target compatibility</strong>
             The finished installer must run on a machine that matches its target runtime identifier. For example,
-            a <code>windows-x64</code> installer is intended for 64-bit Windows, not Linux or macOS.
+            a <code>windows-x64</code> installer is intended for 64-bit Windows, not Linux or macOS. Installers are
+            self-contained: the target machine does not need .NET, a language runtime, or any other prerequisite to run
+            the installer itself. Your application's own runtime requirements are yours to bundle or document.
           </div>
         </section>
 
@@ -951,22 +993,33 @@ polyinstall build manifest.yaml --base .</code></pre>
             <article class="step">
               <h3>Download a release archive</h3>
               <p>
-                Open the <a href="https://github.com/bolorundurowb/PolyInstall/releases/tag/v2.1.0" rel="noreferrer">PolyInstall v2.1.0 release</a>
+                Open the <a href="https://github.com/bolorundurowb/PolyInstall/releases/tag/v2.3.0" rel="noreferrer">PolyInstall v2.3.0 release</a>
                 and download the archive that matches your build machine, such as
                 <code>polyinstall-win-x64-&lt;tag&gt;.zip</code>, <code>polyinstall-linux-x64-&lt;tag&gt;.zip</code>, or
                 <code>polyinstall-osx-arm64-&lt;tag&gt;.zip</code>. Each CLI archive includes the runtime stub for that
                 same RID; download a separate <code>stubs-&lt;rid&gt;-&lt;tag&gt;.zip</code> archive when you need to build a
-                different target from the same host.
+                different target from the same host. Verify downloads against <code>SHA256SUMS.txt</code>, which is
+                published with every release.
               </p>
-              <pre><code class="language-bash"># Example layout after extraction
-polyinstall/
-  polyinstall      # or polyinstall.exe on Windows
+              <pre><code class="language-bash"># Example layout after extracting polyinstall-win-x64-&lt;tag&gt;.zip
+polyinstall-win-x64/
+  polyinstall.exe                      # polyinstall on Linux/macOS
   schema/v1.json
   stubs/
-    win-x64/       # host RID stub included with a win-x64 CLI archive
+    win-x64/
+      PolyInstall.Runtime.exe          # wizard stub (ui.mode: wizard, the default)
+      PolyInstall.Runtime.Silent.exe   # silent stub (ui.mode: silent)
+      PolyInstall.Uninstall.exe        # Windows only; embedded when register_arp is true
 
-# Optional: extract separate stubs-linux-x64-&lt;tag&gt;.zip or stubs-osx-arm64-&lt;tag&gt;.zip
-# under the same stubs/ root when building those targets from this host.</code></pre>
+# Optional: extract stubs-linux-x64-&lt;tag&gt;.zip or stubs-osx-arm64-&lt;tag&gt;.zip under the
+# same stubs/ root to build those targets from this host:
+#   stubs/linux-x64/PolyInstall.Runtime
+#   stubs/linux-x64/PolyInstall.Runtime.Silent</code></pre>
+              <pre><code class="language-bash"># Verify a download (Linux/macOS)
+sha256sum --ignore-missing -c SHA256SUMS.txt     # or: shasum -a 256 -c SHA256SUMS.txt
+
+# Confirm the CLI runs
+./polyinstall --version</code></pre>
             </article>
 
             <article class="step">
@@ -993,9 +1046,11 @@ polyinstall validate .\manifest.yaml</code></pre>
               <h3>Validate before building</h3>
               <p>
                 Both <code>validate</code> and <code>build</code> run JSON Schema checks and semantic checks together
-                after YAML parsing and environment substitution. You get every reported issue in one run—stable
-                <code>error[PIxxx]</code> codes, manifest paths, optional YAML carets, and actionable help notes—so you
-                can fix schema typos and semantic rules without ping-ponging between commands.
+                after YAML parsing and environment substitution. You get every reported issue in one run — stable
+                <code>error[PIxxx]</code> and <code>warning[PIxxx]</code> codes, manifest paths, YAML carets when the
+                location can be mapped, and actionable help notes — so you can fix schema typos and semantic rules
+                without going back and forth between commands. Errors fail the command; warnings are printed but do
+                not. See <a href="#diagnostics">diagnostic codes</a> for the full list.
               </p>
               <pre><code class="language-bash">polyinstall validate manifest.yaml --base ./release-input
 polyinstall build manifest.yaml --base ./release-input</code></pre>
@@ -1017,12 +1072,25 @@ error[PI171]: tasks.post_install[0]: write_registry uses HKLM, but install_scope
    = help: Use HKCU, or set build.windows.install_scope to 'machine'.
 
 error: manifest validation failed with 2 errors</code></pre>
+              <pre><code class="language-text"># A warning on its own does not fail validation
+warning[PI145]: ui.mode is 'silent' and wizard_steps includes an 'eula' step. Every unattended run will require --accept-eula.
+  --> manifest.yaml:14:3
+   |
+14 |   mode: silent
+   |   ^^^^
+   |
+   = help: Pass --accept-eula to the silent installer, or remove the eula step when packaging for unattended deployment.
+
+warning: manifest validation completed with 1 warning
+Manifest is valid.</code></pre>
             </article>
           </div>
 
           <h3 style="margin-top: 1.6rem;">Build from source</h3>
           <p>
-            Contributors can build the CLI and publish runtime stubs directly from the repository.
+            Contributors can build the CLI and publish runtime stubs directly from the repository. Stubs must be
+            published as single-file, self-contained executables; the build rejects multi-file publishes (a sidecar
+            <code>.dll</code> next to the stub) and suspiciously small stubs with a message showing the correct command.
           </p>
           <pre><code class="language-bash">git clone https://github.com/bolorundurowb/PolyInstall.git
 cd PolyInstall
@@ -1030,9 +1098,14 @@ cd PolyInstall
 dotnet restore src/PolyInstall.slnx
 dotnet build src/PolyInstall.slnx -c Release --no-restore
 
-# Publish a Windows runtime stub and uninstaller
+# Publish the wizard stub, the silent stub, and the Windows uninstaller
 dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r win-x64 -o stubs/win-x64
+dotnet publish src/PolyInstall.Runtime.Silent/PolyInstall.Runtime.Silent.csproj -c Release -r win-x64 -o stubs/win-x64
 dotnet publish src/PolyInstall.Uninstall/PolyInstall.Uninstall.csproj -c Release -r win-x64 -o stubs/win-x64
+
+# macOS stubs: universal native libraries are thinned to the RID's architecture automatically.
+# Opt out with -p:PolyInstallThinMacNatives=false, or point at a specific tool with -p:PolyInstallLipoTool=llvm-lipo.
+dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r osx-arm64 -o stubs/osx-arm64
 
 # Build the sample installer
 dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj -- build examples/polyinstall.sample.yaml --base examples --stubs stubs</code></pre>
@@ -1114,10 +1187,19 @@ polyinstall build manifest.yaml --base .</code></pre>
                 Launch the generated binary on a matching target machine. With the sample above, the destination step
                 defaults under <code>{LocalAppData}/HelloPoly</code>, the progress step shows status (logs hidden because
                 <code>show_logs</code> is <code>false</code>), files are copied, install state is recorded, and the
-                finish step summarises the result.
+                finish step summarises the result. If you add <code>linux-x64</code> or <code>osx-arm64</code> to
+                <code>build.targets</code>, the outputs have no extension; mark them executable after downloading.
               </p>
               <pre><code class="language-bash"># Windows output
-dist/HelloPoly-windows-x64.exe</code></pre>
+dist/HelloPoly-windows-x64.exe
+
+# Linux / macOS outputs (when those targets are added)
+chmod +x dist/HelloPoly-linux-x64
+./dist/HelloPoly-linux-x64
+
+# Prefer no wizard? Run the same installer unattended (PowerShell; -Wait because the
+# wizard stub is a GUI-subsystem app on Windows)
+Start-Process .\dist\HelloPoly-windows-x64.exe -ArgumentList '--silent' -Wait</code></pre>
             </article>
           </div>
         </section>
@@ -1126,9 +1208,9 @@ dist/HelloPoly-windows-x64.exe</code></pre>
           <span class="eyebrow">5. Advanced usage and features</span>
           <h2>Use the full manifest surface</h2>
           <p class="section-intro">
-            PolyInstall supports multi-target builds, platform-specific packaging, wizard customisation, lifecycle
-            tasks, glob filtering, custom output names, optional signing, environment variable substitution, and
-            install-state tracking.
+            PolyInstall supports multi-target builds, platform-specific packaging, wizard customisation, silent installs,
+            optional features, background services, lifecycle tasks, glob filtering, custom output names, optional
+            signing, environment variable substitution, and install-state tracking for update, repair, and uninstall.
           </p>
 
           <div class="feature-list">
@@ -1143,29 +1225,63 @@ dist/HelloPoly-windows-x64.exe</code></pre>
               <h3>Wizard UI and branding</h3>
               <p>
                 Configure the wizard sequence, select <code>light</code>, <code>dark</code>, or <code>system</code>
-                theme mode, and provide a logo path resolved from the extracted payload at install time.
+                theme mode, and provide a logo path resolved from the extracted payload at install time. Raster logos
+                (PNG, JPEG, and so on) are used as-is; SVG logos are converted to PNG when you build.
+              </p>
+            </div>
+            <div class="feature-item">
+              <h3>Silent and unattended installs</h3>
+              <p>
+                Set <code>ui.mode: silent</code> for a smaller UI-less installer, or pass <code>--silent</code> to a
+                wizard installer. Scripts get stable exit codes, a timestamped log, and flags for the install directory,
+                features, licence acceptance, and closing running apps. See <a href="#silent-installs">Silent installs</a>.
+              </p>
+            </div>
+            <div class="feature-item">
+              <h3>Optional features</h3>
+              <p>
+                Declare top-level <code>features</code> and gate files, tasks, file associations, and services on them.
+                Users pick features on the wizard's features step; silent installs use <code>--features</code>.
+              </p>
+            </div>
+            <div class="feature-item">
+              <h3>Services and daemons</h3>
+              <p>
+                Register Windows services, Linux systemd units, and macOS launchd jobs. Services are registered after
+                files are copied, refreshed on update (services dropped from the manifest are removed), and stopped and
+                removed automatically on uninstall.
               </p>
             </div>
             <div class="feature-item">
               <h3>Lifecycle tasks</h3>
               <p>
-                Run pre-install, post-install, pre-uninstall, and post-uninstall actions such as shortcuts, registry
-                writes, desktop entries, permission changes, and PATH updates.
+                Run install-phase actions such as shortcuts, registry writes, desktop entries, permission changes, and
+                PATH updates. Uninstall phases accept <code>file_association</code> (which unregisters the association).
               </p>
             </div>
             <div class="feature-item">
-              <h3>Reliable uninstall</h3>
+              <h3>Update, repair, and uninstall</h3>
               <p>
-                Install state is written under <code>.polyinstall/</code>, allowing the Windows uninstaller to remove
-                registered entries, installed files, and configured resources consistently.
+                Install state is written under <code>.polyinstall/</code>. Running a newer installer updates in place,
+                running the same version repairs, and the Windows uninstaller removes payload files, services, PATH
+                entries, associations, and the Add/Remove Programs entry. See <a href="#lifecycle">Install lifecycle</a>.
+              </p>
+            </div>
+            <div class="feature-item">
+              <h3>Running-app detection</h3>
+              <p>
+                Before copying files, the installer checks for processes running from the install location. The wizard
+                offers to close them; silent installs stop with exit code <code>4</code> unless <code>--close-apps</code>
+                is passed.
               </p>
             </div>
           </div>
 
           <h3 style="margin-top: 1.6rem;">Complete multi-platform manifest</h3>
           <p>
-            This manifest demonstrates advanced build options, glob filtering, environment substitution, branding, and
-            OS-gated tasks.
+            This manifest demonstrates advanced build options, glob filtering, environment substitution, branding,
+            optional features, a feature-gated background service, and OS-gated tasks. The application itself can be
+            written in anything; <code>ContosoStudio</code> here stands for whatever executable your payload ships.
           </p>
           <pre><code class="language-yaml"># yaml-language-server: $schema=https://bolorundurowb.github.io/PolyInstall/schema/v1.json
 metadata:
@@ -1201,8 +1317,9 @@ build:
       notarization_profile: "polyinstall-notary"
 
 ui:
+  mode: wizard            # default; use "silent" for a UI-less installer
   theme: system
-  logo_path: "branding/contoso-logo.svg"
+  logo_path: "branding/contoso-logo.svg"   # converted to PNG at build time
   wizard_steps:
     - type: welcome
       title: Welcome to Contoso Studio
@@ -1212,11 +1329,23 @@ ui:
     - type: destination
       title: Choose where to install
       default_path: "{LocalAppData}/Contoso Studio"
+    - type: features
+      title: Choose components
     - type: progress
       title: Installing
       # omit show_logs or set true to keep the scrolling detail log
     - type: finish
       title: Ready to launch
+
+features:
+  - id: samples
+    name: Sample projects
+    description: Example projects to explore Contoso Studio.
+    default_selected: true
+  - id: sync_agent
+    name: Background sync agent
+    description: Keeps projects in sync while Contoso Studio is closed.
+    default_selected: false
 
 files:
   - source_dir: app
@@ -1230,6 +1359,22 @@ files:
     include:
       - "branding/**"
       - "legal/**"
+  - source_dir: samples
+    include:
+      - "**/*"
+    features: [samples]
+
+services:
+  - name: com.contoso.studio.sync
+    require: os.isLinux
+    scope: user
+    description: "Contoso Studio sync agent"
+    executable: "{AppDir}/contoso-sync"
+    arguments: ["--watch"]
+    working_directory: "{AppDir}"
+    restart: on-failure
+    start: true
+    features: [sync_agent]
 
 file_associations:
   - extension: ".cstudio"
@@ -1276,14 +1421,19 @@ tasks:
       parameters:
         path: "{AppDir}/ContosoStudio"
         mode: 755
-  pre_uninstall:
-    - require: os.isWindows
-      action: write_registry
-      parameters:
-        key_path: "HKCU\\Software\\Contoso\\Studio"
-        value_name: UninstallStarted
-        value: "true"
-        value_kind: string</code></pre>
+  # Uninstall phases accept only file_association, which unregisters the association.
+  # Files, services, PATH entries, top-level file_associations, and the Add/Remove
+  # Programs entry are cleaned up automatically.
+  pre_uninstall: []</code></pre>
+
+          <div class="callout">
+            <strong>Uninstall phases are not install phases</strong>
+            <code>create_shortcut</code>, <code>write_registry</code>, <code>create_desktop_entry</code>,
+            <code>set_permissions</code>, and <code>add_to_path</code> are not valid in
+            <code>pre_uninstall</code> or <code>post_uninstall</code>. <code>polyinstall validate</code> reports
+            <code>PI204</code>. Only <code>file_association</code> is valid there. Files, services, PATH entries, and
+            associations are removed automatically.
+          </div>
 
           <h3 style="margin-top: 1.6rem;">Shortcut and file association behaviour</h3>
           <p>
@@ -1313,6 +1463,29 @@ tasks:
             icon assets, then create launchers with <code>create_shortcut</code> or
             <code>create_desktop_entry</code>. This keeps uninstall state accurate and lets PolyInstall place shortcuts
             in the correct per-user or machine-wide location.
+          </div>
+
+          <div class="grid two" style="margin-top: 1rem;">
+            <div class="card">
+              <h3>Where shortcuts land</h3>
+              <p>
+                <strong>Windows:</strong> <code>start_menu</code> is the Start Menu Programs folder and
+                <code>desktop</code> is the desktop — per-user for <code>install_scope: user</code>, all-users for
+                <code>machine</code>. <strong>Linux:</strong> <code>start_menu</code> is
+                <code>~/.local/share/applications</code>. <strong>macOS:</strong> <code>start_menu</code> is
+                <code>~/Applications</code>. On Linux and macOS, shortcuts are symlinks (or a small launcher script where
+                symlinks are unavailable), and an existing file at that path is restored if creation fails.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Shortcuts are not tracked for uninstall</h3>
+              <p>
+                Uninstall removes everything under the install directory, but shortcuts, desktop entries, and registry
+                values created by tasks live outside it and are left in place today. Point shortcuts at files inside
+                <code>{AppDir}</code> so a stale shortcut is harmless, and document manual clean-up if it matters to your
+                users.
+              </p>
+            </div>
           </div>
 
           <p>
@@ -1373,7 +1546,7 @@ tasks:
                 </thead>
                 <tbody>
                   <tr><td><code>{AppDir}</code></td><td>The selected install directory or extracted app directory.</td></tr>
-                  <tr><td><code>{ProgramFiles}</code></td><td>The OS-appropriate programme files location.</td></tr>
+                  <tr><td><code>{ProgramFiles}</code></td><td>The OS-appropriate shared application root: <code>C:\Program Files</code> on Windows, <code>/usr/local</code> on Linux, and <code>/Applications</code> on macOS.</td></tr>
                   <tr><td><code>{LocalAppData}</code></td><td>The current user's local application-data folder (<code>%LOCALAPPDATA%</code>, <code>~/.local/share</code>, or macOS Application Support). Falls back to the user home directory when unavailable.</td></tr>
                   <tr><td><code>{UserHome}</code></td><td>The current user's home directory.</td></tr>
                   <tr><td><code>{Desktop}</code></td><td>The current user's desktop folder.</td></tr>
@@ -1387,15 +1560,18 @@ tasks:
             <div class="card">
               <h3>Windows ARP</h3>
               <p>
-                With <code>register_arp: true</code>, PolyInstall records install state, copies
-                <code>Uninstall.exe</code>, and registers the app in Add/Remove Programs under HKCU or HKLM.
+                With <code>register_arp: true</code> (the default), PolyInstall embeds the uninstall host, copies it to
+                <code>Uninstall.exe</code> at the install root, and registers the app in Add/Remove Programs under HKCU
+                or HKLM, including a quiet uninstall command. If registration fails, the copied uninstaller is removed
+                again so no orphaned entry is left.
               </p>
             </div>
             <div class="card">
               <h3>Linux AppImage</h3>
               <p>
                 Set <code>build.linux.package: appimage</code>. AppImage creation must run on Linux with
-                <code>mksquashfs</code> available on <code>PATH</code>.
+                <code>mksquashfs</code> available on <code>PATH</code>. The first PNG in <code>ui.assets</code> is used
+                as the AppImage icon.
               </p>
             </div>
             <div class="card">
@@ -1491,6 +1667,30 @@ tasks:
                 <td><code>scope: machine</code> in a user-scope Windows install.</td>
                 <td>Machine PATH changes require <code>build.windows.install_scope: machine</code>.</td>
               </tr>
+              <tr>
+                <td><code>ui.mode: silent</code></td>
+                <td>Every target, every install scope, features, services, and signing.</td>
+                <td>Interactive wizard steps are not shown; <code>theme</code>, <code>logo_path</code>, and step titles have no visible effect.</td>
+                <td>An <code>eula</code> step produces warning <code>PI145</code>: every unattended run must pass <code>--accept-eula</code>.</td>
+              </tr>
+              <tr>
+                <td><code>services</code> on Windows</td>
+                <td><code>scope: system</code> (the default) with any install scope.</td>
+                <td><code>scope: user</code>.</td>
+                <td>Rejected with <code>PI185</code>. A Windows system service makes the installer and uninstaller request elevation.</td>
+              </tr>
+              <tr>
+                <td><code>services</code> on Linux/macOS</td>
+                <td><code>scope: user</code> or <code>scope: system</code>.</td>
+                <td>Automatic <code>sudo</code>: PolyInstall never escalates on POSIX.</td>
+                <td>System-scope services need the installer to run as root; a silent run without root exits with code <code>3</code>.</td>
+              </tr>
+              <tr>
+                <td><code>pre_uninstall</code> / <code>post_uninstall</code></td>
+                <td><code>file_association</code> (unregisters on uninstall).</td>
+                <td>All other task actions.</td>
+                <td>Not caught by <code>validate</code> yet; rejected at uninstall time.</td>
+              </tr>
             </tbody>
           </table>
 
@@ -1507,12 +1707,14 @@ build:
   output_dir: "${DIST_DIR:-dist}"</code></pre>
 
           <h3 style="margin-top: 1.6rem;">Command reference</h3>
-          <pre><code class="language-text">polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]
-polyinstall build &lt;manifest.yaml&gt; [--base &lt;dir&gt;] [--stubs &lt;dir&gt;]</code></pre>
+          <pre><code class="language-text">polyinstall --version
+polyinstall validate &lt;manifest.yaml&gt; [--base &lt;dir&gt;]
+polyinstall build &lt;manifest.yaml&gt; [--base &lt;dir&gt;] [--stubs &lt;dir&gt;] [--verbose] [--json] [--output-manifest &lt;file&gt;]</code></pre>
           <p>
             Prefer <code>validate</code> while iterating on the manifest. Both commands parse YAML, expand
             <code>${ENV}</code> values, then run schema and semantic checks together and print every collected
-            diagnostic before exiting non-zero.
+            diagnostic. Any error makes the command exit with code <code>1</code>; warnings alone do not.
+            <code>validate</code> prints <code>Manifest is valid.</code> on success.
           </p>
           <table>
             <thead>
@@ -1524,18 +1726,370 @@ polyinstall build &lt;manifest.yaml&gt; [--base &lt;dir&gt;] [--stubs &lt;dir&gt
             <tbody>
               <tr>
                 <td><code>--base</code></td>
-                <td>Working directory used to resolve file source directories and the default output directory.</td>
+                <td>Working directory used to resolve file source directories and the output directory. Defaults to the manifest's folder.</td>
               </tr>
               <tr>
                 <td><code>--stubs</code></td>
-                <td>Root folder containing per-RID runtime stubs. Omit it when your target matches the included host stub; pass it when using separate stub archives or custom stubs.</td>
+                <td>Root folder containing per-RID stubs. When omitted, PolyInstall uses a <code>stubs/</code> folder next to the CLI (the release layout) if one exists, otherwise <code>&lt;base&gt;/stubs</code>. <code>build.stub_path</code> in the manifest overrides both.</td>
+              </tr>
+              <tr>
+                <td><code>--verbose</code>, <code>-v</code></td>
+                <td>Print extra build detail: per-entry glob counts, resolved RIDs, which stubs folder was chosen, and logo conversion.</td>
+              </tr>
+              <tr>
+                <td><code>--json</code></td>
+                <td>Suppress progress logging and print a JSON summary of the built artifacts to standard output. Useful for scripting and CI.</td>
+              </tr>
+              <tr>
+                <td><code>--output-manifest &lt;file&gt;</code></td>
+                <td>Write the same JSON summary to a file (also suppresses progress logging). Can be combined with <code>--json</code>.</td>
+              </tr>
+              <tr>
+                <td><code>--version</code></td>
+                <td>Print the CLI version and exit.</td>
               </tr>
             </tbody>
           </table>
+
+          <p style="margin-top: 1rem;">
+            The JSON summary lists every artifact produced, with <code>type</code> set to <code>installer</code>,
+            <code>appimage</code>, or <code>dmg</code> and <code>size</code> in bytes. It never contains signing
+            credentials.
+          </p>
+          <pre><code class="language-json">{
+  "product_name": "Contoso Studio",
+  "version": "1.4.0",
+  "artifacts": [
+    {
+      "target": "linux-x64",
+      "rid": "linux-x64",
+      "type": "installer",
+      "path": "/work/installer/dist/Contoso Studio-1.4.0-linux-x64",
+      "size": 48213504
+    },
+    {
+      "target": "linux-x64",
+      "rid": "linux-x64",
+      "type": "appimage",
+      "path": "/work/installer/dist/Contoso Studio-linux-x64.AppImage",
+      "size": 48451072
+    }
+  ]
+}</code></pre>
+        </section>
+
+        <section class="section" id="silent-installs">
+          <span class="eyebrow">6. Silent installs</span>
+          <h2>Install without the wizard</h2>
+          <p class="section-intro">
+            Silent installs run from a terminal, script, configuration-management tool, or software-deployment system
+            with no window and no prompts. Progress is printed as timestamped lines, written to a log file, and the
+            process exits with a <a href="#silent-exit-codes">documented exit code</a>.
+          </p>
+
+          <div class="grid two">
+            <div class="card">
+              <h3>Option 1: <code>ui.mode: silent</code></h3>
+              <p>
+                The build uses <code>PolyInstall.Runtime.Silent</code>, a console stub with no Avalonia or Skia code.
+                Installers are roughly 9 MB smaller and are always silent; <code>--silent</code> is implied. Choose this
+                for server software, agents, CLIs, and anything deployed by automation.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Option 2: <code>--silent</code> on a wizard installer</h3>
+              <p>
+                Keep the default <code>ui.mode: wizard</code> for people who double-click, and let administrators pass
+                <code>--silent</code> (or <code>/S</code>, <code>/silent</code>) for unattended runs. One installer
+                serves both audiences.
+              </p>
+            </div>
+          </div>
+
+          <pre><code class="language-yaml">ui:
+  mode: silent            # "wizard" (default) or "silent"
+  wizard_steps:
+    - type: destination
+      default_path: "{LocalAppData}/Contoso Agent"   # used when --install-dir is not given
+    - type: progress</code></pre>
+
+          <h3 style="margin-top: 1.6rem;">Command-line options</h3>
+          <p>
+            Options are case-insensitive. Unrecognised arguments are rejected with exit code <code>2</code>, so typos
+            never silently change behaviour.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>What it does</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>--silent</code>, <code>/S</code>, <code>/silent</code></td>
+                <td>Run without the wizard.</td>
+                <td>Required for wizard-mode installers; implied for <code>ui.mode: silent</code>.</td>
+              </tr>
+              <tr>
+                <td><code>--install-dir &lt;path&gt;</code></td>
+                <td>Install into this directory.</td>
+                <td>Must be absolute with no <code>.</code> or <code>..</code> segments and no control characters. Ignored when the product is already installed: updates and repairs always use the existing location.</td>
+              </tr>
+              <tr>
+                <td><code>--features &lt;list&gt;</code></td>
+                <td>Choose optional features.</td>
+                <td>Comma-separated feature ids (<code>samples,sync_agent</code>), <code>all</code>, or <code>default</code>. Omitted or <code>default</code> uses <code>default_selected</code> on a fresh install, or the previously installed selection on update. Unknown ids fail with exit code <code>2</code>.</td>
+              </tr>
+              <tr>
+                <td><code>--accept-eula</code></td>
+                <td>Accept the licence non-interactively.</td>
+                <td>Required whenever <code>ui.wizard_steps</code> contains an <code>eula</code> step; otherwise the run exits with code <code>6</code>.</td>
+              </tr>
+              <tr>
+                <td><code>--close-apps</code></td>
+                <td>Terminate processes running from the install directory, then continue.</td>
+                <td>Without it, a running copy of the app stops the install with exit code <code>4</code>.</td>
+              </tr>
+              <tr>
+                <td><code>--log &lt;path&gt;</code></td>
+                <td>Write the timestamped log to this file.</td>
+                <td>Must be absolute, must not already exist, and must not resolve through a symlink; its folder must exist. When omitted, the log goes to <code>install.log</code> in a new private <code>polyinstall-log-&lt;random&gt;</code> folder under the system temp directory, and the path is printed at start-up.</td>
+              </tr>
+              <tr>
+                <td><code>--help</code>, <code>-h</code>, <code>/?</code></td>
+                <td>Print usage and exit codes, then exit <code>0</code>.</td>
+                <td>Nothing is extracted or installed.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 style="margin-top: 1.6rem;">How the install directory is chosen</h3>
+          <ol>
+            <li>An existing install of the same product (found through install state or, on Windows, Add/Remove Programs) — updates and repairs never move.</li>
+            <li><code>--install-dir</code>.</li>
+            <li>The <code>default_path</code> of the manifest's <code>destination</code> step, with placeholders expanded.</li>
+            <li>The built-in default: <code>{LocalAppData}/&lt;name&gt;</code> for Windows user scope, otherwise <code>{ProgramFiles}/&lt;name&gt;</code> (<code>C:\Program Files</code>, <code>/usr/local</code>, or <code>/Applications</code>).</li>
+          </ol>
+          <p style="margin-top: 0.75rem;">
+            If the chosen directory already holds install state for a <em>different</em> product, the run stops with
+            exit code <code>7</code> rather than overwrite it.
+          </p>
+
+          <h3 id="silent-exit-codes" style="margin-top: 1.6rem;">Exit codes</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Meaning</th>
+                <th>Typical fix</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>0</code></td><td>Install, update, or repair completed (or <code>--help</code> was shown).</td><td>—</td></tr>
+              <tr><td><code>1</code></td><td>Unexpected error.</td><td>Read the last lines of the log for the error message.</td></tr>
+              <tr><td><code>2</code></td><td>Invalid arguments: unknown flag, bad path, unknown feature id, unusable log path, or no install directory could be resolved.</td><td>Correct the command line; run with <code>--help</code>.</td></tr>
+              <tr><td><code>3</code></td><td>Elevation was needed but was denied, unsupported, or failed.</td><td>Accept the UAC prompt on Windows, or re-run under <code>sudo</code> on Linux/macOS for system-scope services.</td></tr>
+              <tr><td><code>4</code></td><td>Processes are still running from the install directory.</td><td>Close the app, or pass <code>--close-apps</code>.</td></tr>
+              <tr><td><code>5</code></td><td>Cancelled by Ctrl+C or <code>SIGTERM</code>.</td><td>Re-run when ready. A cancelled fresh install is cleaned up automatically.</td></tr>
+              <tr><td><code>6</code></td><td>The manifest has an <code>eula</code> step and <code>--accept-eula</code> was not given.</td><td>Review the licence and pass <code>--accept-eula</code>.</td></tr>
+              <tr><td><code>7</code></td><td>Another product is already installed at the destination.</td><td>Choose a different <code>--install-dir</code>.</td></tr>
+            </tbody>
+          </table>
+
+          <h3 style="margin-top: 1.6rem;">Elevation</h3>
+          <p>
+            On Windows, a silent install that needs administrator rights — <code>install_scope: machine</code>, a
+            Windows service, or updating an existing machine-wide install — relaunches itself through UAC, waits for the
+            elevated copy to finish, and returns its exit code. The elevated copy appends to the same log file, so one
+            log covers the whole run. On Linux and macOS, PolyInstall never escalates by itself: if a system-scope
+            service is involved and the installer is not running as root, it exits with code <code>3</code> and asks
+            you to re-run under <code>sudo</code>.
+          </p>
+
+          <h3 style="margin-top: 1.6rem;">Examples</h3>
+          <pre><code class="language-bash"># Linux / macOS: per-user install with all features and a known log path
+./ContosoAgent-linux-x64 --install-dir "$HOME/.local/share/ContosoAgent" \
+  --features all --log "$HOME/contoso-install.log"
+echo "exit code: $?"
+
+# System-scope service on Linux: run as root
+sudo ./ContosoAgent-linux-x64 --install-dir /opt/contoso-agent --accept-eula</code></pre>
+          <pre><code class="language-powershell"># Windows, silent stub (ui.mode: silent) — a console app, so exit codes flow directly
+.\ContosoAgent-windows-x64.exe --install-dir "C:\Tools\ContosoAgent" --close-apps
+$LASTEXITCODE
+
+# Windows, wizard stub with --silent — a GUI-subsystem app, so wait for it explicitly
+$p = Start-Process .\ContosoStudio-windows-x64.exe `
+  -ArgumentList '--silent', '--features', 'default', '--accept-eula' -Wait -PassThru
+$p.ExitCode</code></pre>
+
+          <div class="callout">
+            <strong>Silent mode and licences</strong>
+            If your manifest includes an <code>eula</code> step and sets <code>ui.mode: silent</code>, validation warns
+            (<code>PI145</code>) because every unattended run will need <code>--accept-eula</code>. That is often the
+            right choice for commercial licences; remove the step if unattended deployment should not require it.
+          </div>
+        </section>
+
+        <section class="section" id="lifecycle">
+          <span class="eyebrow">7. Install lifecycle</span>
+          <h2>Install, update, repair, cancel, and uninstall</h2>
+          <p class="section-intro">
+            Every successful run writes state under <code>&lt;install-dir&gt;/.polyinstall/</code>. That state is what lets
+            the next installer recognise an existing install, upgrade it in place, and lets the uninstaller remove exactly
+            what was installed.
+          </p>
+
+          <h3 style="margin-top: 1rem;">Product identity</h3>
+          <p>
+            PolyInstall identifies a product by <code>metadata.id</code> when set (a GUID, or any stable string that is
+            hashed into one), otherwise by <code>metadata.name</code> plus <code>metadata.publisher</code>. Changing
+            these between releases makes the new installer treat the product as unrelated, so it installs side by side
+            instead of updating. Set <code>metadata.id</code> before your first public release and never change it.
+          </p>
+
+          <h3 style="margin-top: 1.6rem;">What the installer does on each run</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Situation</th>
+                <th>Mode</th>
+                <th>Behaviour</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>No existing install found</td>
+                <td>Install</td>
+                <td>Copy core files and selected features, run tasks, register associations and services, write state.</td>
+              </tr>
+              <tr>
+                <td>Same product, different <code>metadata.version</code></td>
+                <td>Update</td>
+                <td>Install into the existing location, keep the previous feature selection as the starting point, remove files and services that are no longer part of the payload, then register the new version.</td>
+              </tr>
+              <tr>
+                <td>Same product, same version</td>
+                <td>Repair</td>
+                <td>Re-copy files and re-run registration to restore a damaged install.</td>
+              </tr>
+            </tbody>
+          </table>
+          <p style="margin-top: 0.75rem;">
+            Versions are compared for equality only: any different version string is treated as an update, including an
+            older one.
+          </p>
+
+          <h3 style="margin-top: 1.6rem;">Install order</h3>
+          <ol>
+            <li>Check for processes running from the destination (see below).</li>
+            <li>Run <code>tasks.pre_install</code>.</li>
+            <li>On update, remove services registered by the previous version that the new manifest no longer declares.</li>
+            <li>Copy allowed payload files (core plus selected features); on update, prune files no longer in the payload.</li>
+            <li>Run <code>tasks.post_install</code>.</li>
+            <li>Register top-level <code>file_associations</code> and <code>services</code>.</li>
+            <li>Write <code>.polyinstall/install-state.json</code> and <code>embedded-manifest.json</code>; on Windows, copy <code>Uninstall.exe</code> and register Add/Remove Programs when enabled.</li>
+          </ol>
+
+          <h3 style="margin-top: 1.6rem;">Running applications</h3>
+          <p>
+            Overwriting a running executable fails on Windows and can corrupt an app on any OS, so before copying files
+            the installer looks for processes whose executable lives under the install directory. The wizard lists them
+            and offers <em>Close applications and continue</em> or <em>Cancel</em>; if any cannot be closed, setup stops
+            before touching the disk. Silent installs exit with code <code>4</code> unless <code>--close-apps</code> is
+            passed. Processes the installer cannot inspect (for example, other users' elevated processes) are skipped.
+          </p>
+
+          <h3 style="margin-top: 1.6rem;">Cancelling</h3>
+          <div class="grid two">
+            <div class="card">
+              <h3>Fresh install</h3>
+              <p>
+                If files were already copied, the wizard offers <em>Run cleanup</em>, and silent installs clean up
+                automatically. A directory the installer created is removed entirely; in a pre-existing directory only
+                the copied payload files, PolyInstall state, and any Add/Remove Programs entry are removed.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Update or repair</h3>
+              <p>
+                The existing install is left in place, not deleted. Run the installer again to finish the update or
+                repair.
+              </p>
+            </div>
+          </div>
+
+          <h3 style="margin-top: 1.6rem;">Uninstall</h3>
+          <p>
+            On Windows with <code>register_arp: true</code>, users uninstall from Settings › Apps or Control Panel, or you
+            can run <code>Uninstall.exe</code> from the install root yourself. The installer itself does not accept
+            <code>--uninstall</code>.
+          </p>
+          <pre><code class="language-powershell"># Interactive uninstall
+&amp; "$env:LOCALAPPDATA\Contoso Studio\Uninstall.exe" --uninstall
+
+# Quiet uninstall (also registered as the ARP QuietUninstallString)
+&amp; "$env:LOCALAPPDATA\Contoso Studio\Uninstall.exe" --uninstall --quiet</code></pre>
+          <p style="margin-top: 0.75rem;">The uninstaller, in order:</p>
+          <ol>
+            <li>Requests elevation if system-scope Windows services were registered.</li>
+            <li>Runs <code>tasks.pre_uninstall</code> then <code>tasks.post_uninstall</code> (only <code>file_association</code> is allowed there).</li>
+            <li>Unregisters top-level <code>file_associations</code> for the installed features.</li>
+            <li>Stops and removes registered services.</li>
+            <li>Removes PATH entries added by <code>add_to_path</code>.</li>
+            <li>Removes the Add/Remove Programs entry.</li>
+            <li>Deletes everything under the install root, then the root itself.</li>
+          </ol>
+
+          <div class="callout">
+            <strong>Keep user data out of the install directory</strong>
+            Uninstall deletes the whole install root, including files your application created there after install.
+            Store settings, caches, and documents in the user's profile or data folders, not beside the executable.
+          </div>
+
+          <div class="grid two" style="margin-top: 1rem;">
+            <div class="card">
+              <h3>Safety guards</h3>
+              <p>
+                Uninstall refuses to run when the recorded product id does not match the embedded manifest, and refuses
+                to delete a drive root, the user profile, the Windows or system folders, Program Files, or
+                ProgramData, even if install state points there.
+              </p>
+            </div>
+            <div class="card">
+              <h3>Linux and macOS</h3>
+              <p>
+                There is no bundled uninstaller for Linux or macOS yet. Install state is still written, so a later
+                release can pick it up. Until then, stop any services you registered and delete the install directory;
+                document this for your users if your app registers services or associations.
+              </p>
+            </div>
+          </div>
+
+          <h3 style="margin-top: 1.6rem;">Install state files</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>File</th>
+                <th>Contents</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>.polyinstall/install-state.json</code></td><td>Product id, name, version, publisher, install location and scope, payload file list, selected features, registered services, PATH additions, association backups, and the Add/Remove Programs key.</td></tr>
+              <tr><td><code>.polyinstall/embedded-manifest.json</code></td><td>The manifest the installer was built with, used for uninstall and future updates.</td></tr>
+              <tr><td><code>Uninstall.exe</code></td><td>Windows only, when <code>register_arp</code> is true.</td></tr>
+            </tbody>
+          </table>
+          <p style="margin-top: 0.75rem;">
+            Treat <code>.polyinstall/</code> as owned by PolyInstall: do not ship files under that path in your payload
+            (the build rejects the reserved uninstaller path) and do not edit it by hand.
+          </p>
         </section>
 
         <section class="section" id="github-actions">
-          <span class="eyebrow">6. GitHub Actions</span>
+          <span class="eyebrow">8. GitHub Actions</span>
           <h2>Build installers in CI</h2>
           <p class="section-intro">
             Use GitHub Actions to validate manifests on pull requests and build release installers from the same YAML
@@ -1554,8 +2108,48 @@ polyinstall build &lt;manifest.yaml&gt; [--base &lt;dir&gt;] [--stubs &lt;dir&gt
           <div class="callout">
             <strong>Public release downloads</strong>
             Keep <code>github-token: ""</code> when downloading the public PolyInstall release from another repository.
-            Set a token only when you point the action at a private release repository or mirror.
+            Set a token only when you point the action at a private release repository or mirror, or when you hit
+            GitHub API rate limits resolving <code>version: latest</code>.
           </div>
+
+          <h3 style="margin-top: 1.6rem;">Setup action reference</h3>
+          <p>
+            <code>bolorundurowb/PolyInstall/.github/actions/setup-polyinstall</code> downloads the CLI zip for the
+            runner, verifies it against the release's <code>SHA256SUMS.txt</code>, extracts it, adds the CLI folder to
+            <code>PATH</code>, and prints <code>polyinstall --version</code>. Because the CLI zip includes the wizard,
+            silent, and (on Windows) uninstall stubs for its RID, no extra steps are needed for same-OS builds.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Input</th>
+                <th>Default</th>
+                <th>Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>version</code></td><td><code>latest</code></td><td><code>latest</code>, <code>vX.Y.Z</code>, or <code>X.Y.Z</code>. Pin a version for reproducible builds.</td></tr>
+              <tr><td><code>rid</code></td><td>From the runner</td><td><code>win-x64</code>, <code>linux-x64</code>, or <code>osx-arm64</code>. Inferred for Windows X64, Linux X64, and macOS ARM64 runners; set explicitly elsewhere.</td></tr>
+              <tr><td><code>install-dir</code></td><td><code>$RUNNER_TEMP/polyinstall</code></td><td>Where the release zip is extracted.</td></tr>
+              <tr><td><code>github-token</code></td><td>empty</td><td>Token for private release repositories or higher API rate limits.</td></tr>
+              <tr><td><code>repository</code></td><td><code>bolorundurowb/PolyInstall</code></td><td>Repository that owns the releases, for forks and mirrors.</td></tr>
+              <tr><td><code>asset-dir</code></td><td>empty</td><td>Local folder holding a release zip and <code>SHA256SUMS.txt</code>, for offline mirrors and tests. Requires a concrete <code>version</code>.</td></tr>
+            </tbody>
+          </table>
+          <table>
+            <thead>
+              <tr>
+                <th>Output</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>polyinstall-path</code></td><td>Full path to the installed <code>polyinstall</code> executable.</td></tr>
+              <tr><td><code>install-dir</code></td><td>Directory containing the extracted release.</td></tr>
+              <tr><td><code>version</code></td><td>The resolved release tag, for example <code>v2.3.0</code>.</td></tr>
+              <tr><td><code>rid</code></td><td>The resolved runtime identifier.</td></tr>
+            </tbody>
+          </table>
 
           <h3 style="margin-top: 1.6rem;">Validate manifests on pull requests</h3>
           <p>
@@ -1576,9 +2170,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: bolorundurowb/PolyInstall/.github/actions/setup-polyinstall@v2.1.0
+      - uses: bolorundurowb/PolyInstall/.github/actions/setup-polyinstall@v2.3.0
         with:
-          version: v2.1.0
+          version: v2.3.0
           github-token: ""
 
       - name: Validate manifest
@@ -1623,9 +2217,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: bolorundurowb/PolyInstall/.github/actions/setup-polyinstall@v2.1.0
+      - uses: bolorundurowb/PolyInstall/.github/actions/setup-polyinstall@v2.3.0
         with:
-          version: v2.1.0
+          version: v2.3.0
           rid: $&#123;&#123; matrix.rid &#125;&#125;
           github-token: ""
 
@@ -1645,6 +2239,23 @@ jobs:
         with:
           name: $&#123;&#123; matrix.artifact &#125;&#125;
           path: installer/dist/**</code></pre>
+
+          <h3 style="margin-top: 1.6rem;">Smoke-test the installer you just built</h3>
+          <p>
+            Silent mode makes it straightforward to install the artifact on the runner and assert on the result. Use
+            <code>--json</code> to find the artifact path without guessing file names.
+          </p>
+          <pre><code class="language-yaml">      - name: Build and install silently (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          polyinstall build installer/manifest.yaml --base installer --json &gt; build.json
+          installer=$(jq -r '.artifacts[] | select(.type == "installer" and .target == "linux-x64") | .path' build.json)
+          chmod +x "$installer"
+          "$installer" --silent --install-dir "$RUNNER_TEMP/app" --features all \
+            --log "$RUNNER_TEMP/install.log"
+          test -f "$RUNNER_TEMP/app/.polyinstall/install-state.json"</code></pre>
 
           <div class="grid two" style="margin-top: 1rem;">
             <div class="card">
@@ -1667,7 +2278,7 @@ jobs:
         </section>
 
         <section class="section" id="schema-reference">
-          <span class="eyebrow">7. Schema reference</span>
+          <span class="eyebrow">9. Schema reference</span>
           <h2>Manifest options in detail</h2>
           <p class="section-intro">
             PolyInstall manifests are YAML documents that validate against the published schema at
@@ -1713,10 +2324,11 @@ jobs:
             The published schema catches field names and basic shapes in YAML-aware editors. The
             <code>validate</code> and <code>build</code> commands both run schema checks and semantic validation after
             YAML parsing and environment substitution. Semantic rules cover target names, compression, relative file
-            source directories, non-empty includes, destination-before-progress wizard order, feature references,
-            task/platform compatibility, machine-scope PATH rules, and signing combinations. Diagnostics are collected
-            across both stages in one run and printed as rustc-style <code>error[PIxxx]</code> blocks with paths,
-            optional YAML carets, help notes, and a final error count.
+            source directories, non-empty includes, <code>ui.mode</code>, wizard step order, feature references,
+            task parameters and platform predicates, service names and restart policies, machine-scope PATH and
+            registry rules, and signing combinations. Diagnostics are collected across both stages in one run and
+            printed as rustc-style <code>error[PIxxx]</code> or <code>warning[PIxxx]</code> blocks with paths, YAML
+            carets when available, help notes, and a final count. See <a href="#diagnostics">diagnostic codes</a>.
           </div>
 
           <h3 id="schema-root" style="margin-top: 1.6rem;">Root object</h3>
@@ -1772,13 +2384,13 @@ jobs:
                 <td>Use only when copying files is not enough, for example creating a desktop shortcut.</td>
               </tr>
               <tr>
-                <td><code>features</code></td>
+                <td><a href="#schema-features"><code>features</code></a></td>
                 <td>array or null</td>
-                <td>Optional user-selectable feature list used by <code>files</code>, <code>tasks</code>, and <code>file_associations</code>.</td>
+                <td>Optional user-selectable feature list used by <code>files</code>, <code>tasks</code>, <code>file_associations</code>, and <code>services</code>.</td>
                 <td>Add a <code>features</code> wizard step when users should choose optional components.</td>
               </tr>
               <tr>
-                <td><code>services</code></td>
+                <td><a href="#schema-services"><code>services</code></a></td>
                 <td>array or null</td>
                 <td>Optional background service or daemon registrations.</td>
                 <td>Always include an OS <code>require</code> predicate so each service uses the right platform manager.</td>
@@ -1816,13 +2428,13 @@ jobs:
               <tr>
                 <td><code>metadata.id</code></td>
                 <td>string or null</td>
-                <td>A stable identifier that should not change between releases of the same product.</td>
+                <td>A stable identifier that must not change between releases of the same product. It drives update detection, the Add/Remove Programs key, and uninstall safety checks. When omitted, identity comes from <code>name</code> plus <code>publisher</code>. See <a href="#lifecycle">Install lifecycle</a>.</td>
                 <td><code>com.contoso.studio</code></td>
               </tr>
               <tr>
                 <td><code>metadata.publisher</code></td>
                 <td>string or null</td>
-                <td>The company, person, or project that publishes the app.</td>
+                <td>The company, person, or project that publishes the app. Shown in Add/Remove Programs.</td>
                 <td><code>Contoso Ltd</code></td>
               </tr>
             </tbody>
@@ -1852,19 +2464,19 @@ jobs:
               <tr>
                 <td><code>build.output_name</code></td>
                 <td>string or null</td>
-                <td>Optional output filename template. Supports <code>{name}</code>, <code>{version}</code>, and <code>{target}</code>.</td>
+                <td>Optional output filename template for the installer binary. Supports <code>{name}</code>, <code>{version}</code>, and <code>{target}</code>; defaults to <code>{name}-{target}</code>. Characters that are invalid in file names are replaced. AppImage and DMG files are always named <code>&lt;name&gt;-&lt;target&gt;</code>.</td>
                 <td>Use it when your release pipeline needs predictable names such as <code>{name}-{version}-{target}</code>.</td>
               </tr>
               <tr>
                 <td><code>build.compression</code></td>
                 <td>string</td>
-                <td>Compression format for the zip payload appended to the installer stub.</td>
+                <td>Compression format for the zip payload appended to the installer stub. Defaults to <code>brotli</code>.</td>
                 <td>Use <code>brotli</code> for smaller output. Use <code>gzip</code> only if you need that format for compatibility.</td>
               </tr>
               <tr>
                 <td><code>build.targets</code></td>
                 <td>array of strings</td>
-                <td>Installer targets to produce, such as <code>windows-x64</code>, <code>linux-x64</code>, or <code>osx-arm64</code>.</td>
+                <td>Installer targets to produce: <code>windows-x64</code>, <code>windows-arm64</code>, <code>linux-x64</code>, <code>linux-arm64</code>, <code>osx-x64</code>, or <code>osx-arm64</code>. Release archives ship stubs for <code>windows-x64</code>, <code>linux-x64</code>, and <code>osx-arm64</code>; publish your own stubs for the others.</td>
                 <td>Start with the OS you can test locally. Add more once the manifest works.</td>
               </tr>
               <tr>
@@ -1876,8 +2488,8 @@ jobs:
               <tr>
                 <td><code>build.stub_path</code></td>
                 <td>string or null</td>
-                <td>Advanced override for locating runtime stubs. Supports <code>{rid}</code> when you manage custom stub folders.</td>
-                <td>Leave empty when using release zips and their <code>stubs/</code> layout.</td>
+                <td>Advanced override: the full path to the stub executable, with <code>{rid}</code> replaced by the .NET RID. It replaces the <code>stubs/&lt;rid&gt;/PolyInstall.Runtime[.Silent]</code> lookup, so point it at the silent stub when <code>ui.mode</code> is <code>silent</code>. Relative paths resolve against the current working directory, not <code>--base</code>.</td>
+                <td>Leave empty when using release zips and their <code>stubs/</code> layout. If you use it, prefer an absolute path or a <code>${VAR}</code> substitution.</td>
               </tr>
               <tr>
                 <td><code>build.windows</code></td>
@@ -1910,18 +2522,19 @@ jobs:
             <div class="card">
               <h3>Windows options</h3>
               <p>
-                <code>install_scope: user</code> installs per user under the local application-data directory
-                (the same root as <code>{LocalAppData}</code>) and writes registration under HKCU. Use it for most
-                desktop apps because it avoids administrator prompts. Prefer
+                <code>install_scope: user</code> (the default) installs per user under the local application-data
+                directory (the same root as <code>{LocalAppData}</code>) and writes registration under HKCU. Use it for
+                most desktop apps because it avoids administrator prompts. Prefer
                 <code>default_path: "{LocalAppData}/YourApp"</code> so the destination step matches that default.
               </p>
               <p>
-                <code>install_scope: machine</code> writes under HKLM and requires elevation. Use it only when the app
-                must be available to every user on the machine.
+                <code>install_scope: machine</code> defaults under Program Files, writes under HKLM, and relaunches the
+                installer through UAC. Use it only when the app must be available to every user on the machine.
               </p>
               <p>
-                <code>register_arp: true</code> adds the app to Add/Remove Programs and installs the dedicated
-                <code>Uninstall.exe</code>.
+                <code>register_arp: true</code> (the default) adds the app to Add/Remove Programs and installs the
+                dedicated <code>Uninstall.exe</code>. It needs <code>PolyInstall.Uninstall.exe</code> in the stubs
+                folder; set <code>false</code> to skip both.
               </p>
             </div>
             <div class="card">
@@ -1991,16 +2604,22 @@ jobs:
             </thead>
             <tbody>
               <tr>
+                <td><code>ui.mode</code></td>
+                <td>string</td>
+                <td><code>wizard</code> (default) builds with the Avalonia wizard stub. <code>silent</code> builds with the UI-less stub, roughly 9 MB smaller, which always runs unattended.</td>
+                <td>Use <code>silent</code> for agents, servers, and automated deployment. See <a href="#silent-installs">Silent installs</a>. Unknown values fail with <code>PI144</code>.</td>
+              </tr>
+              <tr>
                 <td><code>ui.theme</code></td>
                 <td>string</td>
-                <td>Controls the visual theme of the installer wizard.</td>
+                <td>Controls the visual theme of the installer wizard. Defaults to <code>system</code>.</td>
                 <td><code>system</code> follows the user's OS preference. <code>light</code> and <code>dark</code> force one mode.</td>
               </tr>
               <tr>
                 <td><code>ui.logo_path</code></td>
                 <td>string or null</td>
-                <td>Optional path to an SVG or raster logo shown in the wizard header.</td>
-                <td>The logo file must be included in your payload through <a href="#schema-files"><code>files</code></a>.</td>
+                <td>Optional path to a logo shown in the wizard header. Raster images (PNG, JPEG, and so on) are used as-is. An SVG is rendered to a PNG at its intrinsic size when you build, added to the payload beside the SVG, and <code>logo_path</code> is rewritten to point at it.</td>
+                <td>Include the logo in your payload through <a href="#schema-files"><code>files</code></a> (an SVG may also sit under <code>--base</code>). Give SVGs an explicit <code>width</code>/<code>height</code> or <code>viewBox</code>, and do not ship a PNG with the same name beside the SVG.</td>
               </tr>
               <tr>
                 <td><code>ui.assets</code></td>
@@ -2012,14 +2631,19 @@ jobs:
                 <td><code>ui.wizard_steps</code></td>
                 <td>array</td>
                 <td>Ordered pages shown by the installer wizard.</td>
-                <td>Include a <code>progress</code> step. Without it, the normal file-copy phase is not part of the wizard flow.</td>
+                <td>Include a <code>progress</code> step. Without it, the normal file-copy phase is not part of the wizard flow. When the list is empty, the wizard uses welcome → destination → progress → finish.</td>
               </tr>
             </tbody>
           </table>
 
           <h3 id="schema-wizard-steps" style="margin-top: 1.6rem;">wizard_steps entries</h3>
           <p>
-            Each wizard step is one screen. The order in the manifest is the order the user sees.
+            Each wizard step is one screen. The order in the manifest is the order the user sees. Validation enforces a
+            sensible order: a <code>progress</code> step needs a <code>destination</code> step before it
+            (<code>PI140</code>, <code>PI141</code>), and a <code>features</code> step must sit between
+            <code>destination</code> and <code>progress</code> (<code>PI142</code>, <code>PI143</code>). Silent installs
+            still read the <code>destination</code> step's <code>default_path</code> and honour an <code>eula</code>
+            step by requiring <code>--accept-eula</code>.
           </p>
           <table>
             <thead>
@@ -2053,7 +2677,7 @@ jobs:
                 <td><code>features</code></td>
                 <td>A full/custom install screen with checkboxes for optional features.</td>
                 <td><code>title</code></td>
-                <td>Use when the manifest defines top-level <code>features</code>. It is skipped when no features exist.</td>
+                <td>Use when the manifest defines top-level <a href="#schema-features"><code>features</code></a>. It is skipped when no features exist. On update, the previous selection is pre-checked.</td>
               </tr>
               <tr>
                 <td><code>progress</code></td>
@@ -2116,7 +2740,17 @@ jobs:
             <strong>File path mental model</strong>
             If you run <code>polyinstall build manifest.yaml --base ./release-input</code> and set
             <code>source_dir: app</code>, PolyInstall scans <code>./release-input/app</code>. Files are stored in the
-            payload relative to that source directory.
+            payload relative to that source directory. <code>source_dir</code> must be relative and must not contain
+            <code>..</code> (<code>PI107</code>, <code>PI108</code>), and the build fails if no file matches any entry.
+            The payload path <code>.polyinstall/</code> is reserved for PolyInstall's own state.
+          </div>
+          <div class="callout">
+            <strong>Unix permissions</strong>
+            An installer built on Linux or macOS stores each payload file's permission bits and restores them on
+            install, so a script marked executable stays executable. Windows has no Unix mode to record, so an installer
+            built on Windows installs files with the target machine's default mode. Add a
+            <code>set_permissions</code> task, with <code>mode</code> written as chmod would accept it
+            (<code>755</code>, <code>0644</code>), when a file must be executable whatever machine built the installer.
           </div>
 
           <h3 id="schema-file-associations" style="margin-top: 1.6rem;">file_associations entries</h3>
@@ -2193,12 +2827,194 @@ jobs:
     icon: "{AppDir}\\branding\\contoso.ico"
     command: '"{AppDir}\\ContosoStudio.exe" "%1"'</code></pre>
 
+          <h3 id="schema-features" style="margin-top: 1.6rem;">features entries</h3>
+          <p>
+            <code>features</code> declares optional components. Anything without a <code>features</code> list — files,
+            tasks, file associations, services — is core and always installed. Anything with a list is installed when at
+            least one of its feature ids is selected. Omitting the top-level <code>features</code> block means
+            everything is core, exactly as in manifests written before features existed.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>What it does</th>
+                <th>Guidance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>id</code></td>
+                <td>string</td>
+                <td>Unique identifier referenced by <code>features: [...]</code> elsewhere and by <code>--features</code> on silent installs.</td>
+                <td>Lowercase snake_case, such as <code>sync_agent</code>. Ids must be non-empty and unique (<code>PI110</code>, <code>PI111</code>).</td>
+              </tr>
+              <tr>
+                <td><code>name</code></td>
+                <td>string</td>
+                <td>Label shown next to the checkbox on the features step.</td>
+                <td>Short and user-facing.</td>
+              </tr>
+              <tr>
+                <td><code>description</code></td>
+                <td>string or null</td>
+                <td>Supporting text shown with the feature.</td>
+                <td>One sentence on what the user gets.</td>
+              </tr>
+              <tr>
+                <td><code>default_selected</code></td>
+                <td>boolean</td>
+                <td>Whether the feature is pre-selected on a fresh install. Defaults to <code>true</code>.</td>
+                <td>Set <code>false</code> for large or specialist extras. On update, the previously installed selection wins.</td>
+              </tr>
+            </tbody>
+          </table>
+          <pre><code class="language-yaml">features:
+  - id: docs
+    name: Documentation
+    description: Install the offline documentation.
+    default_selected: true
+
+files:
+  - source_dir: app          # core: always installed
+    include: ["**/*"]
+  - source_dir: docs
+    include: ["**/*"]
+    features: [docs]         # installed only when "docs" is selected</code></pre>
+          <p style="margin-top: 0.75rem;">
+            Referencing an id that is not declared fails with <code>PI112</code>; referencing features when no
+            top-level list exists fails with <code>PI113</code>. The build records which payload files belong to which
+            feature, so updates add and remove feature files correctly when the selection changes.
+          </p>
+
+          <h3 id="schema-services" style="margin-top: 1.6rem;">services entries</h3>
+          <p>
+            <code>services</code> registers background processes with the platform service manager: the Windows Service
+            Control Manager, systemd on Linux, and launchd on macOS. Services are registered after files are copied,
+            refreshed on update, and stopped and removed on uninstall. Every entry needs a <code>require</code> OS
+            predicate (<code>PI184</code>), so write one entry per platform.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>What it does</th>
+                <th>Guidance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>require</code></td>
+                <td>string</td>
+                <td>OS predicate choosing the service manager.</td>
+                <td><code>os.isWindows</code>, <code>os.isLinux</code>, or <code>os.isMacOS</code>/<code>os.isOSX</code>.</td>
+              </tr>
+              <tr>
+                <td><code>name</code></td>
+                <td>string</td>
+                <td>Service name; on macOS, the launchd label.</td>
+                <td>Letters, digits, <code>.</code>, <code>_</code>, and <code>-</code> only (<code>PI181</code>). Reverse-DNS names such as <code>com.contoso.agent</code> work everywhere.</td>
+              </tr>
+              <tr>
+                <td><code>display_name</code></td>
+                <td>string or null</td>
+                <td>Friendly name where the platform distinguishes it (Windows).</td>
+                <td>Optional.</td>
+              </tr>
+              <tr>
+                <td><code>description</code></td>
+                <td>string or null</td>
+                <td>Service description.</td>
+                <td>Optional.</td>
+              </tr>
+              <tr>
+                <td><code>scope</code></td>
+                <td>string</td>
+                <td><code>system</code> (default) or <code>user</code>.</td>
+                <td>Windows supports <code>system</code> only (<code>PI185</code>) and requests elevation for it. On Linux/macOS, <code>system</code> requires running the installer as root.</td>
+              </tr>
+              <tr>
+                <td><code>executable</code></td>
+                <td>string</td>
+                <td>Path to the program to run. Supports placeholders.</td>
+                <td>Usually under <code>{AppDir}</code>. Required (<code>PI182</code>).</td>
+              </tr>
+              <tr>
+                <td><code>arguments</code></td>
+                <td>array of strings or null</td>
+                <td>Command-line arguments; each item is one argument. Supports placeholders.</td>
+                <td>For example <code>["--service", "--port", "8080"]</code>.</td>
+              </tr>
+              <tr>
+                <td><code>working_directory</code></td>
+                <td>string or null</td>
+                <td>Working directory for the process. Supports placeholders.</td>
+                <td>Often <code>{AppDir}</code>.</td>
+              </tr>
+              <tr>
+                <td><code>enabled</code></td>
+                <td>boolean</td>
+                <td>Start automatically at boot or login. Defaults to <code>true</code>.</td>
+                <td>Set <code>false</code> for services users start on demand.</td>
+              </tr>
+              <tr>
+                <td><code>start</code></td>
+                <td>boolean</td>
+                <td>Start the service immediately after install. Defaults to <code>false</code>.</td>
+                <td>Set <code>true</code> when the app expects the service to be running.</td>
+              </tr>
+              <tr>
+                <td><code>restart</code></td>
+                <td>string or null</td>
+                <td>Restart policy.</td>
+                <td>systemd: <code>no</code>, <code>always</code>, <code>on-success</code>, <code>on-failure</code>, <code>on-abnormal</code>, <code>on-watchdog</code>, <code>on-abort</code> (<code>PI187</code>). launchd: <code>always</code> or <code>on-failure</code> (<code>PI186</code>).</td>
+              </tr>
+              <tr>
+                <td><code>environment</code></td>
+                <td>map or null</td>
+                <td>Environment variables for systemd and launchd. Values support placeholders.</td>
+                <td>Shell-style names such as <code>APP_HOME</code> (<code>PI188</code>). Do not put secrets here; the manifest is embedded in the installer.</td>
+              </tr>
+              <tr>
+                <td><code>features</code></td>
+                <td>array or null</td>
+                <td>Feature ids that gate the service.</td>
+                <td>Omit for services that are always installed.</td>
+              </tr>
+            </tbody>
+          </table>
+          <pre><code class="language-yaml">services:
+  - name: ContosoAgent
+    require: os.isWindows
+    scope: system                      # Windows: system only; triggers a UAC prompt
+    display_name: "Contoso Agent"
+    executable: "{AppDir}\\contoso-agent.exe"
+    arguments: ["--service"]
+    start: true
+  - name: com.contoso.agent
+    require: os.isLinux
+    scope: user                        # systemd --user unit; no root needed
+    executable: "{AppDir}/contoso-agent"
+    working_directory: "{AppDir}"
+    restart: on-failure
+    environment:
+      CONTOSO_HOME: "{AppDir}"
+  - name: com.contoso.agent
+    require: os.isMacOS
+    scope: user                        # ~/Library/LaunchAgents; system uses /Library/LaunchDaemons
+    executable: "{AppDir}/contoso-agent"
+    restart: always</code></pre>
+
           <h3 id="schema-tasks" style="margin-top: 1.6rem;">tasks</h3>
           <p>
             Lifecycle task arrays are optional. Install tasks run around file copy. Uninstall tasks run while installed
-            files are still present, so they can stop services, remove shortcuts, or clean configuration before the
-            install tree is deleted. A complete novice can ignore <code>tasks</code> until the installer needs to change
-            the system outside the install folder.
+            files are still present, but only <code>file_association</code> is accepted there; services, PATH entries,
+            top-level associations, and the Add/Remove Programs entry are cleaned up automatically. A complete novice can
+            ignore <code>tasks</code> until the installer needs to change the system outside the install folder. Tasks
+            run in manifest order and are skipped when their <code>require</code> predicate is false or their features
+            are not selected.
           </p>
           <table>
             <thead>
@@ -2211,23 +3027,23 @@ jobs:
             <tbody>
               <tr>
                 <td><code>tasks.pre_install</code></td>
-                <td>After the user confirms the destination and before files are copied.</td>
-                <td>Check prerequisites or prepare a folder before files are installed.</td>
+                <td>After the running-app check and before files are copied.</td>
+                <td>Write registry values or settings that must exist before files land.</td>
               </tr>
               <tr>
                 <td><code>tasks.post_install</code></td>
-                <td>After files have been copied to the install directory.</td>
-                <td>Create shortcuts, write registry values, create desktop entries, or set permissions.</td>
+                <td>After files have been copied to the install directory, before services and top-level associations are registered.</td>
+                <td>Create shortcuts, write registry values, create desktop entries, set permissions, or add to PATH.</td>
               </tr>
               <tr>
                 <td><code>tasks.pre_uninstall</code></td>
-                <td>At the start of uninstall, before registration and files are removed.</td>
-                <td>Stop services or close helper processes while installed files still exist.</td>
+                <td>At the start of uninstall, before associations, services, PATH entries, and files are removed.</td>
+                <td><code>file_association</code> only: unregister an association that was created by a task.</td>
               </tr>
               <tr>
                 <td><code>tasks.post_uninstall</code></td>
-                <td>After <code>pre_uninstall</code>, but still before files and Add/Remove Programs entries are removed.</td>
-                <td>Run cleanup that must happen after earlier uninstall tasks but before the install tree is deleted.</td>
+                <td>Immediately after <code>pre_uninstall</code>, still before anything else is removed.</td>
+                <td><code>file_association</code> only. Despite the name, it does not run after files are deleted.</td>
               </tr>
             </tbody>
           </table>
@@ -2252,8 +3068,8 @@ jobs:
               <tr>
                 <td><code>action</code></td>
                 <td>string</td>
-                <td>Task action to run. Supported actions are <code>create_shortcut</code>, <code>write_registry</code>, <code>create_desktop_entry</code>, <code>set_permissions</code>, <code>add_to_path</code>, and <code>file_association</code>.</td>
-                <td>Choose the action first, then fill <code>parameters</code> with the keys that action expects.</td>
+                <td>Task action to run. Supported actions are <code>create_shortcut</code>, <code>write_registry</code>, <code>create_desktop_entry</code>, <code>set_permissions</code>, <code>add_to_path</code>, and <code>file_association</code>. Unknown actions fail with <code>PI160</code>.</td>
+                <td>Choose the action first, then fill <code>parameters</code> with the keys that action expects. In uninstall phases, only <code>file_association</code> is valid.</td>
               </tr>
               <tr>
                 <td><code>parameters</code></td>
@@ -2289,31 +3105,31 @@ jobs:
               </tr>
               <tr>
                 <td><code>write_registry</code></td>
-                <td>Windows only</td>
-                <td><code>key_path</code>, <code>value_name</code>, <code>value</code>, and <code>value_kind</code>.</td>
-                <td>Write app metadata or settings to the Windows Registry.</td>
+                <td>Windows only (needs <code>require: os.isWindows</code>)</td>
+                <td><code>key_path</code> (<code>HKCU\…</code> or <code>HKLM\…</code>, long forms accepted), optional <code>value_name</code>, <code>value</code>, and <code>value_kind</code> (<code>string</code>/<code>reg_sz</code>, <code>expand_string</code>/<code>reg_expand_sz</code>, or <code>dword</code>/<code>reg_dword</code>).</td>
+                <td>Write app metadata or settings to the Windows Registry. <code>HKLM</code> requires <code>install_scope: machine</code> (<code>PI171</code>).</td>
               </tr>
               <tr>
                 <td><code>create_desktop_entry</code></td>
-                <td>Linux, macOS</td>
+                <td>Linux only (needs <code>require: os.isLinux</code>)</td>
                 <td><code>file_name</code>, <code>name</code>, <code>exec</code>, optional <code>icon</code>, optional <code>comment</code>.</td>
-                <td>Create a Freedesktop-style app launcher entry.</td>
+                <td>Create a Freedesktop <code>.desktop</code> launcher so the app appears in desktop menus.</td>
               </tr>
               <tr>
                 <td><code>set_permissions</code></td>
-                <td>Unix platforms</td>
-                <td><code>path</code> and <code>mode</code>.</td>
+                <td>Linux, macOS (needs <code>os.isLinux</code>, <code>os.isMacOS</code>, or <code>os.isUnix</code>)</td>
+                <td><code>path</code> and <code>mode</code>, written as octal digits such as <code>755</code> or <code>0644</code>. A digit <code>8</code> or <code>9</code> fails validation with <code>PI203</code>.</td>
                 <td>Make a copied file executable or adjust Unix permissions after install.</td>
               </tr>
               <tr>
                 <td><code>add_to_path</code></td>
                 <td>Windows, Linux, macOS</td>
                 <td>Optional <code>path</code> (defaults to install directory), optional <code>scope</code> (<code>user</code> or <code>machine</code>).</td>
-                <td>Add an installed CLI or tool directory to PATH. Machine scope requires <code>build.windows.install_scope: machine</code>.</td>
+                <td>Add an installed CLI or tool directory to PATH. Machine scope requires <code>build.windows.install_scope: machine</code>. Entries are recorded and removed on uninstall.</td>
               </tr>
               <tr>
                 <td><code>file_association</code></td>
-                <td>Windows, Linux, macOS</td>
+                <td>Windows, Linux, macOS (needs an OS <code>require</code> predicate)</td>
                 <td><code>extension</code>, <code>description</code>, <code>command</code>, optional <code>prog_id</code>, <code>icon</code>, <code>mime_type</code>, and macOS <code>bundle_path</code>.</td>
                 <td>Register or unregister an association during a lifecycle phase. Prefer top-level <code>file_associations</code> for normal app associations.</td>
               </tr>
@@ -2329,8 +3145,55 @@ jobs:
           </div>
         </section>
 
+        <section class="section" id="diagnostics">
+          <span class="eyebrow">10. Diagnostic codes</span>
+          <h2>What each <code>PIxxx</code> code means</h2>
+          <p class="section-intro">
+            Codes are stable, so you can search for them, mention them in issues, or match on them in CI logs. Codes
+            <code>PI001</code>–<code>PI005</code> come from JSON Schema validation; the rest come from semantic checks.
+            Everything is an error unless marked as a warning.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Area</th>
+                <th>Meaning</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>PI001</code></td><td>Schema</td><td>The manifest is empty, or schema validation failed for a reason not covered below.</td></tr>
+              <tr><td><code>PI002</code></td><td>Schema</td><td>A required property is missing.</td></tr>
+              <tr><td><code>PI003</code></td><td>Schema</td><td>A value is not one of the allowed enum values (for example <code>ui.mode</code>).</td></tr>
+              <tr><td><code>PI004</code></td><td>Schema</td><td>A value has the wrong type (for example a string where a list is expected).</td></tr>
+              <tr><td><code>PI005</code></td><td>Schema</td><td>Unknown property — usually a typo or camelCase instead of snake_case.</td></tr>
+              <tr><td><code>PI101</code>, <code>PI102</code></td><td>metadata</td><td><code>metadata.name</code> or <code>metadata.version</code> is empty.</td></tr>
+              <tr><td><code>PI103</code>, <code>PI104</code></td><td>build</td><td><code>build.targets</code> is empty or contains an unknown target token.</td></tr>
+              <tr><td><code>PI105</code></td><td>build</td><td><code>build.compression</code> is not <code>brotli</code> or <code>gzip</code>.</td></tr>
+              <tr><td><code>PI106</code>–<code>PI109</code></td><td>files</td><td><code>files</code> is empty; a <code>source_dir</code> is absolute or contains <code>..</code>; or an entry has no <code>include</code> patterns.</td></tr>
+              <tr><td><code>PI110</code>–<code>PI113</code></td><td>features</td><td>A feature id is empty or duplicated; a <code>features</code> reference names an unknown id; or features are referenced but none are declared.</td></tr>
+              <tr><td><code>PI120</code></td><td>signing</td><td><code>build.signing.linux</code> is not supported.</td></tr>
+              <tr><td><code>PI121</code>–<code>PI127</code></td><td>signing (Windows)</td><td>No Windows target; plaintext <code>certificate_password</code>; zero or several identity sources; invalid <code>store_location</code>; invalid file or timestamp digest algorithm.</td></tr>
+              <tr><td><code>PI128</code>–<code>PI130</code></td><td>signing (macOS)</td><td>No macOS target; missing <code>identity</code>; <code>notarization_profile</code> without <code>build.macos.package: dmg</code>.</td></tr>
+              <tr><td><code>PI140</code>–<code>PI143</code></td><td>wizard steps</td><td><code>progress</code> without a preceding <code>destination</code>; <code>destination</code> after <code>progress</code>; <code>features</code> before <code>destination</code> or after <code>progress</code>.</td></tr>
+              <tr><td><code>PI144</code></td><td>ui</td><td><code>ui.mode</code> is not <code>wizard</code> or <code>silent</code>.</td></tr>
+              <tr><td><code>PI145</code></td><td>ui (warning)</td><td><code>ui.mode: silent</code> with an <code>eula</code> step: every unattended run will need <code>--accept-eula</code>.</td></tr>
+              <tr><td><code>PI160</code></td><td>tasks</td><td>Unknown task action.</td></tr>
+              <tr><td><code>PI161</code>–<code>PI166</code></td><td><code>create_shortcut</code></td><td>Obsolete <code>shortcut_path</code>; missing <code>target_path</code>, <code>name</code>, or <code>location</code>; invalid <code>location</code>; <code>subfolder</code> is not a simple relative name.</td></tr>
+              <tr><td><code>PI167</code>–<code>PI172</code></td><td><code>write_registry</code></td><td>Missing <code>os.isWindows</code> predicate; missing or malformed <code>key_path</code>; unsupported registry root; <code>HKLM</code> in a user-scope install; unsupported <code>value_kind</code>.</td></tr>
+              <tr><td><code>PI173</code>–<code>PI176</code></td><td><code>create_desktop_entry</code></td><td>Missing <code>os.isLinux</code> predicate; missing <code>file_name</code>, <code>name</code>, or <code>exec</code>.</td></tr>
+              <tr><td><code>PI177</code>–<code>PI179</code>, <code>PI203</code></td><td><code>set_permissions</code></td><td>Missing Linux/macOS/Unix predicate; missing <code>path</code> or <code>mode</code>; <code>mode</code> is not an octal permission such as <code>755</code>.</td></tr>
+              <tr><td><code>PI180</code>–<code>PI188</code></td><td>services</td><td>Missing or invalid <code>name</code>; missing <code>executable</code>; invalid <code>scope</code>; no OS predicate; user scope on Windows; restart policy not valid for launchd or systemd; invalid environment variable name.</td></tr>
+              <tr><td><code>PI190</code>–<code>PI194</code></td><td><code>file_associations</code></td><td>Missing or undotted <code>extension</code>; missing <code>description</code> or <code>command</code>; missing <code>bundle_path</code> for macOS.</td></tr>
+              <tr><td><code>PI195</code>, <code>PI196</code></td><td><code>add_to_path</code></td><td>Invalid <code>scope</code>; machine scope in a user-scope install.</td></tr>
+              <tr><td><code>PI197</code>–<code>PI202</code></td><td><code>file_association</code> task</td><td>No OS predicate; missing or undotted <code>extension</code>; missing <code>description</code> or <code>command</code>; missing <code>bundle_path</code> on macOS.</td></tr>
+              <tr><td><code>PI204</code></td><td>tasks</td><td>An action other than <code>file_association</code> appears in <code>pre_uninstall</code> or <code>post_uninstall</code>.</td></tr>
+            </tbody>
+          </table>
+        </section>
+
         <section class="section" id="faq">
-          <span class="eyebrow">8. Troubleshooting and FAQ</span>
+          <span class="eyebrow">11. Troubleshooting and FAQ</span>
           <h2>Common issues</h2>
           <p class="section-intro">
             Most build failures come from missing stubs, schema mismatches, host-specific packaging tools, or file globs
@@ -2341,9 +3204,83 @@ jobs:
             <details open>
               <summary>The build says the stub cannot be found.</summary>
               <p>
-                Confirm that the resolved stubs root contains <code>stubs/&lt;rid&gt;/PolyInstall.Runtime</code> or
-                <code>PolyInstall.Runtime.exe</code>. Windows targets also need
-                <code>stubs/&lt;rid&gt;/PolyInstall.Uninstall.exe</code> unless you provide a custom layout.
+                Confirm that the resolved stubs root contains <code>stubs/&lt;rid&gt;/PolyInstall.Runtime</code> (or
+                <code>PolyInstall.Runtime.exe</code>) for wizard mode, or <code>PolyInstall.Runtime.Silent</code> (or
+                <code>.exe</code>) for <code>ui.mode: silent</code>. Windows targets with <code>register_arp</code> (on by
+                default) also need <code>stubs/&lt;rid&gt;/PolyInstall.Uninstall.exe</code>. Run
+                <code>polyinstall build --verbose</code> to see which stubs folder was chosen, and check that you
+                extracted the matching <code>stubs-&lt;rid&gt;</code> archive when building for another OS.
+              </p>
+            </details>
+
+            <details>
+              <summary>The build says the stub is a multi-file publish or is too small.</summary>
+              <p>
+                Installers embed only the stub executable, so it must be published single-file and self-contained.
+                Re-publish with <code>--self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true</code>;
+                the error message prints the exact command for your stub.
+              </p>
+            </details>
+
+            <details>
+              <summary>Do my users need .NET, Node, Python, or anything else to run the installer?</summary>
+              <p>
+                No. Installers are self-contained native executables. Your application may of course have its own runtime
+                requirements; bundle that runtime in the payload or tell users what to install.
+              </p>
+            </details>
+
+            <details>
+              <summary>A silent install returned a non-zero exit code.</summary>
+              <p>
+                Look the code up in the <a href="#silent-exit-codes">exit code table</a>, then read the end of the log; its
+                path is printed on the first line of output. The most common causes are a missing
+                <code>--accept-eula</code> (<code>6</code>), the app still running (<code>4</code>), and a relative
+                <code>--install-dir</code> or <code>--log</code> path (<code>2</code>).
+              </p>
+            </details>
+
+            <details>
+              <summary>On Windows, the wizard installer with <code>--silent</code> returns immediately and <code>$LASTEXITCODE</code> is empty.</summary>
+              <p>
+                The wizard stub is a GUI-subsystem program, so shells do not wait for it. Use
+                <code>Start-Process … -Wait -PassThru</code> and read <code>ExitCode</code>, or build with
+                <code>ui.mode: silent</code>, which produces a console program.
+              </p>
+            </details>
+
+            <details>
+              <summary>Running the new version installed side by side instead of updating.</summary>
+              <p>
+                The product identity changed. Identity comes from <code>metadata.id</code>, or from
+                <code>metadata.name</code> plus <code>metadata.publisher</code> when <code>id</code> is not set. Keep
+                these identical across releases; set <code>metadata.id</code> explicitly to make renames safe.
+              </p>
+            </details>
+
+            <details>
+              <summary>The installer says applications are running from the install location.</summary>
+              <p>
+                Files cannot be safely replaced while the app is running. Close the app, choose <em>Close applications
+                and continue</em> in the wizard, or pass <code>--close-apps</code> to a silent install.
+              </p>
+            </details>
+
+            <details>
+              <summary>How do I uninstall on Linux or macOS?</summary>
+              <p>
+                There is no bundled uninstaller for Linux or macOS yet. Stop and remove any services you registered, then
+                delete the install directory. On Windows, use Add/Remove Programs or <code>Uninstall.exe --uninstall</code>.
+              </p>
+            </details>
+
+            <details>
+              <summary>SVG logo conversion fails on Linux with <code>DllNotFoundException</code> for <code>libSkiaSharp</code>.</summary>
+              <p>
+                The CLI's SVG renderer needs <code>libfontconfig</code> and <code>libfreetype</code>, which slim containers
+                (Alpine, distroless, <code>-slim</code> Debian images) usually leave out. Install
+                <code>fontconfig</code> and <code>libfreetype6</code> (or your distribution's equivalents), or switch
+                <code>ui.logo_path</code> to a PNG.
               </p>
             </details>
 
@@ -2354,7 +3291,8 @@ jobs:
                 <code>yaml-language-server</code> schema comment so your editor catches issues before the CLI runs.
                 The CLI reports schema and semantic errors together using <code>error[PIxxx]</code> blocks, including
                 manifest paths, YAML carets when the location can be mapped, help notes, and a final error count.
-                Fix every listed issue in one pass, then run validation again.
+                Fix every listed issue in one pass, then run validation again. Look codes up in
+                <a href="#diagnostics">diagnostic codes</a>.
               </p>
             </details>
 
@@ -2418,13 +3356,92 @@ jobs:
               <p>
                 Do not use PolyInstall manifests for runtime secrets. Environment substitution happens before the
                 manifest is embedded in the installer, so substituted values can be inspected from the final binary.
+                Signing passwords are the exception: reference them by name with <code>certificate_password_env</code>,
+                so the value is read only while signing and never embedded.
+              </p>
+            </details>
+
+            <details>
+              <summary>Uninstall fails with "Task action '…' is not valid in uninstall phase".</summary>
+              <p>
+                <code>polyinstall validate</code> reports this as <code>PI204</code>.
+                <code>pre_uninstall</code> and <code>post_uninstall</code> accept only <code>file_association</code>.
+                Remove other actions from those phases; PATH entries, services, associations, and files are cleaned up
+                automatically.
               </p>
             </details>
           </div>
         </section>
 
+        <section class="section" id="release-notes">
+          <span class="eyebrow">12. Release notes</span>
+          <h2>What changed in each release</h2>
+          <p class="section-intro">
+            Full release artefacts are on <a href="https://github.com/bolorundurowb/PolyInstall/releases">GitHub Releases</a>.
+            Manifests written for v2.0.0 keep working on later versions unless a note below says otherwise.
+          </p>
+
+          <div class="grid">
+            <div class="card">
+              <h3>v2.3.0</h3>
+              <ul>
+                <li><code>ui.mode: silent</code> and a new console stub, <code>PolyInstall.Runtime.Silent</code>, about 9 MB smaller than the wizard stub.</li>
+                <li>Unattended installs from either stub with <code>--silent</code>, <code>--install-dir</code>, <code>--features</code>, <code>--accept-eula</code>, <code>--close-apps</code>, and <code>--log</code>, plus documented exit codes.</li>
+                <li>Windows elevation relaunches wait for the elevated child and forward its exit code.</li>
+                <li>Cancelling a fresh install removes the partly installed files.</li>
+                <li>SVG <code>ui.logo_path</code> files are rasterised to PNG at build time.</li>
+                <li>macOS stubs are thinned to a single architecture, reducing their size.</li>
+                <li>Warning diagnostics (first: <code>PI145</code>) that do not fail <code>validate</code> or <code>build</code>.</li>
+                <li>Unix permission bits are kept when the installer is built on Linux or macOS. <code>set_permissions</code> applies octal modes such as <code>755</code>.</li>
+                <li><code>services</code> load from the YAML manifest.</li>
+                <li><code>validate</code> rejects install-only actions in uninstall phases (<code>PI204</code>).</li>
+                <li>Installer size optimisations and dependency updates.</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>v2.2.0 <span class="muted">(26 Jul 2026)</span></h3>
+              <ul>
+                <li>Install-only actions in uninstall phases are rejected at run time instead of running.</li>
+                <li>Symlink shortcuts are rolled back when an install fails.</li>
+                <li>The Windows uninstaller copy and Add/Remove Programs entry are rolled back on failure.</li>
+                <li>Payload compression can be cancelled.</li>
+                <li>Empty directories in the payload are kept.</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>v2.1.1 <span class="muted">(19 Jul 2026)</span></h3>
+              <ul>
+                <li>Detects applications running from the install location before replacing files, with a close-and-continue option.</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>v2.1.0 <span class="muted">(17 Jul 2026)</span></h3>
+              <ul>
+                <li><code>{LocalAppData}</code> placeholder and per-user Windows installs default to it.</li>
+                <li><code>validate</code> and <code>build</code> report every diagnostic in one pass.</li>
+                <li><code>ui.show_logs</code> to show or hide the progress log.</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>v2.0.1 <span class="muted">(14 Jul 2026)</span></h3>
+              <ul>
+                <li>Clearer errors from the <code>setup-polyinstall</code> GitHub Action.</li>
+              </ul>
+            </div>
+            <div class="card">
+              <h3>v2.0.0 <span class="muted">(07 Jun 2026)</span></h3>
+              <ul>
+                <li>Optional components through <code>features</code> and the <code>features</code> wizard step.</li>
+                <li>Service and daemon registration across Windows, systemd, and launchd.</li>
+                <li>The <code>setup-polyinstall</code> GitHub Action.</li>
+                <li>Improved file association handling.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
         <section class="section" id="contributing">
-          <span class="eyebrow">9. Contributing and support</span>
+          <span class="eyebrow">13. Contributing and support</span>
           <h2>Help improve PolyInstall</h2>
           <p class="section-intro">
             PolyInstall welcomes focused issues, documentation improvements, tests, and implementation changes that keep
@@ -2454,12 +3471,29 @@ cd PolyInstall
 
 dotnet restore src/PolyInstall.slnx
 dotnet build src/PolyInstall.slnx -c Release --no-restore
-dotnet test src/PolyInstall.slnx -c Release --no-build --verbosity normal</code></pre>
+dotnet test src/PolyInstall.slnx -c Release --no-build --verbosity normal
+
+# Stubs for a local smoke test (repeat per RID you target)
+dotnet publish src/PolyInstall.Runtime/PolyInstall.Runtime.csproj -c Release -r linux-x64 -o stubs/linux-x64
+dotnet publish src/PolyInstall.Runtime.Silent/PolyInstall.Runtime.Silent.csproj -c Release -r linux-x64 -o stubs/linux-x64
+
+dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj -- validate examples/polyinstall.sample.yaml --base examples
+dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj -- build examples/polyinstall.sample.yaml --base examples --stubs stubs</code></pre>
 
           <div class="callout">
             <strong>When changing manifest models</strong>
             Regenerate <code>schema/v1.json</code> with <code>dotnet run --project src/PolyInstall.SchemaGen/PolyInstall.SchemaGen.csproj</code>
-            and commit the schema update with the related code.
+            and commit the schema update with the related code. Copy the regenerated file to this site's
+            <code>schema/v1.json</code> as well, because that is the URL manifests reference.
+          </div>
+
+          <div class="callout">
+            <strong>House style</strong>
+            Docs, diagnostics, UI copy, and commit messages use Nigerian English (British spelling: <em>behaviour</em>,
+            <em>colour</em>, <em>cancelled</em>). Keep <code>PolyInstall.Core</code> dependency-free, keep platform checks
+            behind the platform abstraction layer, and report the stub size impact of any change that touches the
+            runtime. See <a href="https://github.com/bolorundurowb/PolyInstall/blob/master/AGENTS.md">AGENTS.md</a> and
+            <a href="https://github.com/bolorundurowb/PolyInstall/blob/master/CONTRIBUTING.md">CONTRIBUTING.md</a>.
           </div>
         </section>
       </main>
@@ -2469,7 +3503,7 @@ dotnet test src/PolyInstall.slnx -c Release --no-build --verbosity normal</code>
       <p>
         PolyInstall documentation page styled from the embedded logo palette:
         ink <code>#0e1116</code>, plum <code>#6C0450</code>, paper <code>#f5f3ee</code>, and rule <code>#d8d4c8</code>.
-        Last reviewed against source version <code>2.1.0</code>.
+        Last reviewed against source version <code>2.3.0</code> on 19 Oct 2026.
       </p>
     </footer>
   </div>
