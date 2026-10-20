@@ -72,8 +72,14 @@ public static class WindowsArpRegistration
 
         try
         {
+            // Recompute the key from the product id. RegistryUninstallKeyRelative in install
+            // state is user-writable and must not choose which key is deleted.
+            if (string.IsNullOrWhiteSpace(state.ProductId))
+                return;
+
+            var relativeKey = RegistryKeyRelativeForProductId(state.ProductId);
             var root = GetHive(state);
-            root.DeleteSubKeyTree(state.RegistryUninstallKeyRelative, throwOnMissingSubKey: false);
+            root.DeleteSubKeyTree(relativeKey, throwOnMissingSubKey: false);
         }
         catch
         {

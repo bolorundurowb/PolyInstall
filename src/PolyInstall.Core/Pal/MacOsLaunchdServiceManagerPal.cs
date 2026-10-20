@@ -1,6 +1,7 @@
 using System.Text;
 using System.Xml.Linq;
 using PolyInstall.Install;
+using PolyInstall.Manifest;
 
 namespace PolyInstall.Pal;
 
@@ -56,14 +57,37 @@ internal sealed class MacOsLaunchdServiceManagerPal(ICommandRunner? runner = nul
 
     public void Remove(RegisteredServiceInfo service)
     {
+        // Install state is user-writable. Do not aim launchctl at a plist this install does not own.
+        if (!RuntimeManifestGuard.IsValidServiceName(service.Name))
+            return;
+
         var label = service.Name;
-        var plistPath = service.UnitPath ?? GetPlistPath(service.Scope, label);
+        var plistPath = GetPlistPath(service.Scope, label);
+        if (IsSystemScope(service.Scope) && !PlistReferencesInstallRoot(plistPath))
+            return;
 
         LaunchctlBestEffort("bootout", Target(service.Scope), plistPath);
         LaunchctlBestEffort("disable", ServiceTarget(service.Scope, label));
 
         if (File.Exists(plistPath))
             File.Delete(plistPath);
+    }
+
+    private static bool PlistReferencesInstallRoot(string plistPath)
+    {
+        var installRoot = PolyInstall.Hosting.InstallBootstrap.InstallDirectory;
+        if (string.IsNullOrWhiteSpace(installRoot) || !File.Exists(plistPath))
+            return false;
+
+        try
+        {
+            var content = File.ReadAllText(plistPath);
+            return content.Contains(Path.GetFullPath(installRoot), StringComparison.Ordinal);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     internal static string BuildPlistContent(ServiceRegistrationInfo service)

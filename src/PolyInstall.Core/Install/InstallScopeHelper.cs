@@ -1,5 +1,6 @@
 using PolyInstall.Manifest;
 using PolyInstall.Conditions;
+using PolyInstall.Pal;
 
 namespace PolyInstall.Install;
 
@@ -18,9 +19,19 @@ public static class InstallScopeHelper
         IsMachineInstall(manifest)
         || string.Equals(existingInstall?.InstallScope, "machine", StringComparison.OrdinalIgnoreCase)
         || HasActiveWindowsService(manifest)
-        || existingInstall?.State?.RegisteredServices?.Any(s =>
+        || HasVerifiedOwnedSystemService(existingInstall);
+
+    /// <summary>
+    /// A system service listed in install state cannot by itself authorise elevation.
+    /// Install state is user-writable. Elevation is warranted only when at least one claimed
+    /// service has its binary inside the install root.
+    /// </summary>
+    private static bool HasVerifiedOwnedSystemService(ExistingInstallInfo? existingInstall) =>
+        existingInstall is not null
+        && existingInstall.State?.RegisteredServices?.Any(s =>
             s.Platform.Equals("windows", StringComparison.OrdinalIgnoreCase)
-            && s.Scope.Equals("system", StringComparison.OrdinalIgnoreCase)) == true;
+            && s.Scope.Equals("system", StringComparison.OrdinalIgnoreCase)
+            && WindowsServiceOwnership.IsOwnedByInstallRoot(s.Name, existingInstall.InstallLocation)) == true;
 
     private static bool HasActiveWindowsService(InstallManifest manifest)
     {

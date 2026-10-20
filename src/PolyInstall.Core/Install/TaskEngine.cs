@@ -94,6 +94,12 @@ public static class TaskEngine
                     throw new PlatformNotSupportedException("PATH tasks are not supported on this platform.");
                 var pathValue = Expand(GetStringOrDefault(p, "path", InstallBootstrap.InstallDirectory ?? ""), pal);
                 var pathScope = GetOptionalString(p, "scope") ?? "user";
+                if (!pathScope.Equals("user", StringComparison.OrdinalIgnoreCase)
+                    && !pathScope.Equals("machine", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException(
+                        $"add_to_path 'scope' must be 'user' or 'machine', got '{pathScope}'.");
+                }
                 pal.Path.AddToPath(pathValue, pathScope);
                 break;
             case "file_association":
@@ -177,14 +183,17 @@ public static class TaskEngine
             throw new PlatformNotSupportedException("Shortcuts are not supported on this OS.");
         }
 
-        var dir = !string.IsNullOrEmpty(subfolder)
-            ? Path.Combine(baseDir, subfolder)
-            : baseDir;
+        // Manifest content is untrusted at runtime: shortcut names and subfolders must stay
+        // inside the well-known shortcut directory.
+        if (!string.IsNullOrEmpty(subfolder))
+            RelativePathGuard.EnsureSimpleRelativePath(subfolder, "create_shortcut 'subfolder'");
+        RelativePathGuard.EnsureSimpleFileName(name, "create_shortcut 'name'");
 
         if (OperatingSystem.IsWindows() && !name.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
             name += ".lnk";
 
-        return Path.Combine(dir, name);
+        return RelativePathGuard.CombineConfined(baseDir,
+            !string.IsNullOrEmpty(subfolder) ? [subfolder, name] : [name]);
     }
 
     /// <summary>

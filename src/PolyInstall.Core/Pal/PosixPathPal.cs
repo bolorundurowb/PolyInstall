@@ -4,6 +4,7 @@ internal static class PosixPathPal
 {
     public static void AddToPath(string directory, string scope)
     {
+        ValidateDirectory(directory);
         if (scope.Equals("machine", StringComparison.OrdinalIgnoreCase))
         {
             if (OperatingSystem.IsMacOS())
@@ -21,14 +22,14 @@ internal static class PosixPathPal
                     Directory.CreateDirectory(profilePath);
                 var fileName = SanitizeFileName(directory) + ".sh";
                 File.WriteAllText(Path.Combine(profilePath, fileName),
-                    $"export PATH=\"$PATH:{directory}\"\n");
+                    BuildPathExportEntry(directory) + "\n");
             }
         }
         else
         {
             var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             var profileFile = FindShellProfile(home);
-            var entry = $"export PATH=\"$PATH:{directory}\"";
+            var entry = BuildPathExportEntry(directory);
             if (File.Exists(profileFile) && File.ReadAllText(profileFile).Contains(entry, StringComparison.Ordinal))
                 return;
             File.AppendAllText(profileFile, $"\n{entry}\n");
@@ -62,12 +63,43 @@ internal static class PosixPathPal
             var profileFile = FindShellProfile(home);
             if (!File.Exists(profileFile))
                 return;
-            var entry = $"export PATH=\"$PATH:{directory}\"";
+            string entry;
+            try
+            {
+                entry = BuildPathExportEntry(directory);
+            }
+            catch (ArgumentException)
+            {
+                return;
+            }
             var lines = File.ReadAllLines(profileFile)
                 .Where(l => !l.Trim().Equals(entry, StringComparison.Ordinal))
                 .ToArray();
             File.WriteAllLines(profileFile, lines);
         }
+    }
+
+    /// <summary>
+    /// Shell line appended to a POSIX profile. The directory is a single-quoted literal, so
+    /// metacharacters in the install path cannot break out of the assignment.
+    /// </summary>
+    internal static string BuildPathExportEntry(string directory)
+    {
+        ValidateDirectory(directory);
+        return "export PATH=\"$PATH\":" + ShellSingleQuote(directory);
+    }
+
+    internal static string ShellSingleQuote(string value) =>
+        "'" + value.Replace("'", "'\\''", StringComparison.Ordinal) + "'";
+
+    private static void ValidateDirectory(string directory)
+    {
+        if (string.IsNullOrWhiteSpace(directory))
+            throw new ArgumentException("PATH directory must be non-empty.", nameof(directory));
+        if (directory.Any(c => c is '\n' or '\r' or '\0'))
+            throw new ArgumentException(
+                "PATH directory contains unsupported control characters and cannot be safely added to PATH.",
+                nameof(directory));
     }
 
     public static string FindShellProfile(string home)

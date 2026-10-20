@@ -61,7 +61,7 @@ internal static class UninstallRunner
             return 1;
         }
 
-        if (ShouldRelaunchElevated(state) && RelaunchElevated(exe, Environment.GetCommandLineArgs().Skip(1)))
+        if (ShouldRelaunchElevated(state, installRoot) && RelaunchElevated(exe, Environment.GetCommandLineArgs().Skip(1)))
             return 0;
 
         if (!cmd.Quiet && !WindowsUninstallPrompt.Confirm(state.DisplayName))
@@ -84,12 +84,15 @@ internal static class UninstallRunner
         return null;
     }
 
-    private static bool ShouldRelaunchElevated(InstallStateDocument state)
+    private static bool ShouldRelaunchElevated(InstallStateDocument state, string installRoot)
     {
+        // install-state.json is user-writable, so a claimed system service is not enough to
+        // authorise elevation. The service binary must actually live under this install root.
         return OperatingSystem.IsWindows()
                && state.RegisteredServices?.Any(s =>
                    s.Platform.Equals("windows", StringComparison.OrdinalIgnoreCase)
-                   && s.Scope.Equals("system", StringComparison.OrdinalIgnoreCase)) == true
+                   && s.Scope.Equals("system", StringComparison.OrdinalIgnoreCase)
+                   && WindowsServiceOwnership.IsOwnedByInstallRoot(s.Name, installRoot)) == true
                && !IsWindowsAdministrator();
     }
 

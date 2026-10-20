@@ -1,4 +1,5 @@
 using PolyInstall.Install;
+using PolyInstall.Manifest;
 
 namespace PolyInstall.Pal;
 
@@ -43,6 +44,17 @@ internal sealed class WindowsServiceManagerPal(ICommandRunner? runner = null) : 
 
     public void Remove(RegisteredServiceInfo service)
     {
+        // Install state is user-writable. Do not aim sc.exe at a service this install does not own.
+        if (!RuntimeManifestGuard.IsValidServiceName(service.Name))
+            return;
+
+        var installRoot = PolyInstall.Hosting.InstallBootstrap.InstallDirectory;
+        if (string.IsNullOrWhiteSpace(installRoot)
+            || !WindowsServiceOwnership.IsOwnedByInstallRoot(service.Name, installRoot))
+        {
+            return;
+        }
+
         RunBestEffort("stop", service.Name);
         RunBestEffort("config", service.Name, "start=", "disabled");
         RunBestEffort("delete", service.Name);

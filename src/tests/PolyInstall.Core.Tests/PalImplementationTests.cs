@@ -570,7 +570,7 @@ public class PalImplementationTests
             PosixPathPal.AddToPath("/usr/local/testapp/bin", "user");
 
             var content = File.ReadAllText(profile);
-            content.Must().Contain("export PATH=\"$PATH:/usr/local/testapp/bin\"");
+            content.Must().Contain("export PATH=\"$PATH\":'/usr/local/testapp/bin'");
         }
         finally
         {
@@ -591,7 +591,7 @@ public class PalImplementationTests
         {
             Environment.SetEnvironmentVariable("HOME", tempDir);
             var profile = Path.Combine(tempDir, ".bashrc");
-            var entry = "export PATH=\"$PATH:/usr/local/testapp/bin\"";
+            var entry = "export PATH=\"$PATH\":'/usr/local/testapp/bin'";
             File.WriteAllText(profile, $"# existing content\n{entry}\n");
 
             PosixPathPal.AddToPath("/usr/local/testapp/bin", "user");
@@ -618,7 +618,7 @@ public class PalImplementationTests
         {
             Environment.SetEnvironmentVariable("HOME", tempDir);
             var profile = Path.Combine(tempDir, ".bashrc");
-            var entry = "export PATH=\"$PATH:/usr/local/testapp/bin\"";
+            var entry = "export PATH=\"$PATH\":'/usr/local/testapp/bin'";
             File.WriteAllText(profile, $"# existing content\n{entry}\n");
 
             PosixPathPal.RemoveFromPath("/usr/local/testapp/bin", "user");
