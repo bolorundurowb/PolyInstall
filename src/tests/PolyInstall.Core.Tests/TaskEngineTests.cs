@@ -944,8 +944,11 @@ public class TaskEngineTests
     {
         public string AppDirBacking { get; init; } = "";
         public string ProgramFilesBacking { get; init; } = "";
-        public string UserHomeBacking { get; init; } = "";
-        public string DesktopBacking { get; init; } = "";
+
+        // Linux and macOS confine shortcut paths under these directories. An empty base is rejected by
+        // Path.GetFullPath, so the defaults must be absolute paths.
+        public string UserHomeBacking { get; init; } = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "polyinstall-user");
+        public string DesktopBacking { get; init; } = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "polyinstall-desktop");
 
         public string AppDir => AppDirBacking;
         public string ProgramFiles => ProgramFilesBacking;
