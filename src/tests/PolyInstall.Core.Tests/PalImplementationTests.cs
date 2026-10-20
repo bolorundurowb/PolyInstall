@@ -287,7 +287,7 @@ public class PalImplementationTests
 
         var paths = pal.AddedPaths;
 
-        ((object)paths).Must().ToBeAssignableTo<IReadOnlyList<(string, string)>>();
+        ((object)paths).Must().BeAssignableTo<IReadOnlyList<(string, string)>>();
     }
 
     [Fact]
@@ -676,7 +676,7 @@ public class PalImplementationTests
         {
             pal.Registry.Must().NotBeNull();
             pal.FileAssociations.Must().NotBeNull();
-            pal.FileAssociations.Must().ToBeOfType<WindowsFileAssociationPal>();
+            pal.FileAssociations.Must().BeOfType<WindowsFileAssociationPal>();
         }
         else
         {
@@ -692,11 +692,11 @@ public class PalImplementationTests
         if (OperatingSystem.IsLinux())
         {
             pal.DesktopEntries.Must().NotBeNull();
-            pal.DesktopEntries.Must().ToBeOfType<LinuxDesktopEntryPal>();
+            pal.DesktopEntries.Must().BeOfType<LinuxDesktopEntryPal>();
             pal.FilePermissions.Must().NotBeNull();
-            pal.FilePermissions.Must().ToBeOfType<PosixFilePermissionsPal>();
+            pal.FilePermissions.Must().BeOfType<PosixFilePermissionsPal>();
             pal.FileAssociations.Must().NotBeNull();
-            pal.FileAssociations.Must().ToBeOfType<LinuxFileAssociationPal>();
+            pal.FileAssociations.Must().BeOfType<LinuxFileAssociationPal>();
         }
         else
         {
@@ -712,9 +712,9 @@ public class PalImplementationTests
         if (OperatingSystem.IsMacOS())
         {
             pal.FilePermissions.Must().NotBeNull();
-            pal.FilePermissions.Must().ToBeOfType<PosixFilePermissionsPal>();
+            pal.FilePermissions.Must().BeOfType<PosixFilePermissionsPal>();
             pal.FileAssociations.Must().NotBeNull();
-            pal.FileAssociations.Must().ToBeOfType<MacOsFileAssociationPal>();
+            pal.FileAssociations.Must().BeOfType<MacOsFileAssociationPal>();
         }
         else if (!OperatingSystem.IsLinux())
         {

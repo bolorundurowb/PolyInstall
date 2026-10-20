@@ -101,7 +101,8 @@ dotnet run --project src/PolyInstall.Cli/PolyInstall.Cli.csproj -- validate exam
 ```
 
 There is no linter/format pipeline beyond the compiler. `dotnet build` must emit **no new warnings**; treat every new
-warning as review feedback. (`TreatWarningsAsErrors` is off today — do not rely on that as licence to add warnings.)
+warning as review feedback. `TreatWarningsAsErrors` is on (`src/Directory.Build.props`), so a new warning fails the build
+rather than merely being noticed in review.
 
 ---
 

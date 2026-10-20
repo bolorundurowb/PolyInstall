@@ -90,15 +90,16 @@ public static class InstallBundleReader
 
     private sealed class LimitedReadStream(Stream inner, long length) : Stream
     {
+        private readonly long _length = length;
         private long _remaining = length;
 
         public override bool CanRead => inner.CanRead;
         public override bool CanSeek => false;
         public override bool CanWrite => false;
-        public override long Length => length;
+        public override long Length => _length;
         public override long Position
         {
-            get => length - _remaining;
+            get => _length - _remaining;
             set => throw new NotSupportedException();
         }
 

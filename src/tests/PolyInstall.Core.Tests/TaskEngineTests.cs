@@ -1,3 +1,4 @@
+using System.Text.Json;
 using PolyInstall.Hosting;
 using PolyInstall.Install;
 using PolyInstall.Manifest;
@@ -273,7 +274,106 @@ public class TaskEngineTests
         pal.PermissionCalls.Must().HaveCount(1);
         var p = pal.PermissionCalls[0];
         p.Path.Must().Be($"{s}usr{s}bin{s}app");
-        p.Mode.Must().Be(755);
+        p.Mode.Must().Be(Convert.ToInt32("755", 8));
+    }
+
+    [Theory]
+    [InlineData(755, 493)]
+    [InlineData("755", 493)]
+    [InlineData("0755", 493)]
+    [InlineData(644, 420)]
+    [InlineData("0644", 420)]
+    public void RunPhase_WhenSetPermissions_ShouldInterpretModeAsOctal(object mode, int expected)
+    {
+        var pal = new RecordingPal();
+        TaskEngine.RunPhase(
+        [
+            new InstallTask
+            {
+                Action = "set_permissions",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["path"] = "/usr/bin/app",
+                    ["mode"] = mode,
+                },
+            },
+        ], pal);
+
+        pal.PermissionCalls.Must().HaveCount(1);
+        pal.PermissionCalls[0].Mode.Must().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("{\"mode\":\"755\"}", 493)]
+    [InlineData("{\"mode\":755}", 493)]
+    [InlineData("{\"mode\":\"0644\"}", 420)]
+    public void RunPhase_WhenSetPermissionsModeIsJsonElement_ShouldInterpretModeAsOctal(string json, int expected)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var pal = new RecordingPal();
+        TaskEngine.RunPhase(
+        [
+            new InstallTask
+            {
+                Action = "set_permissions",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["path"] = "/usr/bin/app",
+                    ["mode"] = doc.RootElement.GetProperty("mode").Clone(),
+                },
+            },
+        ], pal);
+
+        pal.PermissionCalls[0].Mode.Must().Be(expected);
+    }
+
+    [Fact]
+    public void RunPhase_WhenSetPermissionsModeSurvivesJsonRoundTrip_ShouldInterpretModeAsOctal()
+    {
+        var task = new InstallTask
+        {
+            Action = "set_permissions",
+            Parameters = new Dictionary<string, object?>
+            {
+                ["path"] = "/usr/bin/app",
+                ["mode"] = "755",
+            },
+        };
+
+        var json = JsonSerializer.Serialize(task, InstallManifest.JsonOptions);
+        var roundTripped = JsonSerializer.Deserialize<InstallTask>(json, InstallManifest.JsonOptions);
+        roundTripped.Must().NotBeNull();
+
+        var pal = new RecordingPal();
+        TaskEngine.RunPhase([roundTripped!], pal);
+
+        pal.PermissionCalls[0].Mode.Must().Be(Convert.ToInt32("755", 8));
+    }
+
+    [Theory]
+    [InlineData(759)]
+    [InlineData("759")]
+    [InlineData("12345")]
+    [InlineData("")]
+    public void RunPhase_WhenSetPermissionsModeIsNotOctal_ThrowsInvalidOperationException(object mode)
+    {
+        var pal = new RecordingPal();
+        var tasks = new[]
+        {
+            new InstallTask
+            {
+                Action = "set_permissions",
+                Parameters = new Dictionary<string, object?>
+                {
+                    ["path"] = "/usr/bin/app",
+                    ["mode"] = mode,
+                },
+            },
+        };
+
+        ((Action)(() => TaskEngine.RunPhase(tasks, pal)))
+            .Throws<InvalidOperationException>()
+            .WithMessageContaining("octal");
     }
 
     [Fact]

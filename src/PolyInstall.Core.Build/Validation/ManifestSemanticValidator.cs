@@ -506,10 +506,22 @@ public static class ManifestSemanticValidator
         if (tasks is null)
             return;
 
+        var isUninstallPhase = phase is "pre_uninstall" or "post_uninstall";
+
         for (int i = 0; i < tasks.Count; i++)
         {
             var task = tasks[i];
             var prefix = $"tasks.{phase}[{i}]";
+
+            if (isUninstallPhase
+                && !task.Action.Equals("file_association", StringComparison.OrdinalIgnoreCase))
+            {
+                Add(errors, "PI204",
+                    $"{prefix}: '{task.Action}' is not valid in {phase}. Only file_association may run during uninstall.",
+                    prefix,
+                    "Remove this task. Files, services, PATH entries, and associations are removed automatically.");
+                continue;
+            }
 
             if (task.Action.Equals("create_shortcut", StringComparison.OrdinalIgnoreCase))
                 ValidateCreateShortcut(task, prefix, errors);
@@ -731,8 +743,34 @@ public static class ManifestSemanticValidator
 
         if (string.IsNullOrEmpty(GetParamString(task, "path")))
             Add(errors, "PI178", $"{prefix}: set_permissions requires parameter 'path'.", prefix);
-        if (GetParamString(task, "mode") is null)
+
+        var mode = GetParamString(task, "mode");
+        if (string.IsNullOrWhiteSpace(mode))
+        {
             Add(errors, "PI179", $"{prefix}: set_permissions requires parameter 'mode'.", prefix);
+        }
+        else if (!IsOctalFileMode(mode))
+        {
+            Add(errors, "PI203",
+                $"{prefix}: set_permissions 'mode' must be an octal permission such as 755 or 0644, got '{mode}'.",
+                prefix,
+                "Write the mode as chmod would accept it, for example 755.");
+        }
+    }
+
+    private static bool IsOctalFileMode(string mode)
+    {
+        var text = mode.Trim();
+        if (text.Length is < 1 or > 4)
+            return false;
+
+        foreach (var c in text)
+        {
+            if (c is < '0' or > '7')
+                return false;
+        }
+
+        return true;
     }
 
     private static void ValidateAddToPath(InstallTask task, string prefix, bool isUserScope, List<ManifestDiagnostic> errors)

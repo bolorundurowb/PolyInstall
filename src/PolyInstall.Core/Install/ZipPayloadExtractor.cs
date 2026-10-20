@@ -44,6 +44,23 @@ public static class ZipPayloadExtractor
             if (!string.IsNullOrEmpty(dir))
                 Directory.CreateDirectory(dir);
             entry.ExtractToFile(targetPath, overwrite: true);
+            RestoreUnixMode(entry, targetPath);
         }
+    }
+
+    /// <summary>
+    /// Applies Unix permission bits stored in the high 16 bits of the zip external attributes.
+    /// Zero means the packager recorded no mode (for example a Windows build host).
+    /// </summary>
+    private static void RestoreUnixMode(ZipArchiveEntry entry, string targetPath)
+    {
+        if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
+            return;
+
+        var bits = (entry.ExternalAttributes >> 16) & 0xFFF;
+        if (bits == 0)
+            return;
+
+        File.SetUnixFileMode(targetPath, (UnixFileMode)bits);
     }
 }

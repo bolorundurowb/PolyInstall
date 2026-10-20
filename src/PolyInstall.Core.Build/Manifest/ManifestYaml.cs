@@ -29,6 +29,7 @@ public static class ManifestYaml
             Ui = dto.Ui ?? new UiConfiguration(),
             Files = dto.Files ?? [],
             FileAssociations = dto.FileAssociations,
+            Services = dto.Services,
             Tasks = dto.Tasks,
             Features = dto.Features,
         };
@@ -42,6 +43,7 @@ public static class ManifestYaml
         public UiConfiguration? Ui { get; set; }
         public List<FilesEntry>? Files { get; set; }
         public List<FileAssociation>? FileAssociations { get; set; }
+        public List<ServiceDefinition>? Services { get; set; }
         public TasksConfiguration? Tasks { get; set; }
         public List<FeatureDefinition>? Features { get; set; }
     }

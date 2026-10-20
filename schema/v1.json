@@ -388,9 +388,6 @@
           "items": {
             "$ref": "#/definitions/WizardStep"
           }
-        },
-        "is_silent": {
-          "type": "boolean"
         }
       }
     },
@@ -432,7 +429,9 @@
           ]
         },
         "show_logs": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Whether the progress step displays its detailed install log.",
+          "default": true
         }
       }
     },

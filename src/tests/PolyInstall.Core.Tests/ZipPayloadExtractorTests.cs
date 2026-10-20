@@ -80,6 +80,28 @@ public class ZipPayloadExtractorTests
     }
 
     [Fact]
+    public void ExtractToDirectory_ShouldRestoreUnixMode_WhenEntryRecordsOne()
+    {
+        var dest = TestHelpers.NewTempDir();
+        try
+        {
+            const int mode = 0x1ED;
+            var zip = CreateZipWithUnixMode("hello", "echo hi\n", mode);
+
+            ZipPayloadExtractor.ExtractToDirectory(zip, dest);
+
+            var installed = Path.Combine(dest, "hello");
+            File.ReadAllText(installed).Must().Be("echo hi\n");
+            if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
+                ((int)File.GetUnixFileMode(installed) & 0xFFF).Must().Be(mode);
+        }
+        finally
+        {
+            TestHelpers.TryDeleteDirectory(dest);
+        }
+    }
+
+    [Fact]
     public void ExtractToDirectory_WithNestedEmptyDirectory_CreatesNestedDirectory()
     {
         var dest = TestHelpers.NewTempDir();
@@ -140,6 +162,20 @@ public class ZipPayloadExtractorTests
         using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
         {
             zip.CreateEntry("empty_cache/");
+        }
+
+        return ms.ToArray();
+    }
+
+    private static byte[] CreateZipWithUnixMode(string name, string content, int mode)
+    {
+        using var ms = new MemoryStream();
+        using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            var entry = zip.CreateEntry(name);
+            entry.ExternalAttributes = (mode & 0xFFF) << 16;
+            using var writer = new StreamWriter(entry.Open());
+            writer.Write(content);
         }
 
         return ms.ToArray();

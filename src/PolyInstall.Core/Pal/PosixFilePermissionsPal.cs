@@ -1,22 +1,18 @@
-using System.Diagnostics;
-
 namespace PolyInstall.Pal;
 
 internal sealed class PosixFilePermissionsPal : IFilePermissionsPal
 {
     public void SetFileMode(string path, int mode)
     {
-        var psi = new ProcessStartInfo
+        if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
         {
-            FileName = "chmod",
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        psi.ArgumentList.Add(Convert.ToString(mode, 8));
-        psi.ArgumentList.Add(path);
-        using var p = Process.Start(psi);
-        p?.WaitForExit();
-        if (p?.ExitCode != 0)
-            throw new InvalidOperationException($"chmod failed for {path}.");
+            if (mode is < 0 or > 0xFFF)
+                throw new InvalidOperationException($"File mode {mode} is outside the Unix permission range.");
+
+            File.SetUnixFileMode(path, (UnixFileMode)mode);
+            return;
+        }
+
+        throw new PlatformNotSupportedException("Permission tasks are not supported on this platform.");
     }
 }

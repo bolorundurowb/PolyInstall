@@ -74,7 +74,7 @@ Implementation: `PolyInstall.Core/Payload/InstallPayloadTrailer.cs`, `InstallBun
 
 The reader checks the physical end of the file first, then scans backward for the magic bytes so **signed** installers still work when signing tools append data after the PolyInstall footer.
 
-Payload compression is **Brotli** or **GZip** (configured by `build.compression`). The compressed blob is a zip archive of matched manifest files (paths relative to each `files[].source_dir`).
+Payload compression is **Brotli** or **GZip** (configured by `build.compression`). The compressed blob is a zip archive of matched manifest files (paths relative to each `files[].source_dir`). When the CLI is running on Linux or macOS, each entry records the source file's Unix permission bits and the installer restores them. A Windows build host has no Unix mode to record.
 
 ## Manifest pipeline
 
@@ -168,7 +168,7 @@ Feature selection is stored in `InstallBootstrap.SelectedFeatures` and gates fil
 
 `TaskEngine` runs manifest `tasks` phases (`pre_install`, `post_install`, `pre_uninstall`, `post_uninstall`). Each task has an `action`, optional `require` (OS predicates via `ConditionEvaluator`), optional `features` gating, and `parameters` with path placeholder expansion.
 
-Supported actions include `create_shortcut`, `write_registry`, `create_desktop_entry`, `set_permissions`, `add_to_path`, `file_association`. Platform-specific work is delegated to the PAL.
+Supported actions include `create_shortcut`, `write_registry`, `create_desktop_entry`, `set_permissions`, `add_to_path`, `file_association`. Platform-specific work is delegated to the PAL. `set_permissions` takes `mode` as an octal chmod value such as `755` or `0644`. `pre_uninstall` and `post_uninstall` accept only `file_association`; `validate` reports any other action there as `PI204`.
 
 ## Platform abstraction layer (PAL)
 

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using PolyInstall.Conditions;
 using PolyInstall.Hosting;
@@ -84,7 +85,7 @@ public static class TaskEngine
                     throw new InvalidOperationException($"Task action '{task.Action}' is not valid in uninstall phase. Remove it from pre_uninstall/post_uninstall.");
                 if (pal.FilePermissions is null)
                     throw new PlatformNotSupportedException("Permission tasks are not supported on this platform.");
-                pal.FilePermissions.SetFileMode(Expand(GetString(p, "path"), pal), GetInt(p, "mode"));
+                pal.FilePermissions.SetFileMode(Expand(GetString(p, "path"), pal), GetOctalMode(p, "mode"));
                 break;
             case "add_to_path":
                 if (isUninstall)
@@ -239,17 +240,48 @@ public static class TaskEngine
         };
     }
 
-    private static int GetInt(Dictionary<string, object?> p, string key)
+    /// <summary>
+    /// Manifest modes are written the way chmod accepts them (<c>755</c>, <c>0644</c>), whether the
+    /// YAML loader kept them as a number or a string and whether JSON later rehydrates them as a
+    /// <see cref="JsonElement"/>. The integer handed to the PAL is the permission bitfield.
+    /// </summary>
+    private static int GetOctalMode(Dictionary<string, object?> p, string key)
     {
         if (!p.TryGetValue(key, out var v) || v is null)
             throw new InvalidOperationException($"Task parameter '{key}' is required.");
-        return v switch
+
+        var text = ModeText(v);
+        if (!TryParseOctalMode(text, out var mode))
         {
-            int i => i,
-            long l => (int)l,
-            JsonElement je when je.TryGetInt32(out var x) => x,
-            string s when int.TryParse(s, out var x) => x,
-            _ => Convert.ToInt32(v),
-        };
+            throw new InvalidOperationException(
+                $"Task parameter '{key}' must be an octal permission such as 755 or 0644, got '{text}'.");
+        }
+
+        return mode;
+    }
+
+    private static string ModeText(object value) => value switch
+    {
+        string s => s.Trim(),
+        JsonElement { ValueKind: JsonValueKind.String } je => je.GetString()?.Trim() ?? "",
+        JsonElement je when je.ValueKind is JsonValueKind.Number => je.GetRawText().Trim(),
+        IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture)?.Trim() ?? "",
+        _ => value.ToString()?.Trim() ?? "",
+    };
+
+    private static bool TryParseOctalMode(string text, out int mode)
+    {
+        mode = 0;
+        if (text.Length is < 1 or > 4)
+            return false;
+
+        foreach (var c in text)
+        {
+            if (c is < '0' or > '7')
+                return false;
+        }
+
+        mode = Convert.ToInt32(text, 8);
+        return true;
     }
 }

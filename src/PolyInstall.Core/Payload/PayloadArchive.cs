@@ -32,10 +32,7 @@ public static class PayloadArchive
             foreach (var (entryName, fullPath) in files)
             {
                 ct.ThrowIfCancellationRequested();
-                var e = zip.CreateEntry(entryName.Replace('\\', '/'), CompressionLevel.Optimal);
-                using var dest = e.Open();
-                using var src = File.OpenRead(fullPath);
-                src.CopyTo(dest);
+                AddFileEntry(zip, entryName, fullPath, copyWithCancellation: false, ct);
             }
         }
 
@@ -65,10 +62,7 @@ public static class PayloadArchive
             foreach (var (entryName, fullPath) in files)
             {
                 ct.ThrowIfCancellationRequested();
-                var e = zip.CreateEntry(entryName.Replace('\\', '/'), CompressionLevel.Optimal);
-                using var dest = e.Open();
-                using var src = File.OpenRead(fullPath);
-                CopyToWithCancellation(src, dest, ct);
+                AddFileEntry(zip, entryName, fullPath, copyWithCancellation: true, ct);
             }
         }
 
@@ -119,6 +113,50 @@ public static class PayloadArchive
         using var output = new MemoryStream();
         CopyToWithCancellation(gz, output, ct);
         return output.ToArray();
+    }
+
+    private static void AddFileEntry(
+        ZipArchive zip,
+        string entryName,
+        string fullPath,
+        bool copyWithCancellation,
+        CancellationToken ct)
+    {
+        var entry = zip.CreateEntry(entryName.Replace('\\', '/'), CompressionLevel.Optimal);
+        StampUnixMode(entry, fullPath);
+        using var dest = entry.Open();
+        using var src = File.OpenRead(fullPath);
+        if (copyWithCancellation)
+            CopyToWithCancellation(src, dest, ct);
+        else
+            src.CopyTo(dest);
+    }
+
+    /// <summary>
+    /// Zip external attributes keep Unix permission bits in the high 16 bits. Windows has no
+    /// Unix mode to record, so entries packed on Windows leave those bits clear and the
+    /// installing host applies its default mode unless a <c>set_permissions</c> task sets one.
+    /// </summary>
+    private static void StampUnixMode(ZipArchiveEntry entry, string fullPath)
+    {
+        if (!OperatingSystem.IsLinux() && !OperatingSystem.IsMacOS())
+            return;
+
+        UnixFileMode mode;
+        try
+        {
+            mode = File.GetUnixFileMode(fullPath);
+        }
+        catch (PlatformNotSupportedException)
+        {
+            return;
+        }
+
+        var bits = (int)mode & 0xFFF;
+        if (bits == 0)
+            return;
+
+        entry.ExternalAttributes = (entry.ExternalAttributes & 0xFFFF) | (bits << 16);
     }
 
     private static Stream CreateCompressionStream(Stream output, PayloadCompression compression)

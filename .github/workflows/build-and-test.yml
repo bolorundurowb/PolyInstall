@@ -1,4 +1,6 @@
 # CI restores/builds/tests PolyInstall.slnx (includes PolyInstall.Runtime, PolyInstall.Uninstall, CLI, UI, Core, tests).
+# generate-release.yml gates publishing on this workflow (via workflow_run), so it is the single source of truth for
+# "is master releasable" across all three OSes; do not duplicate its test matrix elsewhere.
 name: Build, Test & Coverage
 
 on:
@@ -18,6 +20,7 @@ jobs:
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -25,18 +28,24 @@ jobs:
           - os: ubuntu-latest
             rid: linux-x64
             artifact: polyinstall-linux-x64
+            cross_rid: win-x64
+            manifest_target: linux-x64
           - os: windows-latest
             rid: win-x64
             artifact: polyinstall-win-x64
+            cross_rid: linux-x64
+            manifest_target: windows-x64
           - os: macos-latest
             rid: osx-arm64
             artifact: polyinstall-osx-arm64
+            cross_rid: win-x64
+            manifest_target: osx-arm64
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6.0.0
         with:
           dotnet-version: |
             10.0.x
@@ -47,59 +56,105 @@ jobs:
       - name: Build
         run: dotnet build src/PolyInstall.slnx --configuration Release --no-restore
 
+      # Manifest models (Core/Manifest/) are the source of truth for the manifest shape; schema/v1.json is
+      # generated from them and must be regenerated and committed in the same change (AGENTS.md §9). Checked on
+      # one leg only; the generator's output does not vary by OS.
+      - name: Check generated schema is current
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet run --no-build --project src/PolyInstall.SchemaGen/PolyInstall.SchemaGen.csproj --configuration Release
+          if ! git diff --exit-code -- schema/v1.json; then
+            echo "::error::schema/v1.json is stale. Run 'dotnet run --project src/PolyInstall.SchemaGen/PolyInstall.SchemaGen.csproj' and commit the result (AGENTS.md §9)."
+            exit 1
+          fi
+
       - name: Test with coverage
         run: >
           dotnet test src/PolyInstall.slnx
           --configuration Release
           --no-build
           --verbosity normal
+          --logger "trx;LogFileName=test-results.trx"
+          --blame-hang --blame-hang-timeout 5m
           /p:CollectCoverage=true
 
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: test-results-${{ matrix.os }}
+          path: src/**/TestResults/**/test-results.trx
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Upload coverage to Codecov
-        if: runner.os == 'Linux'
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
+          fail_ci_if_error: ${{ github.event_name == 'push' }}
           files: ./src/coverage/**/coverage.cobertura.xml
           flags: unittests
-          name: polyinstall-coverage
+          name: polyinstall-coverage-${{ matrix.rid }}
 
       - name: Publish CLI fixture for setup action
-        if: runner.os != 'macOS'
         run: >
           dotnet publish src/PolyInstall.Cli/PolyInstall.Cli.csproj
           --configuration Release
           --runtime ${{ matrix.rid }}
           --self-contained true
           -p:PublishSingleFile=true
+          -p:EnableCompressionInSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
           -p:DebugType=embedded
           --output ./setup-action-smoke/${{ matrix.artifact }}
 
+      # Placeholder stub files mirror the release layout (stubs/<rid>/ in the CLI zip, stubs-<rid>-<tag>.zip for
+      # cross-target RIDs); the action only checks that they exist. Real stubs for the host RID are published
+      # separately below, for the silent-smoke build/install regression test.
       - name: Package setup action fixture
-        if: runner.os != 'macOS'
         shell: pwsh
         working-directory: setup-action-smoke
         run: |
           $ErrorActionPreference = 'Stop'
-          $zip = '${{ matrix.artifact }}-v0.0.0-test.zip'
-          Compress-Archive -Path '${{ matrix.artifact }}' -DestinationPath $zip -Force
-          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash.ToLowerInvariant()
-          "$hash  $zip" | Set-Content -NoNewline -Path SHA256SUMS.txt
+          $tag = 'v0.0.0-test'
+
+          function New-StubFixture([string] $root, [string] $rid) {
+            $dir = New-Item -ItemType Directory -Force -Path (Join-Path $root $rid)
+            $ext = if ($rid -like 'win-*') { '.exe' } else { '' }
+            $names = @('PolyInstall.Runtime', 'PolyInstall.Runtime.Silent')
+            if ($rid -like 'win-*') { $names += 'PolyInstall.Uninstall' }
+            foreach ($name in $names) {
+              Set-Content -LiteralPath (Join-Path $dir "$name$ext") -Value 'stub-fixture'
+            }
+          }
+
+          New-StubFixture (Join-Path '${{ matrix.artifact }}' 'stubs') '${{ matrix.rid }}'
+          New-StubFixture 'cross-stubs' '${{ matrix.cross_rid }}'
+
+          $cliZip = "${{ matrix.artifact }}-$tag.zip"
+          $stubZip = "stubs-${{ matrix.cross_rid }}-$tag.zip"
+          Compress-Archive -Path '${{ matrix.artifact }}' -DestinationPath $cliZip -Force
+          Compress-Archive -Path (Join-Path 'cross-stubs' '${{ matrix.cross_rid }}') -DestinationPath $stubZip -Force
+
+          $lines = foreach ($zip in @($cliZip, $stubZip)) {
+            $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash.ToLowerInvariant()
+            "$hash  $zip"
+          }
+          [System.IO.File]::WriteAllText((Join-Path $PWD 'SHA256SUMS.txt'), (($lines -join "`n") + "`n"))
 
       - id: setup-polyinstall-smoke
         name: Smoke test setup-polyinstall action
-        if: runner.os != 'macOS'
         uses: ./.github/actions/setup-polyinstall
         with:
           version: v0.0.0-test
           rid: ${{ matrix.rid }}
+          stub-rids: ${{ matrix.rid }}, ${{ matrix.cross_rid }}
           asset-dir: setup-action-smoke
           install-dir: ${{ runner.temp }}/setup-polyinstall-smoke
 
-      - name: Verify setup action PATH
-        if: runner.os != 'macOS'
+      - name: Verify setup action PATH and stubs
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -109,3 +164,47 @@ jobs:
           }
           & $polyinstall --version
           polyinstall --version
+
+          $stubsDir = '${{ steps.setup-polyinstall-smoke.outputs.stubs-dir }}'
+          $expectedStubsDir = Join-Path (Split-Path -Parent $polyinstall) 'stubs'
+          if ([System.IO.Path]::GetFullPath($stubsDir) -ne [System.IO.Path]::GetFullPath($expectedStubsDir)) {
+            throw "stubs-dir output '$stubsDir' is not next to the CLI ('$expectedStubsDir')"
+          }
+
+          foreach ($rid in @('${{ matrix.rid }}', '${{ matrix.cross_rid }}')) {
+            $ext = if ($rid -like 'win-*') { '.exe' } else { '' }
+            foreach ($name in @('PolyInstall.Runtime', 'PolyInstall.Runtime.Silent')) {
+              $stub = Join-Path (Join-Path $stubsDir $rid) "$name$ext"
+              if (!(Test-Path -LiteralPath $stub)) { throw "stub not found: $stub" }
+              if (!$IsWindows -and -not ((Get-Item -LiteralPath $stub).UnixFileMode -band [System.IO.UnixFileMode]::UserExecute)) {
+                throw "stub is not executable: $stub"
+              }
+            }
+          }
+
+      # End-to-end regression coverage for the bundle trailer, extraction, and silent install on every PR —
+      # the release workflow is the only place this ran before, so a break here only showed up once a release
+      # was cut. Real runtime stubs (not the setup-action placeholder fixtures above) for the host RID only;
+      # thinning/signing/ARP are release-pipeline concerns, not functional-smoke concerns.
+      - name: Publish runtime stubs for silent smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="./smoke-stubs/${{ matrix.rid }}"
+          for proj in PolyInstall.Runtime PolyInstall.Runtime.Silent; do
+            dotnet publish "src/${proj}/${proj}.csproj" \
+              --configuration Release \
+              --runtime ${{ matrix.rid }} \
+              --self-contained true \
+              -p:PublishSingleFile=true \
+              -p:IncludeNativeLibrariesForSelfExtract=true \
+              -p:DebugType=embedded \
+              --output "${out}"
+          done
+
+      - name: Silent install smoke (PR build)
+        uses: ./.github/actions/silent-smoke
+        with:
+          polyinstall-path: ${{ steps.setup-polyinstall-smoke.outputs.polyinstall-path }}
+          stubs-dir: smoke-stubs
+          manifest-target: ${{ matrix.manifest_target }}

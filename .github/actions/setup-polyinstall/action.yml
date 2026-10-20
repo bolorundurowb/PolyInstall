@@ -1,5 +1,5 @@
 name: Setup PolyInstall
-description: Download, verify, extract, and add the PolyInstall CLI to PATH.
+description: Download, verify, extract, and add the PolyInstall CLI (with its installer stubs) to PATH.
 
 inputs:
   version:
@@ -8,6 +8,12 @@ inputs:
     required: false
   rid:
     description: Runtime identifier to install. Defaults from runner OS/architecture when supported.
+    required: false
+  stub-rids:
+    description: >-
+      Extra target RIDs whose installer stubs (stubs-<rid>-<tag>.zip) are downloaded next to the CLI, so one runner can
+      build installers for other platforms. Space-, comma-, or newline-separated (e.g. "win-x64 osx-arm64"), or "all".
+      Stubs for the host RID are always bundled with the CLI.
     required: false
   install-dir:
     description: Directory where the PolyInstall release archive is extracted.
@@ -30,6 +36,9 @@ outputs:
   install-dir:
     description: Directory containing the extracted PolyInstall release archive.
     value: ${{ steps.install.outputs.install-dir }}
+  stubs-dir:
+    description: Stubs root next to the CLI (one <rid>/ folder per available target). polyinstall build uses it automatically.
+    value: ${{ steps.install.outputs.stubs-dir }}
   version:
     description: Resolved release tag.
     value: ${{ steps.resolve.outputs.version }}
@@ -46,6 +55,7 @@ runs:
       env:
         INPUT_VERSION: ${{ inputs.version }}
         INPUT_RID: ${{ inputs.rid }}
+        INPUT_STUB_RIDS: ${{ inputs.stub-rids }}
         INPUT_INSTALL_DIR: ${{ inputs.install-dir }}
         INPUT_REPOSITORY: ${{ inputs.repository }}
         INPUT_ASSET_DIR: ${{ inputs.asset-dir }}
@@ -77,14 +87,37 @@ runs:
           esac
         fi
 
-        case "${rid}" in
-          win-x64|linux-x64|osx-arm64)
-            ;;
-          *)
-            echo "::error::Unsupported PolyInstall release RID '${rid}'. Supported RIDs: win-x64, linux-x64, osx-arm64."
+        supported_rids=(win-x64 linux-x64 osx-arm64)
+
+        is_supported_rid() {
+          local candidate
+          for candidate in "${supported_rids[@]}"; do
+            [[ "${candidate}" == "$1" ]] && return 0
+          done
+          return 1
+        }
+
+        if ! is_supported_rid "${rid}"; then
+          echo "::error::Unsupported PolyInstall release RID '${rid}'. Supported RIDs: ${supported_rids[*]}."
+          exit 1
+        fi
+
+        requested_stub_rids="$(printf '%s' "${INPUT_STUB_RIDS:-}" | tr ',\r\n\t' '    ')"
+        if [[ "$(printf '%s' "${requested_stub_rids}" | tr -d ' ')" == "all" ]]; then
+          requested_stub_rids="${supported_rids[*]}"
+        fi
+
+        stub_rids=()
+        for stub_rid in ${requested_stub_rids}; do
+          if ! is_supported_rid "${stub_rid}"; then
+            echo "::error::Unsupported stub RID '${stub_rid}' in 'stub-rids'. Supported RIDs: ${supported_rids[*]}, or 'all'."
             exit 1
-            ;;
-        esac
+          fi
+          if [[ "${stub_rid}" == "${rid}" || " ${stub_rids[*]:-} " == *" ${stub_rid} "* ]]; then
+            continue
+          fi
+          stub_rids+=("${stub_rid}")
+        done
 
         if [[ "${version}" == "latest" ]]; then
           if [[ -n "${INPUT_ASSET_DIR}" ]]; then
@@ -124,14 +157,14 @@ runs:
         {
           echo "version=${tag}"
           echo "rid=${rid}"
+          echo "stub-rids=${stub_rids[*]:-}"
           echo "repository=${repository}"
           echo "archive-root=${archive_root}"
           echo "asset=${asset}"
           echo "install-dir=${install_dir}"
           echo "work-dir=${work_dir}"
           echo "asset-dir=${INPUT_ASSET_DIR}"
-          echo "asset-url=https://github.com/${repository}/releases/download/${tag}/${asset}"
-          echo "checksums-url=https://github.com/${repository}/releases/download/${tag}/SHA256SUMS.txt"
+          echo "release-url=https://github.com/${repository}/releases/download/${tag}"
         } >> "${GITHUB_OUTPUT}"
 
     - id: download
@@ -140,9 +173,10 @@ runs:
       env:
         ASSET: ${{ steps.resolve.outputs.asset }}
         ASSET_DIR: ${{ steps.resolve.outputs.asset-dir }}
-        ASSET_URL: ${{ steps.resolve.outputs.asset-url }}
-        CHECKSUMS_URL: ${{ steps.resolve.outputs.checksums-url }}
+        RELEASE_URL: ${{ steps.resolve.outputs.release-url }}
         GITHUB_TOKEN_INPUT: ${{ inputs.github-token }}
+        STUB_RIDS: ${{ steps.resolve.outputs.stub-rids }}
+        TAG: ${{ steps.resolve.outputs.version }}
         WORK_DIR: ${{ steps.resolve.outputs.work-dir }}
       run: |
         set -euo pipefail
@@ -159,19 +193,20 @@ runs:
         rm -rf "${work_dir}"
         mkdir -p "${work_dir}"
 
+        assets=("${ASSET}")
+        for stub_rid in ${STUB_RIDS}; do
+          assets+=("stubs-${stub_rid}-${TAG}.zip")
+        done
+
         if [[ -n "${ASSET_DIR}" ]]; then
           asset_dir="$(to_unix_path "${ASSET_DIR}")"
-          if [[ ! -f "${asset_dir}/${ASSET}" ]]; then
-            echo "::error::Local release asset not found: ${asset_dir}/${ASSET}"
-            exit 1
-          fi
-          if [[ ! -f "${asset_dir}/SHA256SUMS.txt" ]]; then
-            echo "::error::Local checksum file not found: ${asset_dir}/SHA256SUMS.txt"
-            exit 1
-          fi
-
-          cp "${asset_dir}/${ASSET}" "${work_dir}/${ASSET}"
-          cp "${asset_dir}/SHA256SUMS.txt" "${work_dir}/SHA256SUMS.txt"
+          for asset in "${assets[@]}" SHA256SUMS.txt; do
+            if [[ ! -f "${asset_dir}/${asset}" ]]; then
+              echo "::error::Local release file not found: ${asset_dir}/${asset}"
+              exit 1
+            fi
+            cp "${asset_dir}/${asset}" "${work_dir}/${asset}"
+          done
           exit 0
         fi
 
@@ -195,14 +230,17 @@ runs:
           fi
         }
 
-        download_file "${ASSET_URL}" "${work_dir}/${ASSET}" "${ASSET}"
-        download_file "${CHECKSUMS_URL}" "${work_dir}/SHA256SUMS.txt" "SHA256SUMS.txt"
+        for asset in "${assets[@]}" SHA256SUMS.txt; do
+          download_file "${RELEASE_URL}/${asset}" "${work_dir}/${asset}" "${asset}"
+        done
 
     - id: verify
-      name: Verify release checksum
+      name: Verify release checksums
       shell: bash
       env:
         ASSET: ${{ steps.resolve.outputs.asset }}
+        STUB_RIDS: ${{ steps.resolve.outputs.stub-rids }}
+        TAG: ${{ steps.resolve.outputs.version }}
         WORK_DIR: ${{ steps.resolve.outputs.work-dir }}
       run: |
         set -euo pipefail
@@ -218,26 +256,37 @@ runs:
         work_dir="$(to_unix_path "${WORK_DIR}")"
         cd "${work_dir}"
 
-        expected="$(
-          awk -v asset="${ASSET}" '($2 == asset || $2 == "*" asset) { print $1; found = 1; exit } END { if (!found) exit 1 }' SHA256SUMS.txt
-        )" || {
-          echo "::error::No checksum entry found for ${ASSET} in SHA256SUMS.txt."
-          exit 1
-        }
+        verify_asset() {
+          local asset="$1"
+          local expected actual
 
-        if command -v sha256sum >/dev/null 2>&1; then
-          printf '%s  %s\n' "${expected}" "${ASSET}" | sha256sum -c -
-        elif command -v shasum >/dev/null 2>&1; then
-          actual="$(shasum -a 256 "${ASSET}" | awk '{ print $1 }')"
-          if [[ "${actual}" != "${expected}" ]]; then
-            echo "::error::Checksum mismatch for ${ASSET}. Expected ${expected}, got ${actual}."
+          expected="$(
+            awk -v asset="${asset}" '{ sub(/\r$/, "") } ($2 == asset || $2 == "*" asset) { print $1; found = 1; exit } END { if (!found) exit 1 }' SHA256SUMS.txt
+          )" || {
+            echo "::error::No checksum entry found for ${asset} in SHA256SUMS.txt."
+            exit 1
+          }
+
+          if command -v sha256sum >/dev/null 2>&1; then
+            actual="$(sha256sum "${asset}" | awk '{ print $1 }')"
+          elif command -v shasum >/dev/null 2>&1; then
+            actual="$(shasum -a 256 "${asset}" | awk '{ print $1 }')"
+          else
+            echo "::error::Neither sha256sum nor shasum is available for checksum verification."
             exit 1
           fi
-          echo "${ASSET}: OK"
-        else
-          echo "::error::Neither sha256sum nor shasum is available for checksum verification."
-          exit 1
-        fi
+
+          if [[ "${actual}" != "${expected}" ]]; then
+            echo "::error::Checksum mismatch for ${asset}. Expected ${expected}, got ${actual}."
+            exit 1
+          fi
+          echo "${asset}: OK"
+        }
+
+        verify_asset "${ASSET}"
+        for stub_rid in ${STUB_RIDS}; do
+          verify_asset "stubs-${stub_rid}-${TAG}.zip"
+        done
 
     - id: install
       name: Extract and add to PATH
@@ -247,6 +296,9 @@ runs:
         ASSET: ${{ steps.resolve.outputs.asset }}
         INSTALL_DIR: ${{ steps.resolve.outputs.install-dir }}
         RID: ${{ steps.resolve.outputs.rid }}
+        RUNNER_OS_NAME: ${{ runner.os }}
+        STUB_RIDS: ${{ steps.resolve.outputs.stub-rids }}
+        TAG: ${{ steps.resolve.outputs.version }}
         WORK_DIR: ${{ steps.resolve.outputs.work-dir }}
       run: |
         set -euo pipefail
@@ -267,23 +319,38 @@ runs:
           fi
         }
 
+        extract_zip() {
+          local zip_path="$1"
+          local destination="$2"
+
+          if command -v unzip >/dev/null 2>&1; then
+            unzip -q -o "${zip_path}" -d "${destination}"
+          elif command -v pwsh >/dev/null 2>&1; then
+            ZIP_PATH="$(to_native_path "${zip_path}")" DESTINATION_PATH="$(to_native_path "${destination}")" \
+              pwsh -NoProfile -Command 'Expand-Archive -LiteralPath $env:ZIP_PATH -DestinationPath $env:DESTINATION_PATH -Force'
+          else
+            echo "::error::Neither unzip nor pwsh is available to extract $(basename "${zip_path}")."
+            exit 1
+          fi
+        }
+
         work_dir="$(to_unix_path "${WORK_DIR}")"
         install_dir="$(to_unix_path "${INSTALL_DIR}")"
-        asset_path="${work_dir}/${ASSET}"
+
+        # install_dir is reused across runs of this action (so re-running with the same input is a clean
+        # refresh), but it is also attacker/typo-controlled input: a consumer could point it at an unrelated,
+        # non-empty directory (e.g. their checkout) by mistake. Only wipe directories this action itself
+        # created, identified by the marker file below; refuse anything else non-empty.
+        marker="${install_dir}/.polyinstall-setup-action"
+        if [[ -d "${install_dir}" ]] && [[ -n "$(ls -A "${install_dir}" 2>/dev/null)" ]] && [[ ! -f "${marker}" ]]; then
+          echo "::error::install-dir '${install_dir}' already exists, is not empty, and was not created by a previous run of this action. Refusing to delete it. Pass a dedicated, empty 'install-dir' (for example \${{ runner.temp }}/polyinstall)."
+          exit 1
+        fi
 
         rm -rf "${install_dir}"
         mkdir -p "${install_dir}"
-
-        if command -v unzip >/dev/null 2>&1; then
-          unzip -q -o "${asset_path}" -d "${install_dir}"
-        elif command -v pwsh >/dev/null 2>&1; then
-          native_asset_path="$(to_native_path "${asset_path}")"
-          native_install_dir="$(to_native_path "${install_dir}")"
-          ASSET_PATH="${native_asset_path}" INSTALL_PATH="${native_install_dir}" pwsh -NoProfile -Command 'Expand-Archive -LiteralPath $env:ASSET_PATH -DestinationPath $env:INSTALL_PATH -Force'
-        else
-          echo "::error::Neither unzip nor pwsh is available to extract ${ASSET}."
-          exit 1
-        fi
+        extract_zip "${work_dir}/${ASSET}" "${install_dir}"
+        touch "${marker}"
 
         exe_name="polyinstall"
         if [[ "${RID}" == win-* ]]; then
@@ -300,15 +367,51 @@ runs:
           chmod +x "${polyinstall_path}"
         fi
 
+        stubs_dir="${install_dir}/${ARCHIVE_ROOT}/stubs"
+        mkdir -p "${stubs_dir}"
+        for stub_rid in ${STUB_RIDS}; do
+          rm -rf "${stubs_dir:?}/${stub_rid}"
+          extract_zip "${work_dir}/stubs-${stub_rid}-${TAG}.zip" "${stubs_dir}"
+          if [[ ! -d "${stubs_dir}/${stub_rid}" ]]; then
+            echo "::error::stubs-${stub_rid}-${TAG}.zip did not contain a '${stub_rid}/' folder."
+            exit 1
+          fi
+        done
+
+        for stub_rid in "${RID}" ${STUB_RIDS}; do
+          ext=""
+          if [[ "${stub_rid}" == win-* ]]; then
+            ext=".exe"
+          fi
+
+          stub_names=(PolyInstall.Runtime PolyInstall.Runtime.Silent)
+          for stub_name in "${stub_names[@]}"; do
+            stub_path="${stubs_dir}/${stub_rid}/${stub_name}${ext}"
+            if [[ ! -f "${stub_path}" ]]; then
+              echo "::warning::${stub_name}${ext} is missing for ${stub_rid} in ${TAG}; builds for ${stub_rid} that need it will fail. ui.mode: silent needs PolyInstall.Runtime.Silent (PolyInstall 2.3.0+)."
+              continue
+            fi
+            if [[ "${RUNNER_OS_NAME}" != "Windows" ]]; then
+              chmod +x "${stub_path}"
+            fi
+          done
+
+          if [[ "${stub_rid}" == win-* && ! -f "${stubs_dir}/${stub_rid}/PolyInstall.Uninstall.exe" ]]; then
+            echo "::warning::PolyInstall.Uninstall.exe is missing for ${stub_rid} in ${TAG}; Windows builds with register_arp enabled (the default) will fail."
+          fi
+        done
+
         exe_dir="$(cd "$(dirname "${polyinstall_path}")" && pwd -P)"
         native_exe_dir="$(to_native_path "${exe_dir}")"
         native_polyinstall_path="$(to_native_path "${polyinstall_path}")"
         native_install_dir="$(to_native_path "${install_dir}")"
+        native_stubs_dir="$(to_native_path "${stubs_dir}")"
 
         echo "${native_exe_dir}" >> "${GITHUB_PATH}"
         {
           echo "polyinstall-path=${native_polyinstall_path}"
           echo "install-dir=${native_install_dir}"
+          echo "stubs-dir=${native_stubs_dir}"
         } >> "${GITHUB_OUTPUT}"
 
         "${polyinstall_path}" --version

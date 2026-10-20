@@ -175,6 +175,39 @@ public class PayloadArchiveTests
         }
     }
 
+    [Fact]
+    public void PackAndCompress_ShouldRecordUnixMode_WhenHostHasOne()
+    {
+        var dir = TestHelpers.NewTempDir();
+        try
+        {
+            var source = Path.Combine(dir, "hello");
+            File.WriteAllText(source, "#!/bin/sh\necho hi\n");
+            const UnixFileMode mode =
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
+                | UnixFileMode.GroupRead | UnixFileMode.GroupExecute
+                | UnixFileMode.OtherRead | UnixFileMode.OtherExecute;
+            if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
+                File.SetUnixFileMode(source, mode);
+
+            var compressed = PayloadArchive.PackAndCompress([("hello", source)], PayloadCompression.GZip);
+            var zipBytes = PayloadArchive.Decompress(compressed, PayloadCompression.GZip);
+
+            using var ms = new MemoryStream(zipBytes);
+            using var zip = new ZipArchive(ms, ZipArchiveMode.Read);
+            var recorded = (zip.GetEntry("hello")!.ExternalAttributes >> 16) & 0xFFF;
+
+            if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
+                recorded.Must().Be((int)mode);
+            else
+                recorded.Must().Be(0);
+        }
+        finally
+        {
+            TestHelpers.TryDeleteDirectory(dir);
+        }
+    }
+
     private static string CreateTempFile(string content)
     {
         var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("n") + ".txt");

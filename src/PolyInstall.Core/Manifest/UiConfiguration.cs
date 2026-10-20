@@ -1,3 +1,6 @@
+using System.ComponentModel;
+using System.Text.Json.Serialization;
+
 namespace PolyInstall.Manifest;
 
 public sealed class UiConfiguration
@@ -14,6 +17,11 @@ public sealed class UiConfiguration
     public List<UiAssetEntry>? Assets { get; set; }
     public List<WizardStep> WizardSteps { get; set; } = [];
 
+    /// <summary>
+    /// Derived from <see cref="Mode"/>. Ignored when serialising so the embedded manifest and the
+    /// generated schema keep a single source of truth.
+    /// </summary>
+    [JsonIgnore]
     public bool IsSilent =>
         Mode.Trim().Equals("silent", StringComparison.OrdinalIgnoreCase);
 }
@@ -30,5 +38,8 @@ public sealed class WizardStep
     public string? Title { get; set; }
     public string? Source { get; set; }
     public string? DefaultPath { get; set; }
+
+    [Description("Whether the progress step displays its detailed install log.")]
+    [DefaultValue(true)]
     public bool ShowLogs { get; set; } = true;
 }

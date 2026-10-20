@@ -34,7 +34,7 @@ public class FeatureFilterTests
             new HashSet<string>(StringComparer.OrdinalIgnoreCase));
 
         allowed.Must().Contain("core.txt");
-        allowed.Must().NotToContain("sim.txt");
+        allowed.Must().NotContain("sim.txt");
     }
 
     [Fact]
@@ -75,7 +75,7 @@ public class FeatureFilterTests
             new HashSet<string>(StringComparer.OrdinalIgnoreCase));
 
         allowed.Must().Contain(".polyinstall/tools/PolyInstall.Uninstall.exe");
-        allowed.Must().NotToContain("sim.txt");
+        allowed.Must().NotContain("sim.txt");
     }
 
     [Fact]

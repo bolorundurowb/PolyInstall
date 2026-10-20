@@ -59,13 +59,14 @@
     <ItemGroup Condition="'$(_PolyLipoAvailable)' == 'true' AND '@(_PolyCandidateDylib)' != ''">
       <_PolyThinned Include="@(_PolyCandidateDylib)" Condition="Exists('%(ThinPath)')" />
       <ResolvedFileToPublish Remove="@(_PolyThinned)" />
-      <ResolvedFileToPublish Include="@(_PolyThinned->'%(ThinPath)')">
-        <RelativePath>%(RelativePath)</RelativePath>
-        <CopyToPublishDirectory>%(CopyToPublishDirectory)</CopyToPublishDirectory>
-        <DestinationSubDirectory>%(DestinationSubDirectory)</DestinationSubDirectory>
-        <DestinationSubPath>%(DestinationSubPath)</DestinationSubPath>
-        <AssetType>%(AssetType)</AssetType>
-      </ResolvedFileToPublish>
+      <!--
+        '->' transforms already clone every metadata key from the source item onto the new item; only the
+        Identity changes. Re-stating metadata like DestinationSubDirectory here as %(DestinationSubDirectory)
+        would force MSBuild to read that key explicitly, which throws MSB4096 for any resolved file that the
+        SDK never set that key on (observed for runtime-pack natives such as libAvaloniaNative.dylib). Letting
+        the transform alone carry metadata forward avoids that, for keys that are present or absent alike.
+      -->
+      <ResolvedFileToPublish Include="@(_PolyThinned->'%(ThinPath)')" />
     </ItemGroup>
   </Target>
 </Project>

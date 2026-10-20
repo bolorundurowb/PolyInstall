@@ -741,6 +741,108 @@ public class ManifestSemanticValidatorTests
     }
 
     [Fact]
+    public void Validate_SetPermissionsWithOctalMode_Passes()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall =
+            [
+                new InstallTask
+                {
+                    Action = "set_permissions",
+                    Require = "os.isUnix",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        ["path"] = "{AppDir}/app",
+                        ["mode"] = "0755",
+                    },
+                },
+            ],
+        };
+
+        ManifestSemanticValidator.Validate(manifest);
+    }
+
+    [Fact]
+    public void Validate_SetPermissionsWithDecimalDigit_Throws()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostInstall =
+            [
+                new InstallTask
+                {
+                    Action = "set_permissions",
+                    Require = "os.isUnix",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        ["path"] = "{AppDir}/app",
+                        ["mode"] = 759,
+                    },
+                },
+            ],
+        };
+
+        var result = ManifestSemanticValidator.ValidateResult(manifest);
+        result.IsValid.Must().BeFalse();
+        result.Diagnostics.Select(d => d.Code).Must().Contain("PI203");
+    }
+
+    [Fact]
+    public void Validate_InstallOnlyActionInUninstallPhase_ReportsPi204()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PreUninstall =
+            [
+                new InstallTask
+                {
+                    Action = "create_shortcut",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        ["target_path"] = "{AppDir}/app",
+                        ["name"] = "App",
+                        ["location"] = "desktop",
+                    },
+                },
+            ],
+        };
+
+        var result = ManifestSemanticValidator.ValidateResult(manifest);
+        result.IsValid.Must().BeFalse();
+        result.Diagnostics.Must().HaveCount(1);
+        result.Diagnostics[0].Code.Must().Be("PI204");
+    }
+
+    [Fact]
+    public void Validate_FileAssociationInUninstallPhase_Passes()
+    {
+        var manifest = CreateBaseManifest("user");
+        manifest.Tasks = new TasksConfiguration
+        {
+            PostUninstall =
+            [
+                new InstallTask
+                {
+                    Action = "file_association",
+                    Require = "os.isWindows",
+                    Parameters = new Dictionary<string, object?>
+                    {
+                        ["extension"] = ".app",
+                        ["description"] = "App file",
+                        ["command"] = "\"{AppDir}\\app.exe\" \"%1\"",
+                    },
+                },
+            ],
+        };
+
+        ManifestSemanticValidator.Validate(manifest);
+    }
+
+    [Fact]
     public void Validate_AddToPathUserScope_Passes()
     {
         var manifest = CreateBaseManifest("user");

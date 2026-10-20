@@ -1,4 +1,5 @@
 using PolyInstall.Core.Build.Manifest;
+using PolyInstall.Core.Build.Validation;
 
 namespace PolyInstall.Core.Build.Tests;
 
@@ -230,5 +231,82 @@ public class ManifestYamlTests
         var m = ManifestYaml.Parse(yaml);
 
         m.Ui.WizardSteps[0].ShowLogs.Must().BeFalse();
+    }
+
+    [Fact]
+    public void Parse_ShouldReadServices_WhenServicesBlockIsPresent()
+    {
+        var yaml = """
+            metadata:
+              name: T
+              version: 1.0.0
+            build:
+              targets:
+                - linux-x64
+            files:
+              - source_dir: .
+                include:
+                  - "*.txt"
+            services:
+              - name: com.example.app
+                require: os.isLinux
+                scope: user
+                description: "Background helper"
+                executable: "{AppDir}/bin/app"
+                arguments: ["--service"]
+                working_directory: "{AppDir}"
+                restart: on-failure
+                start: true
+                environment:
+                  APP_HOME: "{AppDir}"
+            """;
+
+        var m = ManifestYaml.Parse(yaml);
+
+        m.Services.Must().NotBeNull();
+        m.Services.Must().HaveCount(1);
+        var service = m.Services![0];
+        service.Name.Must().Be("com.example.app");
+        service.Require.Must().Be("os.isLinux");
+        service.Scope.Must().Be("user");
+        service.Executable.Must().Be("{AppDir}/bin/app");
+        service.Arguments.Must().BeEquivalentTo(["--service"]);
+        service.WorkingDirectory.Must().Be("{AppDir}");
+        service.Restart.Must().Be("on-failure");
+        service.Start.Must().BeTrue();
+        service.Environment.Must().NotBeNull();
+        service.Environment!["APP_HOME"].Must().Be("{AppDir}");
+        ManifestSemanticValidator.Validate(m);
+    }
+
+    [Fact]
+    public void Parse_ShouldKeepSetPermissionsMode_WhenModeIsAnUnquotedNumber()
+    {
+        var yaml = """
+            metadata:
+              name: T
+              version: 1.0.0
+            build:
+              targets:
+                - linux-x64
+            files:
+              - source_dir: .
+                include:
+                  - "*.txt"
+            tasks:
+              post_install:
+                - require: os.isUnix
+                  action: set_permissions
+                  parameters:
+                    path: "{AppDir}/app"
+                    mode: 755
+            """;
+
+        var m = ManifestYaml.Parse(yaml);
+
+        var mode = m.Tasks!.PostInstall![0].Parameters!["mode"];
+        mode.Must().NotBeNull();
+        mode!.ToString().Must().Be("755");
+        ManifestSemanticValidator.Validate(m);
     }
 }

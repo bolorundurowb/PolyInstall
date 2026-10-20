@@ -1,0 +1,120 @@
+name: Silent install smoke
+description: >-
+  Builds a minimal silent-mode installer with the given PolyInstall CLI and stubs, runs it end to end, then checks
+  that a wizard stub also honours --silent and that invalid arguments exit 2. Shared by CI (per-PR regression
+  coverage) and the release workflow (post-publish smoke on the real zips).
+
+inputs:
+  polyinstall-path:
+    description: Full path to the polyinstall executable to drive the build with.
+    required: true
+  stubs-dir:
+    description: Stubs root containing one <rid>/ folder with PolyInstall.Runtime(.Silent) for the manifest target.
+    required: true
+  manifest-target:
+    description: Manifest build.targets token for the host platform (e.g. windows-x64, linux-x64, osx-arm64).
+    required: true
+  work-dir:
+    description: Scratch directory for the generated manifest, payload, and installers. Defaults under runner.temp.
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - id: smoke
+      name: Build and run a silent installer
+      shell: pwsh
+      env:
+        POLYINSTALL_PATH: ${{ inputs.polyinstall-path }}
+        STUBS_DIR: ${{ inputs.stubs-dir }}
+        MANIFEST_TARGET: ${{ inputs.manifest-target }}
+        INPUT_WORK_DIR: ${{ inputs.work-dir }}
+      run: |
+        $ErrorActionPreference = 'Stop'
+
+        $polyinstallPath = $env:POLYINSTALL_PATH
+        $stubsDir = $env:STUBS_DIR
+        $target = $env:MANIFEST_TARGET
+        $work = $env:INPUT_WORK_DIR
+        if ([string]::IsNullOrEmpty($work)) {
+          $work = Join-Path $env:RUNNER_TEMP 'polyinstall-silent-smoke'
+        }
+
+        if (!(Test-Path -LiteralPath $polyinstallPath)) {
+          throw "polyinstall executable not found: $polyinstallPath"
+        }
+
+        if (Test-Path -LiteralPath $work) { Remove-Item -LiteralPath $work -Recurse -Force }
+        New-Item -ItemType Directory -Path $work | Out-Null
+        $manifestPath = Join-Path $work 'silent.yaml'
+        $payloadDir = Join-Path $work 'payload'
+        New-Item -ItemType Directory -Path $payloadDir | Out-Null
+        Set-Content -LiteralPath (Join-Path $payloadDir 'hello.txt') -Value 'hello-silent'
+
+        # register_arp: false keeps this independent of PolyInstall.Uninstall, which neither CI callers
+        # nor every release RID necessarily publish for this smoke.
+        $manifestLines = @(
+          'metadata:'
+          '  name: SilentSmoke'
+          '  version: 0.0.1'
+          '  publisher: CI'
+          'build:'
+          '  output_dir: dist'
+          '  compression: brotli'
+          '  targets:'
+          "    - $target"
+          '  windows:'
+          '    install_scope: user'
+          '    register_arp: false'
+          'ui:'
+          '  mode: silent'
+          '  wizard_steps:'
+          '    - type: destination'
+          '      default_path: "{LocalAppData}/SilentSmoke"'
+          '    - type: progress'
+          'files:'
+          '  - source_dir: payload'
+          '    include: ["**/*"]'
+        )
+        Set-Content -LiteralPath $manifestPath -Value $manifestLines
+
+        & $polyinstallPath build $manifestPath --base $work --stubs $stubsDir
+        if ($LASTEXITCODE -ne 0) { throw "polyinstall build (silent) failed with exit $LASTEXITCODE" }
+
+        $installer = Get-ChildItem -Path (Join-Path $work 'dist') -File | Select-Object -First 1
+        if ($null -eq $installer) { throw "Silent installer was not produced under dist/" }
+        if ($IsLinux -or $IsMacOS) { chmod +x $installer.FullName }
+
+        $installDir = Join-Path $work 'install-root'
+        New-Item -ItemType Directory -Path $installDir | Out-Null
+        & $installer.FullName --install-dir $installDir
+        if ($LASTEXITCODE -ne 0) { throw "Silent installer failed with exit $LASTEXITCODE" }
+        if (!(Test-Path -LiteralPath (Join-Path $installDir 'hello.txt'))) {
+          throw "Silent install did not copy hello.txt"
+        }
+        if (!(Test-Path -LiteralPath (Join-Path (Join-Path $installDir '.polyinstall') 'install-state.json'))) {
+          throw "Silent install did not write install-state.json"
+        }
+
+        # Wizard stub --silent should also succeed against a fresh destination.
+        $installDir2 = Join-Path $work 'install-root-wizard-silent'
+        New-Item -ItemType Directory -Path $installDir2 | Out-Null
+        $wizardManifest = Join-Path $work 'wizard.yaml'
+        (Get-Content -LiteralPath $manifestPath -Raw) -replace 'mode: silent', 'mode: wizard' |
+          Set-Content -LiteralPath $wizardManifest
+        Remove-Item -LiteralPath (Join-Path $work 'dist') -Recurse -Force -ErrorAction SilentlyContinue
+        & $polyinstallPath build $wizardManifest --base $work --stubs $stubsDir
+        if ($LASTEXITCODE -ne 0) { throw "polyinstall build (wizard) failed with exit $LASTEXITCODE" }
+        $wizardInstaller = Get-ChildItem -Path (Join-Path $work 'dist') -File | Select-Object -First 1
+        if ($IsLinux -or $IsMacOS) { chmod +x $wizardInstaller.FullName }
+        & $wizardInstaller.FullName --silent --install-dir $installDir2
+        if ($LASTEXITCODE -ne 0) { throw "Wizard stub --silent failed with exit $LASTEXITCODE" }
+        if (!(Test-Path -LiteralPath (Join-Path $installDir2 'hello.txt'))) {
+          throw "Wizard --silent install did not copy hello.txt"
+        }
+
+        # Negative: unknown argument -> exit 2.
+        & $installer.FullName --not-a-real-flag
+        if ($LASTEXITCODE -ne 2) { throw "Expected exit 2 for invalid args, got $LASTEXITCODE" }
+
+        Write-Host "Silent install smoke OK ($target)."
