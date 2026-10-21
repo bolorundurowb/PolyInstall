@@ -141,7 +141,7 @@ try
         case "build":
             BuildLog.Verbose = verbose;
             BuildLog.Quiet = jsonFlag || !string.IsNullOrEmpty(outputManifestPath);
-            var result = await InstallerBuildPipeline.RunAsync(manifestPath, basePath, stubsDir, default);
+            var result = await InstallerBuildPipeline.RunAsync(manifestPath, basePath, stubsDir, CancellationToken.None);
             if (jsonFlag || !string.IsNullOrEmpty(outputManifestPath))
             {
                 var jsonOptions = new JsonSerializerOptions
